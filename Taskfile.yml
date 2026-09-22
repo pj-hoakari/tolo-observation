@@ -2,10 +2,12 @@
 
 version: "3"
 
+dotenv: [".env"]
+
 vars:
     # compose.yml の postgres サービスを指す既定接続先
     # 環境変数 DATABASE_URL で migrate タスク上書き
-    DEFAULT_DATABASE_URL: postgres://go_service_template:go_service_template@localhost:5432/go_service_template?sslmode=disable
+    DEFAULT_DATABASE_URL: postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@localhost:5432/{{.POSTGRES_DB}}?sslmode=disable
 
 tasks:
     up:

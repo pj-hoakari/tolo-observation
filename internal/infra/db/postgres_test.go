@@ -32,9 +32,9 @@ func TestMain(m *testing.M) {
 	defer cancel()
 
 	container, err := postgres.Run(ctx, "postgres:17-alpine",
-		postgres.WithDatabase("go_service_template"),
-		postgres.WithUsername("go_service_template"),
-		postgres.WithPassword("go_service_template"),
+		postgres.WithDatabase("tolo_observation"),
+		postgres.WithUsername("tolo_observation"),
+		postgres.WithPassword("tolo_observation"),
 		postgres.WithInitScripts(migrationPaths()...),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
