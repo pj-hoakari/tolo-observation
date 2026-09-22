@@ -37,6 +37,12 @@ type ListEdgeDevicesInput struct {
 	IncludeUnregistered bool
 }
 
+type HeartbeatInput struct {
+	EventID                   string
+	EdgeDeviceID              string
+	ActiveObservationPointIDs []string
+}
+
 type UpdateObservationPointConfigInput struct {
 	EventID            string
 	ObservationPointID string
@@ -48,6 +54,7 @@ type EdgeDeviceUseCases interface {
 	RegisterEdgeDevice(ctx context.Context, input RegisterEdgeDeviceInput) (RegisterEdgeDeviceOutput, error)
 	UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (domain.EdgeDevice, error)
 	ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]domain.EdgeDevice, error)
+	Heartbeat(ctx context.Context, input HeartbeatInput) error
 	UpdateObservationPointConfig(ctx context.Context, input UpdateObservationPointConfigInput) (domain.ObservationPoint, error)
 }
 
@@ -140,6 +147,47 @@ func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeD
 	}
 
 	return devices, nil
+}
+
+func (s *EdgeDeviceService) Heartbeat(ctx context.Context, input HeartbeatInput) error {
+	if err := tenantctx.EnsureEvent(ctx, input.EventID); err != nil {
+		return err
+	}
+
+	id, err := domain.ParseEdgeDeviceID(input.EdgeDeviceID)
+	if err != nil {
+		return err
+	}
+
+	device, err := s.devices.FindByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("find edge device: %w", err)
+	}
+
+	if device.EventID != input.EventID {
+		return ErrForeignEvent
+	}
+
+	activeIDs := make([]domain.ObservationPointID, 0, len(input.ActiveObservationPointIDs))
+
+	for _, value := range input.ActiveObservationPointIDs {
+		pointID, err := domain.ParseObservationPointID(value)
+		if err != nil {
+			return err
+		}
+
+		activeIDs = append(activeIDs, pointID)
+	}
+
+	if err := device.Heartbeat(s.config.Now(), activeIDs); err != nil {
+		return err
+	}
+
+	if err := s.devices.SaveHeartbeat(ctx, device); err != nil {
+		return fmt.Errorf("save edge device heartbeat: %w", err)
+	}
+
+	return nil
 }
 
 func (s *EdgeDeviceService) UpdateObservationPointConfig(ctx context.Context, input UpdateObservationPointConfigInput) (domain.ObservationPoint, error) {

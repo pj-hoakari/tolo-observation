@@ -177,6 +177,46 @@ func (r *PostgresEdgeDeviceRepository) Save(ctx context.Context, device domain.E
 	})
 }
 
+func (r *PostgresEdgeDeviceRepository) SaveHeartbeat(ctx context.Context, device domain.EdgeDevice) error {
+	return RunInTransaction(ctx, r.db, func(ctx context.Context) error {
+		executor := Executor(ctx, r.db)
+
+		var internalID int64
+
+		err := sqlx.GetContext(ctx, executor, &internalID, `
+			UPDATE edge_devices
+			SET last_heartbeat_at = $2
+			WHERE edge_device_id = $1 AND NOT unregistered
+			RETURNING id`,
+			string(device.ID), device.LastHeartbeatAt)
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return repository.ErrEdgeDeviceNotFound
+		}
+
+		if err != nil {
+			return fmt.Errorf("update edge device heartbeat: %w", err)
+		}
+
+		for _, point := range device.ObservationPoints {
+			if point.LastActiveAt == nil {
+				continue
+			}
+
+			_, err := executor.ExecContext(ctx, `
+				UPDATE observation_points
+				SET last_active_at = $3
+				WHERE observation_point_id = $1 AND edge_device_id = $2`,
+				string(point.ID), internalID, point.LastActiveAt)
+			if err != nil {
+				return fmt.Errorf("update observation point activity: %w", err)
+			}
+		}
+
+		return nil
+	})
+}
+
 func (r *PostgresEdgeDeviceRepository) findOne(ctx context.Context, query string, arg any) (domain.EdgeDevice, error) {
 	var row edgeDeviceRow
 

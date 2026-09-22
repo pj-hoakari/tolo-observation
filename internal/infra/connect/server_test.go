@@ -84,7 +84,7 @@ func newTestHandlerWithEdgeDevices(
 ) http.Handler {
 	t.Helper()
 
-	routes, err := RoutesWithVerifier(newTestVerifier(t, keys), edgeDevices)
+	routes, err := RoutesWithVerifier(newTestVerifier(t, keys), edgeDevices, &fakeMeasurementIngestUseCases{})
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -113,7 +113,7 @@ func newTestHandlerForJWKSURL(t *testing.T, jwksURL string) http.Handler {
 		t.Fatalf("create internal JWT verifier: %v", err)
 	}
 
-	routes, err := RoutesWithVerifier(tokenVerifier, &fakeEdgeDeviceUseCases{})
+	routes, err := RoutesWithVerifier(tokenVerifier, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{})
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -185,7 +185,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = newTestJWKSURL(t, keys)
 
-		routes, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{})
+		routes, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{})
 		if err != nil {
 			t.Fatalf("RoutesWithJWTSettings() error = %v", err)
 		}
@@ -208,7 +208,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = ""
 
-		_, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{})
+		_, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{})
 		if !errors.Is(err, jwks.ErrMissingURL) {
 			t.Fatalf("RoutesWithJWTSettings() error = %v, want %v", err, jwks.ErrMissingURL)
 		}
@@ -286,9 +286,8 @@ func TestMeasurementIngestServiceAuthzAcceptsServiceToken(t *testing.T) {
 	req := connectrpc.NewRequest(&observationv1.ReportMeasurementsRequest{EventId: testEventPublicID})
 	req.Header().Set("Authorization", authorization)
 
-	_, err := client.ReportMeasurements(context.Background(), req)
-	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnimplemented; got != want {
-		t.Fatalf("ReportMeasurements() error code = %v, want %v", got, want)
+	if _, err := client.ReportMeasurements(context.Background(), req); err != nil {
+		t.Fatalf("ReportMeasurements() error = %v", err)
 	}
 }
 

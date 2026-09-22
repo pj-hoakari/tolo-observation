@@ -15,4 +15,5 @@ type EdgeDeviceRepository interface {
 	FindByObservationPointID(ctx context.Context, id domain.ObservationPointID) (domain.EdgeDevice, error)
 	ListByEvent(ctx context.Context, eventID string, includeUnregistered bool) ([]domain.EdgeDevice, error)
 	Save(ctx context.Context, device domain.EdgeDevice) error
+	SaveHeartbeat(ctx context.Context, device domain.EdgeDevice) error
 }

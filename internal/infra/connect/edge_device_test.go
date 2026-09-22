@@ -26,6 +26,10 @@ type fakeEdgeDeviceUseCases struct {
 	err            error
 }
 
+func (f *fakeEdgeDeviceUseCases) Heartbeat(_ context.Context, _ application.HeartbeatInput) error {
+	return f.err
+}
+
 func (f *fakeEdgeDeviceUseCases) RegisterEdgeDevice(
 	_ context.Context,
 	_ application.RegisterEdgeDeviceInput,
@@ -166,4 +170,16 @@ func TestEdgeDeviceErrorMapping(t *testing.T) {
 			}
 		})
 	}
+}
+
+type fakeMeasurementIngestUseCases struct {
+	accepted int32
+	err      error
+}
+
+func (f *fakeMeasurementIngestUseCases) ReportMeasurements(
+	_ context.Context,
+	_ application.ReportMeasurementsInput,
+) (int32, error) {
+	return f.accepted, f.err
 }

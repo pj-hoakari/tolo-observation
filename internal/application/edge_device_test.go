@@ -189,6 +189,71 @@ func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 	}
 }
 
+func TestHeartbeatMarksTheDeviceAndItsActivePoints(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t, "https://example.test/observe")
+	devices.EXPECT().
+		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+		Return(domain.EdgeDevice{
+			ID:      "1122334455667788",
+			EventID: testEventPublicID,
+			ObservationPoints: []domain.ObservationPoint{
+				{ID: "99aabbccddeeff00", Name: "north", Enabled: true},
+				{ID: "00ffeeddccbbaa99", Name: "south", Enabled: true},
+			},
+		}, nil)
+
+	var saved domain.EdgeDevice
+
+	devices.EXPECT().
+		SaveHeartbeat(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, device domain.EdgeDevice) error {
+			saved = device
+
+			return nil
+		})
+
+	err := service.Heartbeat(withEventToken(testEventPublicID), application.HeartbeatInput{
+		EventID:                   testEventPublicID,
+		EdgeDeviceID:              "1122334455667788",
+		ActiveObservationPointIDs: []string{"99aabbccddeeff00"},
+	})
+	if err != nil {
+		t.Fatalf("Heartbeat() error = %v", err)
+	}
+
+	if saved.LastHeartbeatAt == nil || !saved.LastHeartbeatAt.Equal(testNow) {
+		t.Errorf("LastHeartbeatAt = %v, want %v", saved.LastHeartbeatAt, testNow)
+	}
+
+	if saved.ObservationPoints[0].LastActiveAt == nil {
+		t.Errorf("north LastActiveAt = nil, want %v", testNow)
+	}
+
+	if saved.ObservationPoints[1].LastActiveAt != nil {
+		t.Errorf("south LastActiveAt = %v, want nil", saved.ObservationPoints[1].LastActiveAt)
+	}
+}
+
+func TestHeartbeatRejectsAnotherEventsDevice(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t, "https://example.test/observe")
+	devices.EXPECT().
+		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+		Return(domain.EdgeDevice{EventID: otherEventPublicID}, nil)
+
+	err := service.Heartbeat(withEventToken(testEventPublicID), application.HeartbeatInput{
+		EventID:                   testEventPublicID,
+		EdgeDeviceID:              "1122334455667788",
+		ActiveObservationPointIDs: nil,
+	})
+	if !errors.Is(err, application.ErrForeignEvent) {
+		t.Fatalf("Heartbeat() error = %v, want %v", err, application.ErrForeignEvent)
+	}
+}
+
 func ptr(t time.Time) *time.Time {
 	return &t
 }

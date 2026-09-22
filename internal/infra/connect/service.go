@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	connectrpc "connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
@@ -17,6 +19,12 @@ import (
 
 // errInternal is the only detail a client learns about an internal failure.
 var errInternal = errors.New("internal error")
+
+var (
+	errMeasurementSourceRequired = errors.New("measurement source is required")
+	errQRLocationNotAllowed      = errors.New("qr_location_id is not allowed for edge measurements")
+	errQRUnimplemented           = errors.New("QR measurements are not implemented")
+)
 
 // InternalError reports a failure the client can do nothing about. The cause is
 // written to the server log and replaced by a fixed message, so that no
@@ -45,12 +53,73 @@ func InternalError(ctx context.Context, err error) *connectrpc.Error {
 
 type MeasurementIngestService struct {
 	observationv1connect.UnimplementedMeasurementIngestServiceHandler
+
+	useCases application.MeasurementIngestUseCases
 }
 
-func NewMeasurementIngestService() *MeasurementIngestService {
+func NewMeasurementIngestService(useCases application.MeasurementIngestUseCases) *MeasurementIngestService {
 	return &MeasurementIngestService{
 		UnimplementedMeasurementIngestServiceHandler: observationv1connect.UnimplementedMeasurementIngestServiceHandler{},
+		useCases: useCases,
 	}
+}
+
+func (s *MeasurementIngestService) ReportMeasurements(
+	ctx context.Context,
+	req *connectrpc.Request[observationv1.ReportMeasurementsRequest],
+) (*connectrpc.Response[observationv1.ReportMeasurementsResponse], error) {
+	reported := req.Msg.GetMeasurements()
+	measurements := make([]application.MeasurementInput, 0, len(reported))
+
+	for _, measurement := range reported {
+		if err := checkEdgeMeasurement(measurement); err != nil {
+			return nil, err
+		}
+
+		measurements = append(measurements, application.MeasurementInput{
+			ObservationPointID: measurement.GetObservationPointId(),
+			WindowStart:        timestampTime(measurement.GetWindowStart()),
+			WindowEnd:          timestampTime(measurement.GetWindowEnd()),
+			CountIn:            measurement.GetCountIn(),
+			CountOut:           measurement.GetCountOut(),
+		})
+	}
+
+	accepted, err := s.useCases.ReportMeasurements(ctx, application.ReportMeasurementsInput{
+		EventID:      req.Msg.GetEventId(),
+		EdgeDeviceID: req.Msg.GetEdgeDeviceId(),
+		Measurements: measurements,
+	})
+	if err != nil {
+		return nil, observationError(ctx, err)
+	}
+
+	return connectrpc.NewResponse(&observationv1.ReportMeasurementsResponse{AcceptedCount: accepted}), nil
+}
+
+func checkEdgeMeasurement(measurement *observationv1.Measurement) error {
+	switch measurement.GetSource() {
+	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_EDGE:
+		if measurement.GetQrLocationId() != "" {
+			return connectrpc.NewError(connectrpc.CodeInvalidArgument, errQRLocationNotAllowed)
+		}
+
+		return nil
+	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_QR:
+		return connectrpc.NewError(connectrpc.CodeUnimplemented, errQRUnimplemented)
+	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_UNSPECIFIED:
+		return connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
+	default:
+		return connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
+	}
+}
+
+func timestampTime(value *timestamppb.Timestamp) time.Time {
+	if value == nil {
+		return time.Time{}
+	}
+
+	return value.AsTime()
 }
 
 type EdgeDeviceService struct {
@@ -76,7 +145,7 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(
 		ObservationPointNames: req.Msg.GetObservationPointNames(),
 	})
 	if err != nil {
-		return nil, edgeDeviceError(ctx, err)
+		return nil, observationError(ctx, err)
 	}
 
 	return connectrpc.NewResponse(&observationv1.RegisterEdgeDeviceResponse{
@@ -94,7 +163,7 @@ func (s *EdgeDeviceService) UnregisterEdgeDevice(
 		EdgeDeviceID: req.Msg.GetEdgeDeviceId(),
 	})
 	if err != nil {
-		return nil, edgeDeviceError(ctx, err)
+		return nil, observationError(ctx, err)
 	}
 
 	return connectrpc.NewResponse(&observationv1.UnregisterEdgeDeviceResponse{
@@ -111,7 +180,7 @@ func (s *EdgeDeviceService) ListEdgeDevices(
 		IncludeUnregistered: req.Msg.GetIncludeUnregistered(),
 	})
 	if err != nil {
-		return nil, edgeDeviceError(ctx, err)
+		return nil, observationError(ctx, err)
 	}
 
 	protoDevices := make([]*observationv1.EdgeDevice, 0, len(devices))
@@ -120,6 +189,22 @@ func (s *EdgeDeviceService) ListEdgeDevices(
 	}
 
 	return connectrpc.NewResponse(&observationv1.ListEdgeDevicesResponse{Devices: protoDevices}), nil
+}
+
+func (s *EdgeDeviceService) Heartbeat(
+	ctx context.Context,
+	req *connectrpc.Request[observationv1.HeartbeatRequest],
+) (*connectrpc.Response[observationv1.HeartbeatResponse], error) {
+	err := s.useCases.Heartbeat(ctx, application.HeartbeatInput{
+		EventID:                   req.Msg.GetEventId(),
+		EdgeDeviceID:              req.Msg.GetEdgeDeviceId(),
+		ActiveObservationPointIDs: req.Msg.GetActiveObservationPointIds(),
+	})
+	if err != nil {
+		return nil, observationError(ctx, err)
+	}
+
+	return connectrpc.NewResponse(&observationv1.HeartbeatResponse{}), nil
 }
 
 func (s *EdgeDeviceService) UpdateObservationPointConfig(
@@ -133,7 +218,7 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(
 		Enabled:            req.Msg.GetEnabled(),
 	})
 	if err != nil {
-		return nil, edgeDeviceError(ctx, err)
+		return nil, observationError(ctx, err)
 	}
 
 	return connectrpc.NewResponse(&observationv1.UpdateObservationPointConfigResponse{
@@ -165,15 +250,16 @@ func newProtoObservationPoint(point domain.ObservationPoint) *observationv1.Obse
 	}
 }
 
-// edgeDeviceError is the one place that turns a use-case failure into the code
-// the client sees, so every edge device RPC answers the same failure alike.
-func edgeDeviceError(ctx context.Context, err error) error {
+func observationError(ctx context.Context, err error) error {
 	switch {
 	case errors.Is(err, domain.ErrInvalidPublicID),
 		errors.Is(err, domain.ErrTenantRequired),
 		errors.Is(err, domain.ErrEventRequired),
 		errors.Is(err, domain.ErrEdgeDeviceNameRequired),
-		errors.Is(err, domain.ErrObservationPointNameRequired):
+		errors.Is(err, domain.ErrObservationPointNameRequired),
+		errors.Is(err, domain.ErrInvalidMeasurementWindow),
+		errors.Is(err, domain.ErrNegativeCount),
+		errors.Is(err, application.ErrEdgeDeviceRequired):
 		return connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
 	case errors.Is(err, repository.ErrEdgeDeviceNotFound),
 		errors.Is(err, domain.ErrObservationPointNotFound):
