@@ -1,0 +1,157 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+tasks:
+    up:
+        desc: Start the development environment.
+        cmds:
+            - docker compose up -d
+
+    up:build:
+        desc: Build and start the development environment.
+        cmds:
+            - docker compose up -d --build
+
+    up:o11y:
+        desc: Start the development environment with observability.
+        cmds:
+            - docker compose -f compose.yml -f compose.o11y.yml up -d
+
+    up:build:o11y:
+        desc: Build and start the development environment with observability.
+        cmds:
+            - docker compose -f compose.yml -f compose.o11y.yml up -d --build
+
+    down:
+        desc: Stop the development environment.
+        cmds:
+            - docker compose down
+
+    down:o11y:
+        desc: Stop the development environment with observability.
+        cmds:
+            - docker compose -f compose.yml -f compose.o11y.yml down
+
+    proto:
+        desc: Lint proto and regenerate connect-go code for development.
+        cmds:
+            - task: proto:lint
+            - task: proto:gen:go
+
+    proto:write-authz:
+        desc: Write authz proto to proto directory.
+        cmds:
+          - go tool protoc-gen-authz-go --write-proto proto
+
+    proto:lint:
+        desc: Lint proto.
+        deps:
+          - proto:write-authz
+        cmds:
+            - buf lint
+
+    proto:gen:go:
+        desc: Regenerate connect-go code from proto.
+        deps:
+          - proto:write-authz
+        cmds:
+            - buf generate --template buf.gen.go.yaml
+        sources:
+            - "proto/**/*.proto"
+            - buf.yaml
+            - buf.gen.go.yaml
+        generates:
+            - "gen/**/*"
+
+    proto:gen:es:
+        desc: Regenerate connect-es code from proto.
+        deps:
+          - proto:write-authz
+        cmds:
+            - buf generate --template buf.gen.es.yaml
+        sources:
+            - "proto/**/*.proto"
+            - buf.yaml
+            - buf.gen.es.yaml
+            - clients/connect-es/package.json
+        generates:
+            - "clients/connect-es/gen/**/*"
+
+# --- bootstrap task: begin (this block removes itself on completion) ---
+    bootstrap:
+        desc: Bootstrap a new service repository created from this template.
+        vars:
+            TEMPLATE_REPO: "github.com/pj-hoakari/go-service-template"
+            TEMPLATE_NAME: "go-service-template"
+            NEW_REPO:
+                sh: git remote get-url origin | sed -E 's#^(ssh://)?(https?://)?(git@)?##; s#:#/#; s#\.git$##'
+        requires:
+            vars:
+                - name: SERVICE_NAME
+                - name: WITH_OPTION
+                  enum: ["none", "db"]
+        preconditions:
+            - sh: '[ "{{.NEW_REPO}}" != "{{.TEMPLATE_REPO}}" ]'
+              msg: "origin is the template repository itself; run this in a repository created from the template."
+        cmds:
+            - |
+                if [ "{{.WITH_OPTION}}" = "none" ]; then
+                    echo "Bootstrapping {{.SERVICE_NAME}} with no options"
+                else
+                    if ! git rev-parse --verify --quiet origin/with-{{.WITH_OPTION}} >/dev/null; then
+                        echo "origin/with-{{.WITH_OPTION}} not found. Create the repository with 'Include all branches'." >&2
+                        exit 1
+                    fi
+                    echo "Bootstrapping {{.SERVICE_NAME}} with option {{.WITH_OPTION}}"
+                    git read-tree -u --reset origin/with-{{.WITH_OPTION}}
+                    rm -rf .task
+                fi
+            # with-* branches only exist in the template, so drop the workflows that manage them.
+            - git rm -q --ignore-unmatch -- '.github/workflows/sync-with-*.yml' .github/workflows/guard-main.yml
+            - mise install
+            - echo "Rewriting {{.TEMPLATE_REPO}} -> {{.NEW_REPO}}"
+            # Taskfile.yml is left out so that bootstrap-check keeps the template name to look for.
+            - git grep -lzF "{{.TEMPLATE_REPO}}" -- ':!gen' ':!Taskfile.yml' | go run ./scripts/rewrite "{{.TEMPLATE_REPO}}" "{{.NEW_REPO}}"
+            - git grep -lzF "{{.TEMPLATE_NAME}}" -- ':!gen' ':!Taskfile.yml' | go run ./scripts/rewrite "{{.TEMPLATE_NAME}}" "{{.SERVICE_NAME}}"
+            - npm install --prefix clients/connect-es
+            - task: proto
+            - go mod tidy
+            # Skip when already moved, so that bootstrap can be rerun after a failure.
+            - if [ -f renovate.example.json ]; then mv renovate.example.json renovate.json; fi
+            # Local with-* branches are copies of the template branches, which stay on origin.
+            - git for-each-ref --format='%(refname:short)' 'refs/heads/with-*' | while read -r b; do git branch -D "$b"; done
+            - task: bootstrap-check
+            - git rm -r -q --ignore-unmatch scripts/rewrite
+            - |
+                awk '
+                    /^# --- bootstrap task: begin \(this block removes itself on completion\) ---$/ { skip = 1 }
+                    !skip {
+                        if ($0 ~ /^[[:space:]]*$/) { blank = blank $0 "\n"; next }
+                        printf "%s", blank; blank = ""; print
+                    }
+                    /^# --- bootstrap task: end ---$/ { skip = 0 }
+                ' Taskfile.yml > Taskfile.yml.tmp
+                cat Taskfile.yml.tmp > Taskfile.yml
+                rm Taskfile.yml.tmp
+
+    bootstrap-check:
+        desc: Check that no template leftovers remain and that build, test and lint pass.
+        vars:
+            TEMPLATE_NAME: "go-service-template"
+        cmds:
+            # Taskfile.yml is skipped, since the bootstrap tasks in it hold the template name.
+            - |
+                if git grep -nIF --untracked "{{.TEMPLATE_NAME}}" -- ':!Taskfile.yml'; then
+                    echo "The template name still remains in the lines above." >&2
+                    exit 1
+                fi
+            - |
+                if git grep -nIE --untracked 'with-[[:alnum:]]' -- .github/workflows; then
+                    echo "The template branches (with-*) are still referenced in the workflows above." >&2
+                    exit 1
+                fi
+            - go build ./...
+            - go test ./...
+            - golangci-lint run
+# --- bootstrap task: end ---
