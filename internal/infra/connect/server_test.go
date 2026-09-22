@@ -16,11 +16,13 @@ import (
 	"github.com/pj-hoakari/internal-jwt-handling/jwtgen"
 	"github.com/pj-hoakari/internal-jwt-handling/verifier"
 
-	greetv1 "github.com/pj-hoakari/tolo-observation/gen/greet/v1"
-	"github.com/pj-hoakari/tolo-observation/gen/greet/v1/greetv1connect"
-	"github.com/pj-hoakari/tolo-observation/internal/application"
-	"github.com/pj-hoakari/tolo-observation/internal/domain"
-	"github.com/pj-hoakari/tolo-observation/internal/tenantctx"
+	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
+	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
+)
+
+const (
+	testTenantPublicID = "a1b2c3d4e5f60718"
+	testEventPublicID  = "0f1e2d3c4b5a6978"
 )
 
 // newTestJWKSURL serves keys from an httptest endpoint, mirroring the Service
@@ -65,11 +67,11 @@ func newTestVerifier(t *testing.T, keys internaljwt.JWKS) *verifier.Verifier {
 }
 
 // newTestHandler builds a handler serving the production service routes wired
-// to a verifier trusting keys, serving greetService.
-func newTestHandler(t *testing.T, keys internaljwt.JWKS, greetService application.GreetUseCases) http.Handler {
+// to a verifier trusting keys.
+func newTestHandler(t *testing.T, keys internaljwt.JWKS) http.Handler {
 	t.Helper()
 
-	routes, err := RoutesWithVerifier(greetService, newTestVerifier(t, keys))
+	routes, err := RoutesWithVerifier(newTestVerifier(t, keys))
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -80,7 +82,7 @@ func newTestHandler(t *testing.T, keys internaljwt.JWKS, greetService applicatio
 	return mux
 }
 
-func newTestHandlerForJWKSURL(t *testing.T, jwksURL string, greetService application.GreetUseCases) http.Handler {
+func newTestHandlerForJWKSURL(t *testing.T, jwksURL string) http.Handler {
 	t.Helper()
 
 	cache, err := jwks.New(jwks.Config{
@@ -98,7 +100,7 @@ func newTestHandlerForJWKSURL(t *testing.T, jwksURL string, greetService applica
 		t.Fatalf("create internal JWT verifier: %v", err)
 	}
 
-	routes, err := RoutesWithVerifier(greetService, tokenVerifier)
+	routes, err := RoutesWithVerifier(tokenVerifier)
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -109,34 +111,54 @@ func newTestHandlerForJWKSURL(t *testing.T, jwksURL string, greetService applica
 	return mux
 }
 
-// mintInternalJWT issues an internal JWT for the issuer and audience this
-// service verifies against.
-func mintInternalJWT(t *testing.T, tokenUse, scope, tenantPublicID string) (string, internaljwt.JWKS) {
+// mintEventToken issues the credential the observation RPCs expect: an event
+// token of this service's issuer and audience, granting scope.
+func mintEventToken(t *testing.T, scope string) (string, internaljwt.JWKS) {
 	t.Helper()
 
-	return mintInternalJWTFor(t, DefaultInternalJWTIssuer, DefaultInternalJWTAudience, tokenUse, scope, tenantPublicID)
+	return mintInternalJWTFor(t, jwtgen.Config{
+		TokenUse:       internaljwt.TokenUseEventAccess,
+		TenantPublicID: testTenantPublicID,
+		EventPublicID:  testEventPublicID,
+		Scope:          scope,
+	})
 }
 
 // mintInternalJWTFor issues an internal JWT signed by a fresh key, returning
-// the Authorization header value and the JWKS document publishing the key. An
-// empty tenantPublicID omits the tenant_id claim.
-func mintInternalJWTFor(t *testing.T, issuer, audience, tokenUse, scope, tenantPublicID string) (string, internaljwt.JWKS) {
+// the Authorization header value and the JWKS document publishing the key. The
+// issuer and the audience fall back to the ones this service verifies against.
+func mintInternalJWTFor(t *testing.T, config jwtgen.Config) (string, internaljwt.JWKS) {
 	t.Helper()
 
-	output, err := jwtgen.Generate(jwtgen.Config{
-		Issuer:         issuer,
-		Audience:       audience,
-		TokenUse:       tokenUse,
-		TenantPublicID: tenantPublicID,
-		Scope:          scope,
-		KeyID:          "test-key",
-		TTL:            time.Hour,
-	})
+	if config.Issuer == "" {
+		config.Issuer = DefaultInternalJWTIssuer
+	}
+
+	if config.Audience == "" {
+		config.Audience = DefaultInternalJWTAudience
+	}
+
+	config.KeyID = "test-key"
+	config.TTL = time.Hour
+
+	output, err := jwtgen.Generate(config)
 	if err != nil {
 		t.Fatalf("generate internal JWT: %v", err)
 	}
 
 	return "Bearer " + output.Token, output.JWKS
+}
+
+// listEdgeDevicesRequest is the call the authorization tests make. Every
+// handler is still unimplemented, so CodeUnimplemented is the proof that a
+// call passed authorization.
+func listEdgeDevicesRequest(authorization string) *connectrpc.Request[observationv1.ListEdgeDevicesRequest] {
+	req := connectrpc.NewRequest(&observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID})
+	if authorization != "" {
+		req.Header().Set("Authorization", authorization)
+	}
+
+	return req
 }
 
 func TestRoutesWithJWTSettings(t *testing.T) {
@@ -145,12 +167,12 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 	t.Run("verifies a token against the JWKS the settings locate", func(t *testing.T) {
 		t.Parallel()
 
-		authorization, keys := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
+		authorization, keys := mintEventToken(t, "events.read")
 
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = newTestJWKSURL(t, keys)
 
-		routes, err := RoutesWithJWTSettings(application.NewGreetService(nopGreetingRepository{}), settings)
+		routes, err := RoutesWithJWTSettings(settings)
 		if err != nil {
 			t.Fatalf("RoutesWithJWTSettings() error = %v", err)
 		}
@@ -160,18 +182,11 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 
 		httpServer := httptest.NewServer(mux)
 		t.Cleanup(httpServer.Close)
-		client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
+		client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
 
-		req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-		req.Header().Set("Authorization", authorization)
-
-		res, err := client.Greet(context.Background(), req)
-		if err != nil {
-			t.Fatalf("Greet() error = %v", err)
-		}
-
-		if got, want := res.Msg.GetGreeting(), "Hello, Ada!"; got != want {
-			t.Errorf("Greeting = %q, want %q", got, want)
+		_, err = client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+		if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnimplemented; got != want {
+			t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 		}
 	})
 
@@ -181,85 +196,127 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = ""
 
-		_, err := RoutesWithJWTSettings(application.NewGreetService(nopGreetingRepository{}), settings)
+		_, err := RoutesWithJWTSettings(settings)
 		if !errors.Is(err, jwks.ErrMissingURL) {
 			t.Fatalf("RoutesWithJWTSettings() error = %v, want %v", err, jwks.ErrMissingURL)
 		}
 	})
 }
 
-func TestGreetServiceAuthz(t *testing.T) {
+func TestEdgeDeviceServiceAuthz(t *testing.T) {
 	t.Parallel()
 
-	authorization, keys := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
+	authorization, keys := mintEventToken(t, "events.read")
+	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
 
 	t.Run("rejects missing bearer token", func(t *testing.T) {
-		_, err := client.Greet(context.Background(), connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"}))
-		if connectrpc.CodeOf(err) != connectrpc.CodeUnauthenticated {
-			t.Fatalf("Greet() error code = %v, want %v", connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated)
+		_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(""))
+		if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
+			t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 		}
 	})
 
-	t.Run("accepts internal JWT with required scope", func(t *testing.T) {
-		req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-		req.Header().Set("Authorization", authorization)
-
-		res, err := client.Greet(context.Background(), req)
-		if err != nil {
-			t.Fatalf("Greet() error = %v", err)
-		}
-
-		if got, want := res.Msg.GetGreeting(), "Hello, Ada!"; got != want {
-			t.Errorf("Greeting = %q, want %q", got, want)
+	// Every handler is unimplemented, so reaching one is what the policy
+	// admits: an event token granting events.read passes authorization.
+	t.Run("accepts an event token with the required scope", func(t *testing.T) {
+		_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+		if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnimplemented; got != want {
+			t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 		}
 	})
 }
 
-func TestGreetServiceAuthzRejectsMissingScope(t *testing.T) {
+func TestEdgeDeviceServiceAuthzRejectsTenantToken(t *testing.T) {
 	t.Parallel()
 
-	authorization, keys := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.write", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
+	// The RPC names event_access as the only token_use it accepts, so a tenant
+	// token is not a credential for it even with the scope granted.
+	authorization, keys := mintInternalJWTFor(t, jwtgen.Config{
+		TokenUse:       internaljwt.TokenUseTenantAccess,
+		TenantPublicID: testTenantPublicID,
+		Scope:          "events.read",
+	})
+	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
 
-	req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-	req.Header().Set("Authorization", authorization)
-
-	_, err := client.Greet(context.Background(), req)
-	if got, want := connectrpc.CodeOf(err), connectrpc.CodePermissionDenied; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
+	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
+		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
 }
 
-func TestGreetServiceAuthzRejectsUnknownSigningKey(t *testing.T) {
+func TestEdgeDeviceServiceAuthzRejectsServiceToken(t *testing.T) {
+	t.Parallel()
+
+	authorization, keys := mintInternalJWTFor(t, jwtgen.Config{TokenUse: internaljwt.TokenUseService})
+	httpServer := httptest.NewServer(newTestHandler(t, keys))
+	t.Cleanup(httpServer.Close)
+	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+
+	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
+		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
+	}
+}
+
+// TestMeasurementIngestServiceAuthzAcceptsServiceToken covers the one RPC whose
+// policy also names service, for the Guest Service reporting QR counts.
+func TestMeasurementIngestServiceAuthzAcceptsServiceToken(t *testing.T) {
+	t.Parallel()
+
+	authorization, keys := mintInternalJWTFor(t, jwtgen.Config{TokenUse: internaljwt.TokenUseService})
+	httpServer := httptest.NewServer(newTestHandler(t, keys))
+	t.Cleanup(httpServer.Close)
+	client := observationv1connect.NewMeasurementIngestServiceClient(httpServer.Client(), httpServer.URL)
+
+	req := connectrpc.NewRequest(&observationv1.ReportMeasurementsRequest{EventId: testEventPublicID})
+	req.Header().Set("Authorization", authorization)
+
+	_, err := client.ReportMeasurements(context.Background(), req)
+	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnimplemented; got != want {
+		t.Fatalf("ReportMeasurements() error code = %v, want %v", got, want)
+	}
+}
+
+func TestEdgeDeviceServiceAuthzRejectsMissingScope(t *testing.T) {
+	t.Parallel()
+
+	authorization, keys := mintEventToken(t, "events.manage")
+	httpServer := httptest.NewServer(newTestHandler(t, keys))
+	t.Cleanup(httpServer.Close)
+	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+
+	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	if got, want := connectrpc.CodeOf(err), connectrpc.CodePermissionDenied; got != want {
+		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
+	}
+}
+
+func TestEdgeDeviceServiceAuthzRejectsUnknownSigningKey(t *testing.T) {
 	t.Parallel()
 
 	// The handler trusts a JWKS publishing neither the key nor the kid that
 	// signed the token below.
-	_, trustedKeys := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
+	_, trustedKeys := mintEventToken(t, "events.read")
 	for i := range trustedKeys.Keys {
 		trustedKeys.Keys[i].KeyID = "other-key"
 	}
 
-	foreignAuthorization, _ := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandler(t, trustedKeys, application.NewGreetService(nopGreetingRepository{})))
+	foreignAuthorization, _ := mintEventToken(t, "events.read")
+	httpServer := httptest.NewServer(newTestHandler(t, trustedKeys))
 	t.Cleanup(httpServer.Close)
-	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
 
-	req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-	req.Header().Set("Authorization", foreignAuthorization)
-
-	_, err := client.Greet(context.Background(), req)
+	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(foreignAuthorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
+		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
 }
 
-func TestGreetServiceAuthzUnavailableWhenJWKSUnreachable(t *testing.T) {
+func TestEdgeDeviceServiceAuthzUnavailableWhenJWKSUnreachable(t *testing.T) {
 	t.Parallel()
 
 	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -267,93 +324,35 @@ func TestGreetServiceAuthzUnavailableWhenJWKSUnreachable(t *testing.T) {
 	}))
 	t.Cleanup(jwksServer.Close)
 
-	authorization, _ := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandlerForJWKSURL(t, jwksServer.URL, application.NewGreetService(nopGreetingRepository{})))
+	authorization, _ := mintEventToken(t, "events.read")
+	httpServer := httptest.NewServer(newTestHandlerForJWKSURL(t, jwksServer.URL))
 	t.Cleanup(httpServer.Close)
-	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
 
-	req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-	req.Header().Set("Authorization", authorization)
-
-	_, err := client.Greet(context.Background(), req)
+	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnavailable; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
+		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
 }
 
-func TestGreetServiceAuthzRejectsServiceToken(t *testing.T) {
-	t.Parallel()
-
-	// AUTH_LEVEL_AUTHENTICATED admits the default token_use only, so a service
-	// token is not a credential for this RPC.
-	authorization, keys := mintInternalJWT(t, internaljwt.TokenUseService, "", "")
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
-	t.Cleanup(httpServer.Close)
-	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
-
-	req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-	req.Header().Set("Authorization", authorization)
-
-	_, err := client.Greet(context.Background(), req)
-	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
-	}
-}
-
-func TestGreetServiceAuthzRejectsAudienceMismatch(t *testing.T) {
+func TestEdgeDeviceServiceAuthzRejectsAudienceMismatch(t *testing.T) {
 	t.Parallel()
 
 	// The token names another service as its audience, so it is not a
 	// credential this service may accept even though the key verifies.
-	authorization, keys := mintInternalJWTFor(
-		t,
-		DefaultInternalJWTIssuer,
-		"other-service",
-		internaljwt.TokenUseTenantAccess,
-		"greeting.read",
-		"a1b2c3d4e5f60718",
-	)
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
+	authorization, keys := mintInternalJWTFor(t, jwtgen.Config{
+		Audience:       "other-service",
+		TokenUse:       internaljwt.TokenUseEventAccess,
+		TenantPublicID: testTenantPublicID,
+		EventPublicID:  testEventPublicID,
+		Scope:          "events.read",
+	})
+	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
 
-	req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-	req.Header().Set("Authorization", authorization)
-
-	_, err := client.Greet(context.Background(), req)
+	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
-	}
-}
-
-// tenantEchoService greets the tenant public ID found in the request context,
-// letting the test observe the verified tenant_id claim reaching the handler
-// without changing the real greet service.
-type tenantEchoService struct{}
-
-func (tenantEchoService) Greet(ctx context.Context, _ application.GreetInput) (domain.Greeting, error) {
-	tenantPublicID, _ := tenantctx.TenantPublicIDFromContext(ctx)
-
-	return domain.NewGreeting(tenantPublicID)
-}
-
-func TestGreetServiceInjectsTenantPublicID(t *testing.T) {
-	t.Parallel()
-
-	authorization, keys := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandler(t, keys, tenantEchoService{}))
-	t.Cleanup(httpServer.Close)
-	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
-
-	req := connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"})
-	req.Header().Set("Authorization", authorization)
-
-	res, err := client.Greet(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Greet() error = %v", err)
-	}
-
-	if got, want := res.Msg.GetGreeting(), "Hello, a1b2c3d4e5f60718!"; got != want {
-		t.Errorf("tenant ID echoed by handler = %q, want %q", got, want)
+		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
 }

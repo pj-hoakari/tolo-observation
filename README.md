@@ -100,11 +100,11 @@ Jaeger UI は `http://localhost:16686`（停止は `task down:o11y`）
 
 ```bash
 # ES256 の内部 JWT と対応する JWKS ドキュメントを JSON で出力
-go tool jwtgen -audience tolo-observation -tenant-public-id 0123456789abcdef -scope <scope> -ttl 10m
+go tool jwtgen -audience tolo-observation -token-use event_access -tenant-public-id 0123456789abcdef -event-public-id fedcba9876543210 -scope events.read -ttl 10m
 ```
 
-- `-token-use` は `tenant_access`（既定）、`event_access`、`registration`、`service` を取る
-- `tenant_access` では `-tenant-public-id`（ランダムな 16 文字 hex）と `-scope` が必須である。必要な scope は proto の `required_scopes` で宣言されている
+- `-token-use` は `tenant_access`（既定）、`event_access`、`registration`、`service` を取る。本サービスの RPC はいずれも `event_access` を要求し、`ReportMeasurements` だけが `service` も受け付ける
+- `event_access` では `-tenant-public-id` と `-event-public-id`（どちらもランダムな 16 文字 hex）、`-scope` が必須である。必要な scope（`events.read`／`events.report`／`events.manage`／`events.operate`）は proto の `required_scopes` で宣言されている
 - `-issuer` の既定は `service-gateway`、`-audience` に既定はないので `tolo-observation` を明示する
 - そのほかのフラグは `-event-public-id`、`-origin-sub`、`-subject`、`-txn`、`-kid`（既定 `test-key`）、`-ttl`（既定 2 分）である
 

@@ -1,0 +1,265 @@
+syntax = "proto3";
+
+package tolo.observation.v1;
+
+import "authz/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+import "tolo/kernel/v1/kernel.proto";
+
+service MeasurementIngestService {
+  rpc ReportMeasurements(ReportMeasurementsRequest) returns (ReportMeasurementsResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.report"
+      token_uses: "event_access"
+      token_uses: "service"
+    };
+  }
+}
+
+service EdgeDeviceService {
+  rpc RegisterEdgeDevice(RegisterEdgeDeviceRequest) returns (RegisterEdgeDeviceResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.manage"
+      token_uses: "event_access"
+    };
+  }
+  rpc UnregisterEdgeDevice(UnregisterEdgeDeviceRequest) returns (UnregisterEdgeDeviceResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.manage"
+      token_uses: "event_access"
+    };
+  }
+  rpc ListEdgeDevices(ListEdgeDevicesRequest) returns (ListEdgeDevicesResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.read"
+      token_uses: "event_access"
+    };
+  }
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.report"
+      token_uses: "event_access"
+    };
+  }
+  rpc UpdateObservationPointConfig(UpdateObservationPointConfigRequest) returns (UpdateObservationPointConfigResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.operate"
+      token_uses: "event_access"
+    };
+  }
+}
+
+service ManualInterventionService {
+  rpc OperateGate(OperateGateRequest) returns (OperateGateResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.operate"
+      token_uses: "event_access"
+    };
+  }
+  rpc ToggleDangerFlag(ToggleDangerFlagRequest) returns (ToggleDangerFlagResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.operate"
+      token_uses: "event_access"
+    };
+  }
+  rpc RegisterScheduleEvent(RegisterScheduleEventRequest) returns (RegisterScheduleEventResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.operate"
+      token_uses: "event_access"
+    };
+  }
+  rpc ReportCongestion(ReportCongestionRequest) returns (ReportCongestionResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.operate"
+      token_uses: "event_access"
+    };
+  }
+  rpc CorrectQueue(CorrectQueueRequest) returns (CorrectQueueResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.operate"
+      token_uses: "event_access"
+    };
+  }
+}
+
+service StatusQueryService {
+  rpc GetEventOverview(GetEventOverviewRequest) returns (GetEventOverviewResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.read"
+      token_uses: "event_access"
+    };
+  }
+}
+
+message Measurement {
+  string observation_point_id = 1;
+  google.protobuf.Timestamp window_start = 2;
+  google.protobuf.Timestamp window_end = 3;
+  int32 count_in = 4;
+  int32 count_out = 5;
+  MeasurementSource source = 6;
+  string qr_location_id = 7;
+}
+
+enum MeasurementSource {
+  MEASUREMENT_SOURCE_UNSPECIFIED = 0;
+  MEASUREMENT_SOURCE_EDGE = 1;
+  MEASUREMENT_SOURCE_QR = 2;
+}
+
+message ReportMeasurementsRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+  repeated Measurement measurements = 3;
+}
+
+message ReportMeasurementsResponse {
+  int32 accepted_count = 1;
+}
+
+message EdgeDevice {
+  string edge_device_id = 1;
+  string event_id = 2;
+  string name = 3;
+  repeated ObservationPoint observation_points = 4;
+  bool unregistered = 5;
+}
+
+message ObservationPoint {
+  string observation_point_id = 1;
+  string name = 2;
+  bool enabled = 3;
+  MeasurementMethod method = 4;
+}
+
+enum MeasurementMethod {
+  MEASUREMENT_METHOD_UNSPECIFIED = 0;
+  MEASUREMENT_METHOD_CAMERA = 1;
+  MEASUREMENT_METHOD_QR = 2;
+}
+
+message RegisterEdgeDeviceRequest {
+  string event_id = 1;
+  string name = 2;
+  repeated string observation_point_names = 3;
+}
+
+message RegisterEdgeDeviceResponse {
+  EdgeDevice device = 1;
+  string observation_page_url = 2;
+}
+
+message UnregisterEdgeDeviceRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+}
+
+message UnregisterEdgeDeviceResponse {
+  EdgeDevice device = 1;
+}
+
+message ListEdgeDevicesRequest {
+  string event_id = 1;
+  bool include_unregistered = 2;
+}
+
+message ListEdgeDevicesResponse {
+  repeated EdgeDevice devices = 1;
+}
+
+message HeartbeatRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+  repeated string active_observation_point_ids = 3;
+}
+
+message HeartbeatResponse {}
+
+message UpdateObservationPointConfigRequest {
+  string event_id = 1;
+  string observation_point_id = 2;
+  string name = 3;
+  bool enabled = 4;
+}
+
+message UpdateObservationPointConfigResponse {
+  ObservationPoint point = 1;
+}
+
+message OperateGateRequest {
+  string event_id = 1;
+  string gate_point_id = 2;
+  bool open = 3;
+  optional double service_rate_config = 4;
+}
+
+message OperateGateResponse {}
+
+message ToggleDangerFlagRequest {
+  string event_id = 1;
+  tolo.kernel.v1.DangerFlag flag = 2;
+}
+
+message ToggleDangerFlagResponse {}
+
+message RegisterScheduleEventRequest {
+  string event_id = 1;
+  google.protobuf.Timestamp scheduled_at = 2;
+  repeated string related_point_ids = 3;
+  string note = 4;
+}
+
+message RegisterScheduleEventResponse {}
+
+message ReportCongestionRequest {
+  string event_id = 1;
+  oneof target {
+    string point_id = 2;
+    string route_id = 3;
+  }
+  CongestionLevel level = 4;
+}
+
+message ReportCongestionResponse {}
+
+enum CongestionLevel {
+  CONGESTION_LEVEL_UNSPECIFIED = 0;
+  CONGESTION_LEVEL_LOW = 1;
+  CONGESTION_LEVEL_MID = 2;
+  CONGESTION_LEVEL_HIGH = 3;
+}
+
+message CorrectQueueRequest {
+  string event_id = 1;
+  string queue_id = 2;
+  optional double corrected_length_people = 3;
+  optional int32 corrected_lane_count = 4;
+}
+
+message CorrectQueueResponse {}
+
+message GetEventOverviewRequest {
+  string event_id = 1;
+}
+
+message GetEventOverviewResponse {
+  EventOverview overview = 1;
+}
+
+message EventOverview {
+  tolo.kernel.v1.ObservationSnapshot snapshot = 1;
+  repeated tolo.kernel.v1.RiskLocation risks = 2;
+  repeated tolo.kernel.v1.DangerFlag danger_flags = 3;
+}

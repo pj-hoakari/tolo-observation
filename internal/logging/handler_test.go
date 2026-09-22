@@ -192,7 +192,7 @@ func TestDerivedHandlersKeepTraceFields(t *testing.T) {
 		var buf bytes.Buffer
 
 		logger := NewLogger(&buf, Options{Level: slog.LevelInfo, AddSource: false, ProjectID: "example-project"}).WithGroup("request")
-		logger.ErrorContext(contextWithSampledSpan(t), "internal error", "method", "Greet")
+		logger.ErrorContext(contextWithSampledSpan(t), "internal error", "method", "ReportMeasurements")
 
 		entry := decodeLine(t, &buf)
 
@@ -206,7 +206,7 @@ func TestDerivedHandlersKeepTraceFields(t *testing.T) {
 		}
 
 		// The record's own attributes still belong to the open group.
-		if got, want := group["method"], "Greet"; got != want {
+		if got, want := group["method"], "ReportMeasurements"; got != want {
 			t.Errorf("request.method = %v, want %q", got, want)
 		}
 
@@ -222,7 +222,7 @@ func TestDerivedHandlersKeepTraceFields(t *testing.T) {
 
 		var buf bytes.Buffer
 
-		logger := NewLogger(&buf, Options{Level: slog.LevelInfo, AddSource: false, ProjectID: "example-project"}).WithGroup("request").With("method", "Greet")
+		logger := NewLogger(&buf, Options{Level: slog.LevelInfo, AddSource: false, ProjectID: "example-project"}).WithGroup("request").With("method", "ReportMeasurements")
 		logger.ErrorContext(contextWithSampledSpan(t), "internal error")
 
 		entry := decodeLine(t, &buf)
@@ -234,7 +234,7 @@ func TestDerivedHandlersKeepTraceFields(t *testing.T) {
 			t.Fatalf("request = %#v, want a group", entry["request"])
 		}
 
-		if got, want := group["method"], "Greet"; got != want {
+		if got, want := group["method"], "ReportMeasurements"; got != want {
 			t.Errorf("request.method = %v, want %q", got, want)
 		}
 	})
@@ -468,7 +468,7 @@ func TestSiblingHandlersKeepTheirOwnAttrs(t *testing.T) {
 	var buf bytes.Buffer
 
 	shared := NewLogger(&buf, Options{Level: slog.LevelInfo, AddSource: false, ProjectID: ""}).With("service", "tolo-observation")
-	shared.With("rpc", "Greet").Info("first")
+	shared.With("rpc", "ReportMeasurements").Info("first")
 	shared.With("tenant", "acme").Info("second")
 
 	entries := decodeLines(t, &buf)
@@ -484,7 +484,7 @@ func TestSiblingHandlersKeepTheirOwnAttrs(t *testing.T) {
 		}
 	}
 
-	if got, want := first["rpc"], "Greet"; got != want {
+	if got, want := first["rpc"], "ReportMeasurements"; got != want {
 		t.Errorf("rpc = %v, want %q", got, want)
 	}
 

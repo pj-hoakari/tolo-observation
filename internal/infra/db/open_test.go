@@ -16,8 +16,8 @@ func TestNormalizeQueryText(t *testing.T) {
 	}{
 		{
 			name:  "raw string literal keeps no newlines or tabs",
-			query: "\n\t\tINSERT INTO greetings (tenant_public_id, name)\n\t\tVALUES ($1, $2)",
-			want:  "INSERT INTO greetings (tenant_public_id, name) VALUES ($1, $2)",
+			query: "\n\t\tINSERT INTO measurements (tenant_public_id, name)\n\t\tVALUES ($1, $2)",
+			want:  "INSERT INTO measurements (tenant_public_id, name) VALUES ($1, $2)",
 		},
 		{
 			name:  "leading and trailing whitespace is trimmed",
@@ -26,8 +26,8 @@ func TestNormalizeQueryText(t *testing.T) {
 		},
 		{
 			name:  "runs of spaces collapse into one",
-			query: "SELECT     COUNT(*)   FROM   greetings",
-			want:  "SELECT COUNT(*) FROM greetings",
+			query: "SELECT     COUNT(*)   FROM   measurements",
+			want:  "SELECT COUNT(*) FROM measurements",
 		},
 		{
 			name:  "empty query stays empty",
@@ -75,8 +75,8 @@ func TestQueryTextAttributes(t *testing.T) {
 		{
 			name:     "query is recorded normalized",
 			method:   otelsql.MethodConnExec,
-			query:    "\n\t\tINSERT INTO greetings (tenant_public_id, name)\n\t\tVALUES ($1, $2)",
-			wantText: "INSERT INTO greetings (tenant_public_id, name) VALUES ($1, $2)",
+			query:    "\n\t\tINSERT INTO measurements (tenant_public_id, name)\n\t\tVALUES ($1, $2)",
+			wantText: "INSERT INTO measurements (tenant_public_id, name) VALUES ($1, $2)",
 		},
 	}
 

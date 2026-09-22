@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pj-hoakari/tolo-observation/internal/application"
 	connectinfra "github.com/pj-hoakari/tolo-observation/internal/infra/connect"
 	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
 	"github.com/pj-hoakari/tolo-observation/internal/infra/httpapi"
@@ -77,16 +76,14 @@ func run() error {
 		}
 	}()
 
-	greetService := application.NewGreetService(dbinfra.NewPostgresGreetingRepository(db))
-
-	greetRoutes, err := connectinfra.RoutesWithJWTSettings(greetService, jwtSettings)
+	serviceRoutes, err := connectinfra.RoutesWithJWTSettings(jwtSettings)
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)
 	}
 
 	handler := httpapi.NewHandler(
 		httpapi.HealthRoutes(httpapi.ReadinessCheck{Name: "database", Check: db.PingContext}),
-		greetRoutes,
+		serviceRoutes,
 	)
 
 	httpServer := &http.Server{

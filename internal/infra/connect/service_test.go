@@ -12,58 +12,23 @@ import (
 	connectrpc "connectrpc.com/connect"
 	"go.opentelemetry.io/otel/trace"
 
-	greetv1 "github.com/pj-hoakari/tolo-observation/gen/greet/v1"
-	"github.com/pj-hoakari/tolo-observation/internal/application"
-	"github.com/pj-hoakari/tolo-observation/internal/domain"
 	"github.com/pj-hoakari/tolo-observation/internal/logging"
 )
-
-func TestServiceGreet(t *testing.T) {
-	t.Parallel()
-
-	service := NewService(application.NewGreetService(nopGreetingRepository{}))
-
-	res, err := service.Greet(context.Background(), connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"}))
-	if err != nil {
-		t.Fatalf("Greet() error = %v", err)
-	}
-
-	if got, want := res.Msg.GetGreeting(), "Hello, Ada!"; got != want {
-		t.Errorf("Greeting = %q, want %q", got, want)
-	}
-}
-
-func TestServiceGreetRejectsMissingName(t *testing.T) {
-	t.Parallel()
-
-	service := NewService(application.NewGreetService(nopGreetingRepository{}))
-
-	_, err := service.Greet(context.Background(), connectrpc.NewRequest(&greetv1.GreetRequest{}))
-	if got, want := connectrpc.CodeOf(err), connectrpc.CodeInvalidArgument; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
-	}
-}
 
 // TestInternalErrorHidesDetail keeps the cause of an internal failure out of
 // the response and puts it in the server log instead. It cannot run in
 // parallel: it reads the log back through the process-wide default logger.
 func TestInternalErrorHidesDetail(t *testing.T) {
 	logs := captureLog(t)
-	service := NewService(failingGreetService{err: errors.New("secret detail")})
 
 	ctx := withSampledSpan(t, context.Background())
 
-	_, err := service.Greet(ctx, connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"}))
+	err := InternalError(ctx, errors.New("secret detail"))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeInternal; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
+		t.Fatalf("InternalError() code = %v, want %v", got, want)
 	}
 
-	var connectErr *connectrpc.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("Greet() error = %v, want a Connect error", err)
-	}
-
-	if got, want := connectErr.Message(), "internal error"; got != want {
+	if got, want := err.Message(), "internal error"; got != want {
 		t.Errorf("Message() = %q, want %q", got, want)
 	}
 
@@ -100,11 +65,10 @@ func TestInternalErrorHidesDetail(t *testing.T) {
 // either.
 func TestCanceledRequestIsNotLogged(t *testing.T) {
 	logs := captureLog(t)
-	service := NewService(failingGreetService{err: context.Canceled})
 
-	_, err := service.Greet(context.Background(), connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"}))
+	err := InternalError(context.Background(), context.Canceled)
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeCanceled; got != want {
-		t.Fatalf("Greet() error code = %v, want %v", got, want)
+		t.Fatalf("InternalError() code = %v, want %v", got, want)
 	}
 
 	if logs.Len() != 0 {
@@ -171,13 +135,4 @@ func withSampledSpan(t *testing.T, ctx context.Context) context.Context {
 		SpanID:     spanID,
 		TraceFlags: trace.FlagsSampled,
 	}))
-}
-
-// failingGreetService is a GreetUseCases whose every call fails with err.
-type failingGreetService struct {
-	err error
-}
-
-func (s failingGreetService) Greet(context.Context, application.GreetInput) (domain.Greeting, error) {
-	return domain.Greeting{}, s.err
 }

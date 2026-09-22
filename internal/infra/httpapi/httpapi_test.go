@@ -61,7 +61,7 @@ func TestUnknownPathIsNotFound(t *testing.T) {
 
 	handler := httpapi.NewHandler(httpapi.HealthRoutes())
 
-	got, _ := request(t, handler, http.MethodPost, "/greet.v1.GreetService/Greet")
+	got, _ := request(t, handler, http.MethodPost, "/tolo.observation.v1.EdgeDeviceService/ListEdgeDevices")
 	if want := http.StatusNotFound; got != want {
 		t.Fatalf("status = %d, want %d", got, want)
 	}
