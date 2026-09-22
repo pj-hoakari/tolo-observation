@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package tolo.kernel.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message Graph {
+  string event_id = 1;
+  string revision_id = 2;
+  repeated Point points = 3;
+  repeated Route routes = 4;
+}
+
+message Point {
+  string point_id = 1;
+  PointType type = 2;
+  bool is_boundary = 3;
+  bool boundary_active = 4;
+}
+
+enum PointType {
+  POINT_TYPE_UNSPECIFIED = 0;
+  POINT_TYPE_GOAL = 1;
+  POINT_TYPE_GOAL_TRANSIT_MIXED = 2;
+  POINT_TYPE_TRANSIT_ONLY = 3;
+}
+
+message Route {
+  string route_id = 1;
+  string from_point_id = 2;
+  string to_point_id = 3;
+  DirectionAttribute direction = 4;
+  optional double capacity_hint = 5;
+}
+
+enum DirectionAttribute {
+  DIRECTION_ATTRIBUTE_UNSPECIFIED = 0;
+  DIRECTION_ATTRIBUTE_ONE_WAY = 1;
+  DIRECTION_ATTRIBUTE_BOTH_WAYS = 2;
+}
+
+message ObservationSnapshot {
+  string snapshot_id = 1;
+  string event_id = 2;
+  google.protobuf.Timestamp window_start = 3;
+  google.protobuf.Timestamp window_end = 4;
+  repeated PointScore point_scores = 5;
+  repeated RouteScore route_scores = 6;
+}
+
+message PointScore {
+  string point_id = 1;
+  double people_score = 2;
+  double occupancy_delta = 3;
+  bool exhaustive = 4;
+}
+
+message RouteScore {
+  string route_id = 1;
+  oneof flow {
+    DirectionalFlow directional_flow = 2;
+    double scalar_flow = 3;
+  }
+  double stagnation_score = 4;
+  optional double turn_ratio = 5;
+  bool exhaustive = 6;
+}
+
+message DirectionalFlow {
+  double forward = 1;
+  double backward = 2;
+}
+
+message LocationRef {
+  oneof target {
+    string point_id = 1;
+    string route_id = 2;
+  }
+}
+
+message GraphAnchor {
+  oneof target {
+    string point_id = 1;
+    string route_id = 2;
+  }
+  optional double route_position = 3;
+}
+
+message RiskLocation {
+  oneof target {
+    string point_id = 1;
+    string route_id = 2;
+  }
+  RiskKind kind = 3;
+}
+
+enum RiskKind {
+  RISK_KIND_UNSPECIFIED = 0;
+  RISK_KIND_PUNCTURE = 1;
+  RISK_KIND_HIGH_STAGNATION = 2;
+}
+
+message DangerFlag {
+  oneof target {
+    string point_id = 1;
+    string route_id = 2;
+  }
+  bool active = 3;
+  string operated_by = 4;
+  google.protobuf.Timestamp operated_at = 5;
+}

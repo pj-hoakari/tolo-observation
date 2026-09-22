@@ -18,9 +18,9 @@ func TestIsTransactionAbort(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{name: "deadlock", err: fmt.Errorf("record greeting: %w", &pgconn.PgError{Code: sqlStateDeadlockDetected}), want: true},
+		{name: "deadlock", err: fmt.Errorf("record measurement: %w", &pgconn.PgError{Code: sqlStateDeadlockDetected}), want: true},
 		{name: "serialization failure", err: &pgconn.PgError{Code: sqlStateSerializationFailure}, want: true},
-		{name: "other PostgreSQL error", err: fmt.Errorf("record greeting: %w", &pgconn.PgError{Code: "23505"}), want: false},
+		{name: "other PostgreSQL error", err: fmt.Errorf("record measurement: %w", &pgconn.PgError{Code: "23505"}), want: false},
 		{name: "plain error", err: errors.New("abort"), want: false},
 		{name: "no error", err: nil, want: false},
 	}
@@ -40,7 +40,7 @@ func TestIsTransactionAbort(t *testing.T) {
 // transaction whose work failed with a deadlock.
 func TestRunInTransactionReportsAbort(t *testing.T) {
 	ctx := context.Background()
-	deadlock := fmt.Errorf("record greeting: %w", &pgconn.PgError{Code: sqlStateDeadlockDetected})
+	deadlock := fmt.Errorf("record measurement: %w", &pgconn.PgError{Code: sqlStateDeadlockDetected})
 
 	err := RunInTransaction(ctx, testDB, func(context.Context) error {
 		return deadlock

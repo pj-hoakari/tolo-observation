@@ -7,10 +7,7 @@ import (
 
 	connectrpc "connectrpc.com/connect"
 
-	greetv1 "github.com/pj-hoakari/tolo-observation/gen/greet/v1"
-	"github.com/pj-hoakari/tolo-observation/gen/greet/v1/greetv1connect"
-	"github.com/pj-hoakari/tolo-observation/internal/application"
-	"github.com/pj-hoakari/tolo-observation/internal/domain"
+	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
 )
 
 // errInternal is the only detail a client learns about an internal failure.
@@ -41,32 +38,42 @@ func InternalError(ctx context.Context, err error) *connectrpc.Error {
 	return connectrpc.NewError(connectrpc.CodeInternal, errInternal) //nolint:forbidigo // the one place that builds internal errors
 }
 
-// Service is the Connect transport implementation of GreetService.
-type Service struct {
-	greetv1connect.UnimplementedGreetServiceHandler
-	greetService application.GreetUseCases
+type MeasurementIngestService struct {
+	observationv1connect.UnimplementedMeasurementIngestServiceHandler
 }
 
-func NewService(greetService application.GreetUseCases) *Service {
-	return &Service{
-		UnimplementedGreetServiceHandler: greetv1connect.UnimplementedGreetServiceHandler{},
-		greetService:                     greetService,
+func NewMeasurementIngestService() *MeasurementIngestService {
+	return &MeasurementIngestService{
+		UnimplementedMeasurementIngestServiceHandler: observationv1connect.UnimplementedMeasurementIngestServiceHandler{},
 	}
 }
 
-func (s *Service) Greet(ctx context.Context, req *connectrpc.Request[greetv1.GreetRequest]) (*connectrpc.Response[greetv1.GreetResponse], error) {
-	greeting, err := s.greetService.Greet(ctx, application.GreetInput{
-		Name: req.Msg.GetName(),
-	})
-	if err != nil {
-		if errors.Is(err, domain.ErrGreetingNameRequired) {
-			return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
-		}
+type EdgeDeviceService struct {
+	observationv1connect.UnimplementedEdgeDeviceServiceHandler
+}
 
-		return nil, InternalError(ctx, err)
+func NewEdgeDeviceService() *EdgeDeviceService {
+	return &EdgeDeviceService{
+		UnimplementedEdgeDeviceServiceHandler: observationv1connect.UnimplementedEdgeDeviceServiceHandler{},
 	}
+}
 
-	return connectrpc.NewResponse(&greetv1.GreetResponse{
-		Greeting: greeting.Message(),
-	}), nil
+type ManualInterventionService struct {
+	observationv1connect.UnimplementedManualInterventionServiceHandler
+}
+
+func NewManualInterventionService() *ManualInterventionService {
+	return &ManualInterventionService{
+		UnimplementedManualInterventionServiceHandler: observationv1connect.UnimplementedManualInterventionServiceHandler{},
+	}
+}
+
+type StatusQueryService struct {
+	observationv1connect.UnimplementedStatusQueryServiceHandler
+}
+
+func NewStatusQueryService() *StatusQueryService {
+	return &StatusQueryService{
+		UnimplementedStatusQueryServiceHandler: observationv1connect.UnimplementedStatusQueryServiceHandler{},
+	}
 }

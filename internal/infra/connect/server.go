@@ -10,12 +10,13 @@ import (
 	connectrpc "connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 
+	internaljwt "github.com/pj-hoakari/internal-jwt-handling"
 	"github.com/pj-hoakari/internal-jwt-handling/interceptor"
 	"github.com/pj-hoakari/internal-jwt-handling/jwks"
 	"github.com/pj-hoakari/internal-jwt-handling/verifier"
+	"github.com/pj-hoakari/protoc-gen-authz-go/authz"
 
-	"github.com/pj-hoakari/tolo-observation/gen/greet/v1/greetv1connect"
-	"github.com/pj-hoakari/tolo-observation/internal/application"
+	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
 )
 
 // Defaults for verifying internal JWTs. The issuer is the Service Gateway's
@@ -47,7 +48,7 @@ func DefaultJWTSettings() JWTSettings {
 
 // RoutesWithJWTSettings builds the service routes that verify internal
 // JWTs against the JWKS the settings locate.
-func RoutesWithJWTSettings(greetService application.GreetUseCases, settings JWTSettings) (func(mux *http.ServeMux), error) {
+func RoutesWithJWTSettings(settings JWTSettings) (func(mux *http.ServeMux), error) {
 	cache, err := jwks.New(jwks.Config{
 		URL:             settings.JWKSURL,
 		HTTPClient:      nil,
@@ -67,13 +68,13 @@ func RoutesWithJWTSettings(greetService application.GreetUseCases, settings JWTS
 		return nil, fmt.Errorf("create internal JWT verifier: %w", err)
 	}
 
-	return RoutesWithVerifier(greetService, tokenVerifier)
+	return RoutesWithVerifier(tokenVerifier)
 }
 
 // RoutesWithVerifier builds the service routes around a verifier of the
-// internal JWT. The service is guarded by an interceptor built from its
-// generated policy table, so the credential rules stay declared in the proto.
-func RoutesWithVerifier(greetService application.GreetUseCases, tokenVerifier interceptor.TokenVerifier) (func(mux *http.ServeMux), error) {
+// internal JWT. The services are guarded by one interceptor built from their
+// merged policy tables, so the credential rules stay declared in the proto.
+func RoutesWithVerifier(tokenVerifier interceptor.TokenVerifier) (func(mux *http.ServeMux), error) {
 	// The caller sits behind the Service Gateway, so an incoming trace context is
 	// trusted and continued instead of being demoted to a span link.
 	tracing, err := otelconnect.NewInterceptor(otelconnect.WithTrustRemote())
@@ -81,24 +82,35 @@ func RoutesWithVerifier(greetService application.GreetUseCases, tokenVerifier in
 		return nil, fmt.Errorf("create tracing interceptor: %w", err)
 	}
 
+	policies, err := authz.Merge(
+		observationv1connect.MeasurementIngestServicePolicies,
+		observationv1connect.EdgeDeviceServicePolicies,
+		observationv1connect.ManualInterventionServicePolicies,
+		observationv1connect.StatusQueryServicePolicies,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("merge observation policies: %w", err)
+	}
+
 	auth, err := interceptor.New(
 		tokenVerifier,
-		greetv1connect.GreetServicePolicies,
+		policies,
+		interceptor.WithAuthenticatedTokenUses(internaljwt.TokenUseEventAccess),
 		interceptor.WithErrorReporter(reportAuthRejection),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create GreetService authentication interceptor: %w", err)
+		return nil, fmt.Errorf("create observation authentication interceptor: %w", err)
 	}
 
 	// Tracing runs before authentication, so a rejected call is still recorded
 	// on the trace it belongs to.
-	path, handler := greetv1connect.NewGreetServiceHandler(
-		NewService(greetService),
-		connectrpc.WithInterceptors(tracing, auth),
-	)
+	options := connectrpc.WithInterceptors(tracing, auth)
 
 	return func(mux *http.ServeMux) {
-		mux.Handle(path, handler)
+		mux.Handle(observationv1connect.NewMeasurementIngestServiceHandler(NewMeasurementIngestService(), options))
+		mux.Handle(observationv1connect.NewEdgeDeviceServiceHandler(NewEdgeDeviceService(), options))
+		mux.Handle(observationv1connect.NewManualInterventionServiceHandler(NewManualInterventionService(), options))
+		mux.Handle(observationv1connect.NewStatusQueryServiceHandler(NewStatusQueryService(), options))
 	}, nil
 }
 
