@@ -113,3 +113,17 @@ func (mr *MockEdgeDeviceRepositoryMockRecorder) Save(ctx, device any) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).Save), ctx, device)
 }
+
+// SaveHeartbeat mocks base method.
+func (m *MockEdgeDeviceRepository) SaveHeartbeat(ctx context.Context, device domain.EdgeDevice) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveHeartbeat", ctx, device)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveHeartbeat indicates an expected call of SaveHeartbeat.
+func (mr *MockEdgeDeviceRepositoryMockRecorder) SaveHeartbeat(ctx, device any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveHeartbeat", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).SaveHeartbeat), ctx, device)
+}

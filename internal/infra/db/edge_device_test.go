@@ -114,6 +114,59 @@ func TestPostgresEdgeDeviceRepositoryRoundTrip(t *testing.T) {
 	assertSameDevice(t, devices[0], saved)
 }
 
+func TestPostgresEdgeDeviceRepositorySaveHeartbeatKeepsConfiguration(t *testing.T) {
+	repo := NewPostgresEdgeDeviceRepository(testDB)
+	ctx := withTenant(context.Background(), "tenant-heartbeat")
+	device := newDevice(t, "tenant-heartbeat", "event-heartbeat", "in", "out")
+
+	if err := repo.Create(ctx, device); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	stale := device
+	stale.Name = "stale name"
+	stale.ObservationPoints = []domain.ObservationPoint{
+		{ID: device.ObservationPoints[0].ID, Name: "stale lane", Enabled: false},
+		{ID: device.ObservationPoints[1].ID, Name: "stale lane", Enabled: false},
+	}
+
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	stale.LastHeartbeatAt = &now
+	stale.ObservationPoints[0].LastActiveAt = &now
+
+	if err := repo.SaveHeartbeat(ctx, stale); err != nil {
+		t.Fatalf("SaveHeartbeat: %v", err)
+	}
+
+	saved, err := repo.FindByID(ctx, device.ID)
+	if err != nil {
+		t.Fatalf("FindByID after SaveHeartbeat: %v", err)
+	}
+
+	want := device
+	want.LastHeartbeatAt = &now
+	assertSameDevice(t, saved, want)
+
+	if saved.ObservationPoints[0].LastActiveAt == nil || !saved.ObservationPoints[0].LastActiveAt.Equal(now) {
+		t.Errorf("in LastActiveAt = %v, want %v", saved.ObservationPoints[0].LastActiveAt, now)
+	}
+
+	if saved.ObservationPoints[1].LastActiveAt != nil {
+		t.Errorf("out LastActiveAt = %v, want nil", saved.ObservationPoints[1].LastActiveAt)
+	}
+
+	unregistered := saved
+	unregistered.Unregistered = true
+
+	if err := repo.Save(ctx, unregistered); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	if err := repo.SaveHeartbeat(ctx, unregistered); !errors.Is(err, repository.ErrEdgeDeviceNotFound) {
+		t.Errorf("SaveHeartbeat on an unregistered device error = %v, want repository.ErrEdgeDeviceNotFound", err)
+	}
+}
+
 func TestPostgresEdgeDeviceRepositoryListByEventExcludesUnregistered(t *testing.T) {
 	repo := NewPostgresEdgeDeviceRepository(testDB)
 	ctx := withTenant(context.Background(), "tenant-list")

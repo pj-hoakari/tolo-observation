@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -200,4 +201,40 @@ func (d EdgeDevice) Online(now time.Time, heartbeatTimeout time.Duration) bool {
 	}
 
 	return now.Sub(*d.LastHeartbeatAt) <= heartbeatTimeout
+}
+
+func (d EdgeDevice) HasObservationPoint(id ObservationPointID) bool {
+	for _, point := range d.ObservationPoints {
+		if point.ID == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (d *EdgeDevice) Heartbeat(now time.Time, activeIDs []ObservationPointID) error {
+	if d.Unregistered {
+		return ErrEdgeDeviceUnregistered
+	}
+
+	for _, id := range activeIDs {
+		if !d.HasObservationPoint(id) {
+			return ErrObservationPointNotFound
+		}
+	}
+
+	heartbeatAt := now
+	d.LastHeartbeatAt = &heartbeatAt
+
+	for i := range d.ObservationPoints {
+		if !slices.Contains(activeIDs, d.ObservationPoints[i].ID) {
+			continue
+		}
+
+		activeAt := now
+		d.ObservationPoints[i].LastActiveAt = &activeAt
+	}
+
+	return nil
 }
