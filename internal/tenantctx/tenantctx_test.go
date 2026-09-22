@@ -26,6 +26,13 @@ func withSubject(ctx context.Context, subject string) context.Context {
 	})
 }
 
+func withEvent(ctx context.Context, tokenUse, eventPublicID string) context.Context {
+	return internaljwt.ContextWithClaims(ctx, internaljwt.Claims{
+		TokenUse:      tokenUse,
+		EventPublicID: eventPublicID,
+	})
+}
+
 func TestSubjectFromContext(t *testing.T) {
 	t.Parallel()
 
@@ -217,6 +224,128 @@ func TestVerifyOwnership(t *testing.T) {
 			err := tenantctx.VerifyOwnership(tt.ctx, tt.tenantPublicID)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("VerifyOwnership() error = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestEventPublicIDFromContext(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		ctx    context.Context
+		want   string
+		wantOK bool
+	}{
+		{
+			name:   "verified event",
+			ctx:    withEvent(context.Background(), internaljwt.TokenUseEventAccess, "event-public-id"),
+			want:   "event-public-id",
+			wantOK: true,
+		},
+		{
+			name:   "no claims",
+			ctx:    context.Background(),
+			want:   "",
+			wantOK: false,
+		},
+		{
+			name:   "empty event claim",
+			ctx:    withEvent(context.Background(), internaljwt.TokenUseEventAccess, ""),
+			want:   "",
+			wantOK: false,
+		},
+		{
+			name:   "blank event claim",
+			ctx:    withEvent(context.Background(), internaljwt.TokenUseEventAccess, "   "),
+			want:   "",
+			wantOK: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, ok := tenantctx.EventPublicIDFromContext(tt.ctx)
+			if ok != tt.wantOK {
+				t.Errorf("EventPublicIDFromContext() ok = %v, want %v", ok, tt.wantOK)
+			}
+
+			if got != tt.want {
+				t.Errorf("EventPublicIDFromContext() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEnsureEvent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		ctx           context.Context
+		eventPublicID string
+		wantErr       error
+	}{
+		{
+			name:          "matches context event",
+			ctx:           withEvent(context.Background(), internaljwt.TokenUseEventAccess, "event-public-id"),
+			eventPublicID: "event-public-id",
+			wantErr:       nil,
+		},
+		{
+			name:          "differs from context event",
+			ctx:           withEvent(context.Background(), internaljwt.TokenUseEventAccess, "event-public-id"),
+			eventPublicID: "other-event-public-id",
+			wantErr:       tenantctx.ErrEventMismatch,
+		},
+		{
+			name:          "event access without an event claim",
+			ctx:           withEvent(context.Background(), internaljwt.TokenUseEventAccess, ""),
+			eventPublicID: "event-public-id",
+			wantErr:       tenantctx.ErrEventMissing,
+		},
+		{
+			name:          "blank event claim on event access",
+			ctx:           withEvent(context.Background(), internaljwt.TokenUseEventAccess, "   "),
+			eventPublicID: "event-public-id",
+			wantErr:       tenantctx.ErrEventMissing,
+		},
+		{
+			name:          "service token without an event claim is unrestricted",
+			ctx:           withEvent(context.Background(), internaljwt.TokenUseService, ""),
+			eventPublicID: "event-public-id",
+			wantErr:       nil,
+		},
+		{
+			name:          "service token carrying a differing event",
+			ctx:           withEvent(context.Background(), internaljwt.TokenUseService, "event-public-id"),
+			eventPublicID: "other-event-public-id",
+			wantErr:       tenantctx.ErrEventMismatch,
+		},
+		{
+			name:          "tenant access without an event claim is unrestricted",
+			ctx:           withTenant(context.Background(), "tenant-public-id"),
+			eventPublicID: "event-public-id",
+			wantErr:       nil,
+		},
+		{
+			name:          "no claims is unrestricted",
+			ctx:           context.Background(),
+			eventPublicID: "event-public-id",
+			wantErr:       nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := tenantctx.EnsureEvent(tt.ctx, tt.eventPublicID)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("EnsureEvent() error = %v, want %v", err, tt.wantErr)
 			}
 		})
 	}
