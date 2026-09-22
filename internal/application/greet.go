@@ -4,7 +4,8 @@ package application
 import (
 	"context"
 
-	"github.com/pj-hoakari/go-service-template/internal/domain"
+	"github.com/pj-hoakari/tolo-observation/internal/domain"
+	"github.com/pj-hoakari/tolo-observation/internal/repository"
 )
 
 // GreetInput contains the values accepted by the Greet use case.
@@ -23,12 +24,23 @@ type GreetUseCases interface {
 }
 
 // GreetService implements greet use cases.
-type GreetService struct{}
-
-func NewGreetService() *GreetService {
-	return &GreetService{}
+type GreetService struct {
+	greetings repository.GreetingRepository
 }
 
-func (s *GreetService) Greet(_ context.Context, input GreetInput) (domain.Greeting, error) {
-	return domain.NewGreeting(input.Name)
+func NewGreetService(greetings repository.GreetingRepository) *GreetService {
+	return &GreetService{greetings: greetings}
+}
+
+func (s *GreetService) Greet(ctx context.Context, input GreetInput) (domain.Greeting, error) {
+	greeting, err := domain.NewGreeting(input.Name)
+	if err != nil {
+		return domain.Greeting{}, err
+	}
+
+	if err := s.greetings.Record(ctx, greeting); err != nil {
+		return domain.Greeting{}, err
+	}
+
+	return greeting, nil
 }

@@ -1,0 +1,4 @@
+# with-db 固有の開発ツール
+# main と共有する mise.toml を編集せずに済むよう、DB 用のツールはこのファイルに分けている
+[tools]
+gomigrate = "4.20.1"

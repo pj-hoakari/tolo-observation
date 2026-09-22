@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/pj-hoakari/go-service-template/internal/infra/httpapi"
+	"github.com/pj-hoakari/tolo-observation/internal/infra/httpapi"
 )
 
 func request(t *testing.T, handler http.Handler, method, path string) (int, string) {

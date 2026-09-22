@@ -12,16 +12,16 @@ import (
 	connectrpc "connectrpc.com/connect"
 	"go.opentelemetry.io/otel/trace"
 
-	greetv1 "github.com/pj-hoakari/go-service-template/gen/greet/v1"
-	"github.com/pj-hoakari/go-service-template/internal/application"
-	"github.com/pj-hoakari/go-service-template/internal/domain"
-	"github.com/pj-hoakari/go-service-template/internal/logging"
+	greetv1 "github.com/pj-hoakari/tolo-observation/gen/greet/v1"
+	"github.com/pj-hoakari/tolo-observation/internal/application"
+	"github.com/pj-hoakari/tolo-observation/internal/domain"
+	"github.com/pj-hoakari/tolo-observation/internal/logging"
 )
 
 func TestServiceGreet(t *testing.T) {
 	t.Parallel()
 
-	service := NewService(application.NewGreetService())
+	service := NewService(application.NewGreetService(nopGreetingRepository{}))
 
 	res, err := service.Greet(context.Background(), connectrpc.NewRequest(&greetv1.GreetRequest{Name: "Ada"}))
 	if err != nil {
@@ -36,7 +36,7 @@ func TestServiceGreet(t *testing.T) {
 func TestServiceGreetRejectsMissingName(t *testing.T) {
 	t.Parallel()
 
-	service := NewService(application.NewGreetService())
+	service := NewService(application.NewGreetService(nopGreetingRepository{}))
 
 	_, err := service.Greet(context.Background(), connectrpc.NewRequest(&greetv1.GreetRequest{}))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeInvalidArgument; got != want {

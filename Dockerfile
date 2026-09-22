@@ -19,6 +19,13 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -trimpath -ldflags='-s -w' -o /out/server ./cmd/server
 
 
+FROM migrate/migrate:v4.20.1@sha256:76cc2074cb6642631f34a898ced71e6aeaa6b1a4d78c4daa743275a22e0c5be7 AS migrate
+
+COPY migrations /migrations
+
+ENTRYPOINT ["migrate", "-path", "/migrations"]
+
+
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
 
 COPY --from=builder /out/server /usr/local/bin/server

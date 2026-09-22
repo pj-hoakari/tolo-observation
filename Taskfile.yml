@@ -2,6 +2,11 @@
 
 version: "3"
 
+vars:
+    # compose.yml の postgres サービスを指す既定接続先
+    # 環境変数 DATABASE_URL で migrate タスク上書き
+    DEFAULT_DATABASE_URL: postgres://go_service_template:go_service_template@localhost:5432/go_service_template?sslmode=disable
+
 tasks:
     up:
         desc: Start the development environment.
@@ -78,80 +83,50 @@ tasks:
         generates:
             - "clients/connect-es/gen/**/*"
 
-# --- bootstrap task: begin (this block removes itself on completion) ---
-    bootstrap:
-        desc: Bootstrap a new service repository created from this template.
-        vars:
-            TEMPLATE_REPO: "github.com/pj-hoakari/go-service-template"
-            TEMPLATE_NAME: "go-service-template"
-            NEW_REPO:
-                sh: git remote get-url origin | sed -E 's#^(ssh://)?(https?://)?(git@)?##; s#:#/#; s#\.git$##'
-        requires:
-            vars:
-                - name: SERVICE_NAME
-                - name: WITH_OPTION
-                  enum: ["none", "db"]
-        preconditions:
-            - sh: '[ "{{.NEW_REPO}}" != "{{.TEMPLATE_REPO}}" ]'
-              msg: "origin is the template repository itself; run this in a repository created from the template."
+    migrate:create:
+        desc: |
+            Create a new empty migration pair (up/down) with a sequential version.
+            Usage: task migrate:create -- <migration_name>
         cmds:
-            - |
-                if [ "{{.WITH_OPTION}}" = "none" ]; then
-                    echo "Bootstrapping {{.SERVICE_NAME}} with no options"
-                else
-                    if ! git rev-parse --verify --quiet origin/with-{{.WITH_OPTION}} >/dev/null; then
-                        echo "origin/with-{{.WITH_OPTION}} not found. Create the repository with 'Include all branches'." >&2
-                        exit 1
-                    fi
-                    echo "Bootstrapping {{.SERVICE_NAME}} with option {{.WITH_OPTION}}"
-                    git read-tree -u --reset origin/with-{{.WITH_OPTION}}
-                    rm -rf .task
-                fi
-            # with-* branches only exist in the template, so drop the workflows that manage them.
-            - git rm -q --ignore-unmatch -- '.github/workflows/sync-with-*.yml' .github/workflows/guard-main.yml
-            - mise install
-            - echo "Rewriting {{.TEMPLATE_REPO}} -> {{.NEW_REPO}}"
-            # Taskfile.yml is left out so that bootstrap-check keeps the template name to look for.
-            - git grep -lzF "{{.TEMPLATE_REPO}}" -- ':!gen' ':!Taskfile.yml' | go run ./scripts/rewrite "{{.TEMPLATE_REPO}}" "{{.NEW_REPO}}"
-            - git grep -lzF "{{.TEMPLATE_NAME}}" -- ':!gen' ':!Taskfile.yml' | go run ./scripts/rewrite "{{.TEMPLATE_NAME}}" "{{.SERVICE_NAME}}"
-            - npm install --prefix clients/connect-es
-            - task: proto
-            - go mod tidy
-            # Skip when already moved, so that bootstrap can be rerun after a failure.
-            - if [ -f renovate.example.json ]; then mv renovate.example.json renovate.json; fi
-            # Local with-* branches are copies of the template branches, which stay on origin.
-            - git for-each-ref --format='%(refname:short)' 'refs/heads/with-*' | while read -r b; do git branch -D "$b"; done
-            - task: bootstrap-check
-            - git rm -r -q --ignore-unmatch scripts/rewrite
-            - |
-                awk '
-                    /^# --- bootstrap task: begin \(this block removes itself on completion\) ---$/ { skip = 1 }
-                    !skip {
-                        if ($0 ~ /^[[:space:]]*$/) { blank = blank $0 "\n"; next }
-                        printf "%s", blank; blank = ""; print
-                    }
-                    /^# --- bootstrap task: end ---$/ { skip = 0 }
-                ' Taskfile.yml > Taskfile.yml.tmp
-                cat Taskfile.yml.tmp > Taskfile.yml
-                rm Taskfile.yml.tmp
+            - migrate create -ext sql -dir migrations -seq {{.CLI_ARGS}}
 
-    bootstrap-check:
-        desc: Check that no template leftovers remain and that build, test and lint pass.
+    migrate:up:
+        desc: |
+            Apply all pending migrations. Override the target DB with DATABASE_URL.
+            Usage: [DATABASE_URL=...] task migrate:up -- [N]
         vars:
-            TEMPLATE_NAME: "go-service-template"
+            DATABASE_URL:
+                sh: 'echo "${DATABASE_URL:-{{.DEFAULT_DATABASE_URL}}}"'
         cmds:
-            # Taskfile.yml is skipped, since the bootstrap tasks in it hold the template name.
-            - |
-                if git grep -nIF --untracked "{{.TEMPLATE_NAME}}" -- ':!Taskfile.yml'; then
-                    echo "The template name still remains in the lines above." >&2
-                    exit 1
-                fi
-            - |
-                if git grep -nIE --untracked 'with-[[:alnum:]]' -- .github/workflows; then
-                    echo "The template branches (with-*) are still referenced in the workflows above." >&2
-                    exit 1
-                fi
-            - go build ./...
-            - go test ./...
-            - golangci-lint run
-# --- bootstrap task: end ---
+            - migrate -path migrations -database "{{.DATABASE_URL}}" up {{.CLI_ARGS}}
+
+    migrate:down:
+        desc: |
+            Roll back migrations (default 1 step). Override the target DB with DATABASE_URL.
+            Usage: [DATABASE_URL=...] task migrate:down -- [N]
+        vars:
+            DATABASE_URL:
+                sh: 'echo "${DATABASE_URL:-{{.DEFAULT_DATABASE_URL}}}"'
+            STEPS: '{{.CLI_ARGS | default "1"}}'
+        cmds:
+            - migrate -path migrations -database "{{.DATABASE_URL}}" down {{.STEPS}}
+
+    migrate:version:
+        desc: |
+            Show the current migration version and dirty state.
+            Usage: [DATABASE_URL=...] task migrate:version
+        vars:
+            DATABASE_URL:
+                sh: 'echo "${DATABASE_URL:-{{.DEFAULT_DATABASE_URL}}}"'
+        cmds:
+            - migrate -path migrations -database "{{.DATABASE_URL}}" version
+
+    migrate:force:
+        desc: |
+            Force set the migration version (recover from a dirty state; does not run SQL).
+            Usage: [DATABASE_URL=...] task migrate:force -- <version>
+        vars:
+            DATABASE_URL:
+                sh: 'echo "${DATABASE_URL:-{{.DEFAULT_DATABASE_URL}}}"'
+        cmds:
+            - migrate -path migrations -database "{{.DATABASE_URL}}" force {{.CLI_ARGS}}

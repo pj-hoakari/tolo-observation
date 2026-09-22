@@ -11,11 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pj-hoakari/go-service-template/internal/application"
-	connectinfra "github.com/pj-hoakari/go-service-template/internal/infra/connect"
-	"github.com/pj-hoakari/go-service-template/internal/infra/httpapi"
-	"github.com/pj-hoakari/go-service-template/internal/logging"
-	"github.com/pj-hoakari/go-service-template/internal/telemetry"
+	"github.com/pj-hoakari/tolo-observation/internal/application"
+	connectinfra "github.com/pj-hoakari/tolo-observation/internal/infra/connect"
+	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
+	"github.com/pj-hoakari/tolo-observation/internal/infra/httpapi"
+	"github.com/pj-hoakari/tolo-observation/internal/logging"
+	"github.com/pj-hoakari/tolo-observation/internal/telemetry"
 )
 
 const (
@@ -51,6 +52,11 @@ func run() error {
 	jwtSettings.Issuer = getenv("INTERNAL_JWT_ISSUER", jwtSettings.Issuer)
 	jwtSettings.Audience = getenv("INTERNAL_JWT_AUDIENCE", jwtSettings.Audience)
 
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		return errors.New("DATABASE_URL is required")
+	}
+
 	shutdownTracing, err := telemetry.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("setup tracing: %w", err)
@@ -61,14 +67,27 @@ func run() error {
 		slog.Info("tracing enabled", "service", telemetry.ServiceName())
 	}
 
-	greetService := application.NewGreetService()
+	db, err := dbinfra.Open(ctx, databaseURL)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("close database failed", "error", err)
+		}
+	}()
+
+	greetService := application.NewGreetService(dbinfra.NewPostgresGreetingRepository(db))
 
 	greetRoutes, err := connectinfra.RoutesWithJWTSettings(greetService, jwtSettings)
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)
 	}
 
-	handler := httpapi.NewHandler(httpapi.HealthRoutes(), greetRoutes)
+	handler := httpapi.NewHandler(
+		httpapi.HealthRoutes(httpapi.ReadinessCheck{Name: "database", Check: db.PingContext}),
+		greetRoutes,
+	)
 
 	httpServer := &http.Server{
 		Addr:              addr,

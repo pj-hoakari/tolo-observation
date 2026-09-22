@@ -16,11 +16,11 @@ import (
 	"github.com/pj-hoakari/internal-jwt-handling/jwtgen"
 	"github.com/pj-hoakari/internal-jwt-handling/verifier"
 
-	greetv1 "github.com/pj-hoakari/go-service-template/gen/greet/v1"
-	"github.com/pj-hoakari/go-service-template/gen/greet/v1/greetv1connect"
-	"github.com/pj-hoakari/go-service-template/internal/application"
-	"github.com/pj-hoakari/go-service-template/internal/domain"
-	"github.com/pj-hoakari/go-service-template/internal/tenantctx"
+	greetv1 "github.com/pj-hoakari/tolo-observation/gen/greet/v1"
+	"github.com/pj-hoakari/tolo-observation/gen/greet/v1/greetv1connect"
+	"github.com/pj-hoakari/tolo-observation/internal/application"
+	"github.com/pj-hoakari/tolo-observation/internal/domain"
+	"github.com/pj-hoakari/tolo-observation/internal/tenantctx"
 )
 
 // newTestJWKSURL serves keys from an httptest endpoint, mirroring the Service
@@ -150,7 +150,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = newTestJWKSURL(t, keys)
 
-		routes, err := RoutesWithJWTSettings(application.NewGreetService(), settings)
+		routes, err := RoutesWithJWTSettings(application.NewGreetService(nopGreetingRepository{}), settings)
 		if err != nil {
 			t.Fatalf("RoutesWithJWTSettings() error = %v", err)
 		}
@@ -181,7 +181,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = ""
 
-		_, err := RoutesWithJWTSettings(application.NewGreetService(), settings)
+		_, err := RoutesWithJWTSettings(application.NewGreetService(nopGreetingRepository{}), settings)
 		if !errors.Is(err, jwks.ErrMissingURL) {
 			t.Fatalf("RoutesWithJWTSettings() error = %v, want %v", err, jwks.ErrMissingURL)
 		}
@@ -192,7 +192,7 @@ func TestGreetServiceAuthz(t *testing.T) {
 	t.Parallel()
 
 	authorization, keys := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService()))
+	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
 	t.Cleanup(httpServer.Close)
 	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
 
@@ -222,7 +222,7 @@ func TestGreetServiceAuthzRejectsMissingScope(t *testing.T) {
 	t.Parallel()
 
 	authorization, keys := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.write", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService()))
+	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
 	t.Cleanup(httpServer.Close)
 	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
 
@@ -246,7 +246,7 @@ func TestGreetServiceAuthzRejectsUnknownSigningKey(t *testing.T) {
 	}
 
 	foreignAuthorization, _ := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandler(t, trustedKeys, application.NewGreetService()))
+	httpServer := httptest.NewServer(newTestHandler(t, trustedKeys, application.NewGreetService(nopGreetingRepository{})))
 	t.Cleanup(httpServer.Close)
 	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
 
@@ -268,7 +268,7 @@ func TestGreetServiceAuthzUnavailableWhenJWKSUnreachable(t *testing.T) {
 	t.Cleanup(jwksServer.Close)
 
 	authorization, _ := mintInternalJWT(t, internaljwt.TokenUseTenantAccess, "greeting.read", "a1b2c3d4e5f60718")
-	httpServer := httptest.NewServer(newTestHandlerForJWKSURL(t, jwksServer.URL, application.NewGreetService()))
+	httpServer := httptest.NewServer(newTestHandlerForJWKSURL(t, jwksServer.URL, application.NewGreetService(nopGreetingRepository{})))
 	t.Cleanup(httpServer.Close)
 	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
 
@@ -287,7 +287,7 @@ func TestGreetServiceAuthzRejectsServiceToken(t *testing.T) {
 	// AUTH_LEVEL_AUTHENTICATED admits the default token_use only, so a service
 	// token is not a credential for this RPC.
 	authorization, keys := mintInternalJWT(t, internaljwt.TokenUseService, "", "")
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService()))
+	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
 	t.Cleanup(httpServer.Close)
 	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
 
@@ -313,7 +313,7 @@ func TestGreetServiceAuthzRejectsAudienceMismatch(t *testing.T) {
 		"greeting.read",
 		"a1b2c3d4e5f60718",
 	)
-	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService()))
+	httpServer := httptest.NewServer(newTestHandler(t, keys, application.NewGreetService(nopGreetingRepository{})))
 	t.Cleanup(httpServer.Close)
 	client := greetv1connect.NewGreetServiceClient(httpServer.Client(), httpServer.URL)
 

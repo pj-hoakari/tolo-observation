@@ -1,8 +1,45 @@
 services:
+    postgres:
+        image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+        environment:
+            POSTGRES_USER: go_service_template
+            POSTGRES_PASSWORD: go_service_template
+            POSTGRES_DB: go_service_template
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U go_service_template -d go_service_template"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres-data:/var/lib/postgresql
+
+    migrate:
+        build:
+            context: .
+            target: migrate
+        command:
+            [
+                "-database",
+                "postgres://go_service_template:go_service_template@postgres:5432/go_service_template?sslmode=disable",
+                "up",
+            ]
+        depends_on:
+            postgres:
+                condition: service_healthy
+
     server:
         build:
             context: .
         environment:
+            DATABASE_URL: postgres://go_service_template:go_service_template@postgres:5432/go_service_template?sslmode=disable
             SERVER_ADDR: :8080
+        depends_on:
+            migrate:
+                condition: service_completed_successfully
         ports:
             - "8080:8080"
+
+volumes:
+    postgres-data:
