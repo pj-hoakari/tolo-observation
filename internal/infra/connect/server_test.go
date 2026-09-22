@@ -18,6 +18,7 @@ import (
 
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
+	"github.com/pj-hoakari/tolo-observation/internal/application"
 )
 
 const (
@@ -71,7 +72,19 @@ func newTestVerifier(t *testing.T, keys internaljwt.JWKS) *verifier.Verifier {
 func newTestHandler(t *testing.T, keys internaljwt.JWKS) http.Handler {
 	t.Helper()
 
-	routes, err := RoutesWithVerifier(newTestVerifier(t, keys))
+	return newTestHandlerWithEdgeDevices(t, keys, &fakeEdgeDeviceUseCases{})
+}
+
+// newTestHandlerWithEdgeDevices builds the same routes around edge device use
+// cases the test controls.
+func newTestHandlerWithEdgeDevices(
+	t *testing.T,
+	keys internaljwt.JWKS,
+	edgeDevices application.EdgeDeviceUseCases,
+) http.Handler {
+	t.Helper()
+
+	routes, err := RoutesWithVerifier(newTestVerifier(t, keys), edgeDevices)
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -100,7 +113,7 @@ func newTestHandlerForJWKSURL(t *testing.T, jwksURL string) http.Handler {
 		t.Fatalf("create internal JWT verifier: %v", err)
 	}
 
-	routes, err := RoutesWithVerifier(tokenVerifier)
+	routes, err := RoutesWithVerifier(tokenVerifier, &fakeEdgeDeviceUseCases{})
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -149,9 +162,9 @@ func mintInternalJWTFor(t *testing.T, config jwtgen.Config) (string, internaljwt
 	return "Bearer " + output.Token, output.JWKS
 }
 
-// listEdgeDevicesRequest is the call the authorization tests make. Every
-// handler is still unimplemented, so CodeUnimplemented is the proof that a
-// call passed authorization.
+// listEdgeDevicesRequest is the call the authorization tests make. The handler
+// behind it is wired to a fake, so reaching it without an error is the proof
+// that a call passed authorization.
 func listEdgeDevicesRequest(authorization string) *connectrpc.Request[observationv1.ListEdgeDevicesRequest] {
 	req := connectrpc.NewRequest(&observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID})
 	if authorization != "" {
@@ -172,7 +185,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = newTestJWKSURL(t, keys)
 
-		routes, err := RoutesWithJWTSettings(settings)
+		routes, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{})
 		if err != nil {
 			t.Fatalf("RoutesWithJWTSettings() error = %v", err)
 		}
@@ -184,9 +197,8 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		t.Cleanup(httpServer.Close)
 		client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
 
-		_, err = client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
-		if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnimplemented; got != want {
-			t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
+		if _, err = client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization)); err != nil {
+			t.Fatalf("ListEdgeDevices() error = %v", err)
 		}
 	})
 
@@ -196,7 +208,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = ""
 
-		_, err := RoutesWithJWTSettings(settings)
+		_, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{})
 		if !errors.Is(err, jwks.ErrMissingURL) {
 			t.Fatalf("RoutesWithJWTSettings() error = %v, want %v", err, jwks.ErrMissingURL)
 		}
@@ -218,12 +230,11 @@ func TestEdgeDeviceServiceAuthz(t *testing.T) {
 		}
 	})
 
-	// Every handler is unimplemented, so reaching one is what the policy
-	// admits: an event token granting events.read passes authorization.
+	// Reaching the handler is what the policy admits: an event token granting
+	// events.read passes authorization.
 	t.Run("accepts an event token with the required scope", func(t *testing.T) {
-		_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
-		if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnimplemented; got != want {
-			t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
+		if _, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization)); err != nil {
+			t.Fatalf("ListEdgeDevices() error = %v", err)
 		}
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pj-hoakari/tolo-observation/internal/application"
 	connectinfra "github.com/pj-hoakari/tolo-observation/internal/infra/connect"
 	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
 	"github.com/pj-hoakari/tolo-observation/internal/infra/httpapi"
@@ -19,10 +20,11 @@ import (
 )
 
 const (
-	defaultAddr       = ":8080"
-	defaultLogLevel   = "info"
-	shutdownTimeout   = 10 * time.Second
-	readHeaderTimeout = 10 * time.Second
+	defaultAddr             = ":8080"
+	defaultLogLevel         = "info"
+	defaultHeartbeatTimeout = 2 * time.Minute
+	shutdownTimeout         = 10 * time.Second
+	readHeaderTimeout       = 10 * time.Second
 )
 
 func main() {
@@ -56,6 +58,16 @@ func run() error {
 		return errors.New("DATABASE_URL is required")
 	}
 
+	observationPageBaseURL := os.Getenv("OBSERVATION_PAGE_BASE_URL")
+	if observationPageBaseURL == "" {
+		return errors.New("OBSERVATION_PAGE_BASE_URL is required")
+	}
+
+	heartbeatTimeout, err := time.ParseDuration(getenv("HEARTBEAT_TIMEOUT", defaultHeartbeatTimeout.String()))
+	if err != nil {
+		return fmt.Errorf("read HEARTBEAT_TIMEOUT: %w", err)
+	}
+
 	shutdownTracing, err := telemetry.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("setup tracing: %w", err)
@@ -76,7 +88,16 @@ func run() error {
 		}
 	}()
 
-	serviceRoutes, err := connectinfra.RoutesWithJWTSettings(jwtSettings)
+	edgeDevices := application.NewEdgeDeviceService(
+		dbinfra.NewPostgresEdgeDeviceRepository(db),
+		application.EdgeDeviceConfig{
+			ObservationPageBaseURL: observationPageBaseURL,
+			HeartbeatTimeout:       heartbeatTimeout,
+			Now:                    nil,
+		},
+	)
+
+	serviceRoutes, err := connectinfra.RoutesWithJWTSettings(jwtSettings, edgeDevices)
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)
 	}
