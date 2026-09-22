@@ -17,6 +17,7 @@ import (
 	"github.com/pj-hoakari/protoc-gen-authz-go/authz"
 
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
+	"github.com/pj-hoakari/tolo-observation/internal/application"
 )
 
 // Defaults for verifying internal JWTs. The issuer is the Service Gateway's
@@ -48,7 +49,7 @@ func DefaultJWTSettings() JWTSettings {
 
 // RoutesWithJWTSettings builds the service routes that verify internal
 // JWTs against the JWKS the settings locate.
-func RoutesWithJWTSettings(settings JWTSettings) (func(mux *http.ServeMux), error) {
+func RoutesWithJWTSettings(settings JWTSettings, edgeDevices application.EdgeDeviceUseCases) (func(mux *http.ServeMux), error) {
 	cache, err := jwks.New(jwks.Config{
 		URL:             settings.JWKSURL,
 		HTTPClient:      nil,
@@ -68,13 +69,16 @@ func RoutesWithJWTSettings(settings JWTSettings) (func(mux *http.ServeMux), erro
 		return nil, fmt.Errorf("create internal JWT verifier: %w", err)
 	}
 
-	return RoutesWithVerifier(tokenVerifier)
+	return RoutesWithVerifier(tokenVerifier, edgeDevices)
 }
 
 // RoutesWithVerifier builds the service routes around a verifier of the
 // internal JWT. The services are guarded by one interceptor built from their
 // merged policy tables, so the credential rules stay declared in the proto.
-func RoutesWithVerifier(tokenVerifier interceptor.TokenVerifier) (func(mux *http.ServeMux), error) {
+func RoutesWithVerifier(
+	tokenVerifier interceptor.TokenVerifier,
+	edgeDevices application.EdgeDeviceUseCases,
+) (func(mux *http.ServeMux), error) {
 	// The caller sits behind the Service Gateway, so an incoming trace context is
 	// trusted and continued instead of being demoted to a span link.
 	tracing, err := otelconnect.NewInterceptor(otelconnect.WithTrustRemote())
@@ -108,7 +112,7 @@ func RoutesWithVerifier(tokenVerifier interceptor.TokenVerifier) (func(mux *http
 
 	return func(mux *http.ServeMux) {
 		mux.Handle(observationv1connect.NewMeasurementIngestServiceHandler(NewMeasurementIngestService(), options))
-		mux.Handle(observationv1connect.NewEdgeDeviceServiceHandler(NewEdgeDeviceService(), options))
+		mux.Handle(observationv1connect.NewEdgeDeviceServiceHandler(NewEdgeDeviceService(edgeDevices), options))
 		mux.Handle(observationv1connect.NewManualInterventionServiceHandler(NewManualInterventionService(), options))
 		mux.Handle(observationv1connect.NewStatusQueryServiceHandler(NewStatusQueryService(), options))
 	}, nil
