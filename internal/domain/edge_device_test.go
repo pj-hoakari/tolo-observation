@@ -276,3 +276,74 @@ func newTestDevice(t *testing.T) domain.EdgeDevice {
 
 	return device
 }
+
+func TestEdgeDeviceHeartbeat(t *testing.T) {
+	t.Parallel()
+
+	device := newTestDevice(t)
+	now := time.Date(2026, time.September, 22, 10, 0, 0, 0, time.UTC)
+	active := device.ObservationPoints[1].ID
+
+	if err := device.Heartbeat(now, []domain.ObservationPointID{active}); err != nil {
+		t.Fatalf("Heartbeat: %v", err)
+	}
+
+	if device.LastHeartbeatAt == nil || !device.LastHeartbeatAt.Equal(now) {
+		t.Errorf("LastHeartbeatAt = %v, want %v", device.LastHeartbeatAt, now)
+	}
+
+	if device.ObservationPoints[0].LastActiveAt != nil {
+		t.Errorf("inactive observation point LastActiveAt = %v, want nil", device.ObservationPoints[0].LastActiveAt)
+	}
+
+	if device.ObservationPoints[1].LastActiveAt == nil || !device.ObservationPoints[1].LastActiveAt.Equal(now) {
+		t.Errorf("active observation point LastActiveAt = %v, want %v", device.ObservationPoints[1].LastActiveAt, now)
+	}
+}
+
+func TestEdgeDeviceHeartbeatRejects(t *testing.T) {
+	t.Parallel()
+
+	device := newTestDevice(t)
+	now := time.Date(2026, time.September, 22, 10, 0, 0, 0, time.UTC)
+
+	unknown, err := domain.NewObservationPointID()
+	if err != nil {
+		t.Fatalf("NewObservationPointID: %v", err)
+	}
+
+	err = device.Heartbeat(now, []domain.ObservationPointID{device.ObservationPoints[0].ID, unknown})
+	if !errors.Is(err, domain.ErrObservationPointNotFound) {
+		t.Errorf("Heartbeat with an unknown observation point error = %v, want ErrObservationPointNotFound", err)
+	}
+
+	if device.LastHeartbeatAt != nil || device.ObservationPoints[0].LastActiveAt != nil {
+		t.Error("a rejected heartbeat updated the device")
+	}
+
+	if err := device.Unregister(); err != nil {
+		t.Fatalf("Unregister: %v", err)
+	}
+
+	if err := device.Heartbeat(now, nil); !errors.Is(err, domain.ErrEdgeDeviceUnregistered) {
+		t.Errorf("Heartbeat on an unregistered device error = %v, want ErrEdgeDeviceUnregistered", err)
+	}
+
+	if device.LastHeartbeatAt != nil {
+		t.Error("a heartbeat on an unregistered device updated LastHeartbeatAt")
+	}
+}
+
+func TestEdgeDeviceHasObservationPoint(t *testing.T) {
+	t.Parallel()
+
+	device := newTestDevice(t)
+
+	if !device.HasObservationPoint(device.ObservationPoints[0].ID) {
+		t.Error("HasObservationPoint() = false for an owned observation point")
+	}
+
+	if device.HasObservationPoint("0123456789abcdef") {
+		t.Error("HasObservationPoint() = true for a foreign observation point")
+	}
+}
