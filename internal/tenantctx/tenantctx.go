@@ -32,6 +32,9 @@ var (
 	// ErrMismatch indicates a tenant-scoped operation targets a tenant other
 	// than the authenticated one carried in the context.
 	ErrMismatch = errors.New("tenant ID does not match context")
+
+	ErrEventMissing  = errors.New("event ID is missing from context")
+	ErrEventMismatch = errors.New("event ID does not match context")
 )
 
 // SubjectFromContext returns the authenticated subject carried in the verified
@@ -66,6 +69,20 @@ func TenantPublicIDFromContext(ctx context.Context) (string, bool) {
 	return tenantPublicID, true
 }
 
+func EventPublicIDFromContext(ctx context.Context) (string, bool) {
+	claims, ok := internaljwt.ClaimsFromContext(ctx)
+	if !ok {
+		return "", false
+	}
+
+	eventPublicID := strings.TrimSpace(claims.EventPublicID)
+	if eventPublicID == "" {
+		return "", false
+	}
+
+	return eventPublicID, true
+}
+
 // Ensure verifies that tenantPublicID matches the authenticated tenant carried
 // in the context. It fails closed: a missing context tenant ID is an error, so
 // tenant-scoped work never proceeds without a verified owner. Callers pass the
@@ -98,6 +115,28 @@ func VerifyOwnership(ctx context.Context, tenantPublicID string) error {
 
 	if contextTenantPublicID != tenantPublicID {
 		return ErrMismatch
+	}
+
+	return nil
+}
+
+func EnsureEvent(ctx context.Context, eventPublicID string) error {
+	claims, ok := internaljwt.ClaimsFromContext(ctx)
+	if !ok {
+		return nil
+	}
+
+	contextEventPublicID, ok := EventPublicIDFromContext(ctx)
+	if !ok {
+		if claims.TokenUse == internaljwt.TokenUseEventAccess {
+			return ErrEventMissing
+		}
+
+		return nil
+	}
+
+	if contextEventPublicID != eventPublicID {
+		return ErrEventMismatch
 	}
 
 	return nil
