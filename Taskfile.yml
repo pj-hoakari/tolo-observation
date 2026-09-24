@@ -8,6 +8,8 @@ vars:
     # compose.yml の postgres サービスを指す既定接続先
     # 環境変数 DATABASE_URL で migrate タスク上書き
     DEFAULT_DATABASE_URL: postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@localhost:5432/{{.POSTGRES_DB}}?sslmode=disable
+    FLOW_CONTROL_PROTO: ghcr.io/pj-hoakari/tolo-flow-control-proto:0.1.0-dev@sha256:2d1f6e0b1598342936a635a323e0422000873c36810c05ebfeee382c92914c33
+    FLOW_CONTROL_PROTO_OUT: .proto-deps/tolo-flow-control
 
 tasks:
     up:
@@ -51,6 +53,20 @@ tasks:
         cmds:
           - go tool protoc-gen-authz-go --write-proto proto
 
+    proto:pull:flow:
+        desc: |
+            Materialize the tolo-flow-control proto from ghcr, or from a local directory when FLOW_CONTROL_PROTO_DIR is set.
+            Usage: [FLOW_CONTROL_PROTO_DIR=../tolo-flow-control/proto] task proto:pull:flow
+        cmds:
+            - rm -rf {{.FLOW_CONTROL_PROTO_OUT}}
+            - mkdir -p {{.FLOW_CONTROL_PROTO_OUT}}
+            - |
+                if [ -n "${FLOW_CONTROL_PROTO_DIR:-}" ]; then
+                  cp -R "$FLOW_CONTROL_PROTO_DIR"/. {{.FLOW_CONTROL_PROTO_OUT}}
+                else
+                  oras pull -o {{.FLOW_CONTROL_PROTO_OUT}} {{.FLOW_CONTROL_PROTO}}
+                fi
+
     proto:lint:
         desc: Lint proto.
         deps:
@@ -62,12 +78,16 @@ tasks:
         desc: Regenerate connect-go code from proto.
         deps:
           - proto:write-authz
+          - proto:pull:flow
         cmds:
             - buf generate --template buf.gen.go.yaml
+            - buf generate --template buf.gen.flow.yaml
         sources:
             - "proto/**/*.proto"
+            - ".proto-deps/**/*.proto"
             - buf.yaml
             - buf.gen.go.yaml
+            - buf.gen.flow.yaml
         generates:
             - "gen/**/*"
 

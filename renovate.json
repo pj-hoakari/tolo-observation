@@ -1,4 +1,23 @@
 {
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": ["github>pj-hoakari/renovate-config"]
+	"extends": ["github>pj-hoakari/renovate-config"],
+	"customManagers": [
+		{
+			"customType": "regex",
+			"description": "Proto artifacts published with ORAS",
+			"managerFilePatterns": ["/^Taskfile\\.yml$/"],
+			"matchStrings": [
+				"(?<depName>ghcr\\.io/pj-hoakari/[a-z0-9-]+-proto):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+			],
+			"datasourceTemplate": "docker",
+			"versioningTemplate": "semver"
+		}
+	],
+	"packageRules": [
+		{
+			"matchManagers": ["custom.regex"],
+			"matchPackageNames": ["/^ghcr\\.io/pj-hoakari/.+-proto$/"],
+			"minimumReleaseAge": null
+		}
+	]
 }
