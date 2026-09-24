@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://www.schemastore.org/buf.gen.json
+version: v2
+managed:
+    enabled: true
+    override:
+        - file_option: go_package_prefix
+          value: github.com/pj-hoakari/tolo-observation/gen
+plugins:
+    - local: ["go", "tool", "protoc-gen-go"]
+      out: gen
+      opt: paths=source_relative
+    - local: ["go", "tool", "protoc-gen-connect-go"]
+      out: gen
+      opt: paths=source_relative
+inputs:
+    - directory: .proto-deps/tolo-flow-control
