@@ -19,7 +19,7 @@ jobs:
 
             - name: Detect changes
               id: changes
-              uses: ./.github/actions/detect-changes
+              uses: pj-hoakari/actions/detect-changes@3cf99dacd5f2b5135f15ce80118d9647dbae6a2d # v20261002
               with:
                   paths: |
                       proto/**
@@ -33,12 +33,6 @@ jobs:
                       Taskfile.yml
                       .github/workflows/proto-gen-check.yml
 
-            - name: Set up mise
-              if: steps.changes.outputs.changed == 'true'
-              uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
-              with:
-                  install_args: buf oras task
-
             - name: Set up Go
               if: steps.changes.outputs.changed == 'true'
               uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -46,20 +40,10 @@ jobs:
                   go-version-file: go.mod
                   cache: true
 
-            - name: Lint proto
+            - name: Check generated connect-go code
               if: steps.changes.outputs.changed == 'true'
-              run: task proto:lint
-
-            - name: Regenerate connect-go code
-              if: steps.changes.outputs.changed == 'true'
-              run: task proto:gen:go
-
-            - name: Verify generated code is up to date
-              if: steps.changes.outputs.changed == 'true'
-              run: |
-                  if [ -n "$(git status --porcelain -- gen/)" ]; then
-                    echo "::error::gen/ が最新ではありません"
-                    git status --porcelain -- gen/
-                    git diff -- gen/
-                    exit 1
-                  fi
+              uses: pj-hoakari/actions/proto-check@3cf99dacd5f2b5135f15ce80118d9647dbae6a2d # v20261002
+              with:
+                  generate-task: proto:gen:go
+                  generated-path: gen/
+                  mise-install-args: buf oras task
