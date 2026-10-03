@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -42,4 +43,42 @@ func (r *PostgresMeasurementRepository) RecordAll(ctx context.Context, tenantPub
 
 		return nil
 	})
+}
+
+type measurementWindowRow struct {
+	ObservationPointID string    `db:"observation_point_id"`
+	WindowStart        time.Time `db:"window_start"`
+	WindowEnd          time.Time `db:"window_end"`
+	CountIn            int32     `db:"count_in"`
+	CountOut           int32     `db:"count_out"`
+}
+
+func (r *PostgresMeasurementRepository) ListWindowEndingAfter(
+	ctx context.Context,
+	eventID string,
+	after time.Time,
+) ([]domain.Measurement, error) {
+	var rows []measurementWindowRow
+
+	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
+		SELECT observation_point_id, window_start, window_end, count_in, count_out
+		FROM measurements
+		WHERE event_id = $1 AND window_end > $2
+		ORDER BY window_end, id`, eventID, after)
+	if err != nil {
+		return nil, fmt.Errorf("select measurements: %w", err)
+	}
+
+	measurements := make([]domain.Measurement, 0, len(rows))
+	for _, row := range rows {
+		measurements = append(measurements, domain.Measurement{
+			ObservationPointID: domain.ObservationPointID(row.ObservationPointID),
+			WindowStart:        row.WindowStart,
+			WindowEnd:          row.WindowEnd,
+			CountIn:            row.CountIn,
+			CountOut:           row.CountOut,
+		})
+	}
+
+	return measurements, nil
 }

@@ -12,6 +12,7 @@ package application_test
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	domain "github.com/pj-hoakari/tolo-observation/internal/domain"
 	gomock "go.uber.org/mock/gomock"
@@ -39,6 +40,21 @@ func NewMockMeasurementRepository(ctrl *gomock.Controller) *MockMeasurementRepos
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockMeasurementRepository) EXPECT() *MockMeasurementRepositoryMockRecorder {
 	return m.recorder
+}
+
+// ListWindowEndingAfter mocks base method.
+func (m *MockMeasurementRepository) ListWindowEndingAfter(ctx context.Context, eventID string, after time.Time) ([]domain.Measurement, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListWindowEndingAfter", ctx, eventID, after)
+	ret0, _ := ret[0].([]domain.Measurement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListWindowEndingAfter indicates an expected call of ListWindowEndingAfter.
+func (mr *MockMeasurementRepositoryMockRecorder) ListWindowEndingAfter(ctx, eventID, after any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWindowEndingAfter", reflect.TypeOf((*MockMeasurementRepository)(nil).ListWindowEndingAfter), ctx, eventID, after)
 }
 
 // RecordAll mocks base method.
