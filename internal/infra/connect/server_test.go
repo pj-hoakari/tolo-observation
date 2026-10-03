@@ -84,7 +84,7 @@ func newTestHandlerWithEdgeDevices(
 ) http.Handler {
 	t.Helper()
 
-	routes, err := RoutesWithVerifier(newTestVerifier(t, keys), edgeDevices, &fakeMeasurementIngestUseCases{})
+	routes, err := RoutesWithVerifier(newTestVerifier(t, keys), edgeDevices, &fakeMeasurementIngestUseCases{}, nil)
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -113,7 +113,7 @@ func newTestHandlerForJWKSURL(t *testing.T, jwksURL string) http.Handler {
 		t.Fatalf("create internal JWT verifier: %v", err)
 	}
 
-	routes, err := RoutesWithVerifier(tokenVerifier, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{})
+	routes, err := RoutesWithVerifier(tokenVerifier, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{}, nil)
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
 	}
@@ -185,7 +185,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = newTestJWKSURL(t, keys)
 
-		routes, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{})
+		routes, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{}, nil)
 		if err != nil {
 			t.Fatalf("RoutesWithJWTSettings() error = %v", err)
 		}
@@ -208,7 +208,7 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 		settings := DefaultJWTSettings()
 		settings.JWKSURL = ""
 
-		_, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{})
+		_, err := RoutesWithJWTSettings(settings, &fakeEdgeDeviceUseCases{}, &fakeMeasurementIngestUseCases{}, nil)
 		if !errors.Is(err, jwks.ErrMissingURL) {
 			t.Fatalf("RoutesWithJWTSettings() error = %v, want %v", err, jwks.ErrMissingURL)
 		}

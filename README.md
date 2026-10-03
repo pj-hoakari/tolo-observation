@@ -52,6 +52,10 @@ RPC を呼び出すには Service Gateway 発行の内部 JWT が必要なので
 | `DATABASE_URL` | なし（必須） | PostgreSQL の接続先 |
 | `OBSERVATION_PAGE_BASE_URL` | なし（必須） | 端末登録時に返す観測ページ URL の基底。末尾に `edge_device_id` を付けて返す |
 | `HEARTBEAT_TIMEOUT` | `2m` | 観測点の実効的な `enabled` を判定する Heartbeat の鮮度。`time.ParseDuration` が解釈する形式を取る |
+| `GRAPH_AUTHORING_URL` | なし（必須） | GraphSupplyService の呼び出し先。受領した内部 JWT をそのまま `Authorization` に載せて呼ぶ |
+| `FLOW_CONTROL_URL` | なし（必須） | FlowControlService の呼び出し先。認証情報を付けずに呼ぶ |
+| `OBSERVATION_WINDOW` | `1m` | スナップショットに含める計測値の期間（`window_end` がこの期間内のもの） |
+| `OPTIMIZE_TIMEOUT` | `30s` | Optimize 呼び出しのタイムアウト。超過や失敗はログに残し、計測値の受け入れは成功させる |
 | `INTERNAL_JWKS_URL` | `http://gateway:8080/.well-known/jwks.json` | 内部 JWT の検証に使う JWKS の取得先 |
 | `INTERNAL_JWT_ISSUER` | `service-gateway` | 内部 JWT に期待する `iss` |
 | `INTERNAL_JWT_AUDIENCE` | `tolo-observation` | 内部 JWT に期待する `aud` |

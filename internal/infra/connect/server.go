@@ -53,6 +53,7 @@ func RoutesWithJWTSettings(
 	settings JWTSettings,
 	edgeDevices application.EdgeDeviceUseCases,
 	measurements application.MeasurementIngestUseCases,
+	statusQueries application.StatusQueryUseCases,
 ) (func(mux *http.ServeMux), error) {
 	cache, err := jwks.New(jwks.Config{
 		URL:             settings.JWKSURL,
@@ -73,7 +74,7 @@ func RoutesWithJWTSettings(
 		return nil, fmt.Errorf("create internal JWT verifier: %w", err)
 	}
 
-	return RoutesWithVerifier(tokenVerifier, edgeDevices, measurements)
+	return RoutesWithVerifier(tokenVerifier, edgeDevices, measurements, statusQueries)
 }
 
 // RoutesWithVerifier builds the service routes around a verifier of the
@@ -83,6 +84,7 @@ func RoutesWithVerifier(
 	tokenVerifier interceptor.TokenVerifier,
 	edgeDevices application.EdgeDeviceUseCases,
 	measurements application.MeasurementIngestUseCases,
+	statusQueries application.StatusQueryUseCases,
 ) (func(mux *http.ServeMux), error) {
 	// The caller sits behind the Service Gateway, so an incoming trace context is
 	// trusted and continued instead of being demoted to a span link.
@@ -113,13 +115,13 @@ func RoutesWithVerifier(
 
 	// Tracing runs before authentication, so a rejected call is still recorded
 	// on the trace it belongs to.
-	options := connectrpc.WithInterceptors(tracing, auth)
+	options := connectrpc.WithInterceptors(tracing, auth, forwardAuthorization())
 
 	return func(mux *http.ServeMux) {
 		mux.Handle(observationv1connect.NewMeasurementIngestServiceHandler(NewMeasurementIngestService(measurements), options))
 		mux.Handle(observationv1connect.NewEdgeDeviceServiceHandler(NewEdgeDeviceService(edgeDevices), options))
 		mux.Handle(observationv1connect.NewManualInterventionServiceHandler(NewManualInterventionService(), options))
-		mux.Handle(observationv1connect.NewStatusQueryServiceHandler(NewStatusQueryService(), options))
+		mux.Handle(observationv1connect.NewStatusQueryServiceHandler(NewStatusQueryService(statusQueries), options))
 	}, nil
 }
 
