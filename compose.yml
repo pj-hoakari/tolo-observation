@@ -36,6 +36,8 @@ services:
             DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
             SERVER_ADDR: :8080
             OBSERVATION_PAGE_BASE_URL: http://localhost:3000/observe
+            GRAPH_AUTHORING_URL: http://gateway:8080
+            FLOW_CONTROL_URL: http://flow-control:8080
         depends_on:
             migrate:
                 condition: service_completed_successfully

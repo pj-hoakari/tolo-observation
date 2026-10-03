@@ -9,6 +9,7 @@ import (
 	connectrpc "connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	kernelv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/kernel/v1"
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
 	"github.com/pj-hoakari/tolo-observation/internal/application"
@@ -289,10 +290,69 @@ func NewManualInterventionService() *ManualInterventionService {
 
 type StatusQueryService struct {
 	observationv1connect.UnimplementedStatusQueryServiceHandler
+
+	useCases application.StatusQueryUseCases
 }
 
-func NewStatusQueryService() *StatusQueryService {
+func NewStatusQueryService(useCases application.StatusQueryUseCases) *StatusQueryService {
 	return &StatusQueryService{
 		UnimplementedStatusQueryServiceHandler: observationv1connect.UnimplementedStatusQueryServiceHandler{},
+		useCases:                               useCases,
+	}
+}
+
+func (s *StatusQueryService) GetEventOverview(
+	ctx context.Context,
+	req *connectrpc.Request[observationv1.GetEventOverviewRequest],
+) (*connectrpc.Response[observationv1.GetEventOverviewResponse], error) {
+	overview, err := s.useCases.GetEventOverview(ctx, req.Msg.GetEventId())
+	if err != nil {
+		return nil, observationError(ctx, err)
+	}
+
+	return connectrpc.NewResponse(&observationv1.GetEventOverviewResponse{
+		Overview: &observationv1.EventOverview{
+			Snapshot:    newProtoSnapshot(overview.Snapshot),
+			Risks:       nil,
+			DangerFlags: nil,
+		},
+	}), nil
+}
+
+func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
+	if snapshot == nil {
+		return nil
+	}
+
+	points := make([]*kernelv1.PointScore, 0, len(snapshot.PointScores))
+	for _, score := range snapshot.PointScores {
+		points = append(points, &kernelv1.PointScore{
+			PointId:        score.PointID,
+			PeopleScore:    score.PeopleScore,
+			OccupancyDelta: score.OccupancyDelta,
+			Exhaustive:     score.Exhaustive,
+		})
+	}
+
+	routes := make([]*kernelv1.RouteScore, 0, len(snapshot.RouteScores))
+	for _, score := range snapshot.RouteScores {
+		routes = append(routes, &kernelv1.RouteScore{
+			RouteId: score.RouteID,
+			Flow: &kernelv1.RouteScore_DirectionalFlow{
+				DirectionalFlow: &kernelv1.DirectionalFlow{Forward: score.Forward, Backward: score.Backward},
+			},
+			StagnationScore: score.StagnationScore,
+			TurnRatio:       nil,
+			Exhaustive:      score.Exhaustive,
+		})
+	}
+
+	return &kernelv1.ObservationSnapshot{
+		SnapshotId:  snapshot.ID,
+		EventId:     snapshot.EventID,
+		WindowStart: timestamppb.New(snapshot.WindowStart),
+		WindowEnd:   timestamppb.New(snapshot.WindowEnd),
+		PointScores: points,
+		RouteScores: routes,
 	}
 }

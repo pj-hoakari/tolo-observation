@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -37,13 +38,15 @@ type MeasurementIngestUseCases interface {
 type MeasurementIngestService struct {
 	devices      repository.EdgeDeviceRepository
 	measurements repository.MeasurementRepository
+	cycle        ObservationCycleRunner
 }
 
 func NewMeasurementIngestService(
 	devices repository.EdgeDeviceRepository,
 	measurements repository.MeasurementRepository,
+	cycle ObservationCycleRunner,
 ) *MeasurementIngestService {
-	return &MeasurementIngestService{devices: devices, measurements: measurements}
+	return &MeasurementIngestService{devices: devices, measurements: measurements, cycle: cycle}
 }
 
 func (s *MeasurementIngestService) ReportMeasurements(
@@ -81,6 +84,10 @@ func (s *MeasurementIngestService) ReportMeasurements(
 
 	if err := s.measurements.RecordAll(ctx, tenantPublicID, input.EventID, measurements); err != nil {
 		return 0, fmt.Errorf("record measurements: %w", err)
+	}
+
+	if err := s.cycle.Run(ctx, tenantPublicID, input.EventID); err != nil {
+		slog.WarnContext(ctx, "observation cycle failed", "event_id", input.EventID, "error", err)
 	}
 
 	return accepted, nil

@@ -1,7 +1,9 @@
 package application_test
 
 import (
+	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -19,7 +21,29 @@ const (
 	testMeasurementWindow = 2 * time.Minute
 )
 
+type cycleFunc func(ctx context.Context, tenantPublicID, eventID string) error
+
+func (f cycleFunc) Run(ctx context.Context, tenantPublicID, eventID string) error {
+	return f(ctx, tenantPublicID, eventID)
+}
+
 func newIngestService(t *testing.T) (
+	*application.MeasurementIngestService,
+	*MockEdgeDeviceRepository,
+	*MockMeasurementRepository,
+) {
+	t.Helper()
+
+	service, devices, measurements := newIngestServiceWithCycle(t, cycleFunc(func(context.Context, string, string) error {
+		t.Error("observation cycle ran for a rejected report")
+
+		return nil
+	}))
+
+	return service, devices, measurements
+}
+
+func newIngestServiceWithCycle(t *testing.T, cycle application.ObservationCycleRunner) (
 	*application.MeasurementIngestService,
 	*MockEdgeDeviceRepository,
 	*MockMeasurementRepository,
@@ -30,7 +54,7 @@ func newIngestService(t *testing.T) (
 	devices := NewMockEdgeDeviceRepository(controller)
 	measurements := NewMockMeasurementRepository(controller)
 
-	return application.NewMeasurementIngestService(devices, measurements), devices, measurements
+	return application.NewMeasurementIngestService(devices, measurements, cycle), devices, measurements
 }
 
 func edgeMeasurement(pointID string) application.MeasurementInput {
@@ -58,7 +82,15 @@ func registeredDevice() domain.EdgeDevice {
 func TestReportMeasurementsRecordsUnderTheDevicesTenant(t *testing.T) {
 	t.Parallel()
 
-	service, devices, measurements := newIngestService(t)
+	var cycled []string
+
+	service, devices, measurements := newIngestServiceWithCycle(t, cycleFunc(
+		func(_ context.Context, tenantPublicID, eventID string) error {
+			cycled = append(cycled, tenantPublicID, eventID)
+
+			return errors.New("flow control unreachable")
+		},
+	))
 	devices.EXPECT().
 		FindByID(gomock.Any(), domain.EdgeDeviceID(testEdgeDeviceID)).
 		Return(registeredDevice(), nil)
@@ -83,6 +115,10 @@ func TestReportMeasurementsRecordsUnderTheDevicesTenant(t *testing.T) {
 
 	if got, want := accepted, int32(2); got != want {
 		t.Errorf("accepted = %d, want %d", got, want)
+	}
+
+	if want := []string{otherTenantPublicID, testEventPublicID}; !slices.Equal(cycled, want) {
+		t.Errorf("observation cycle ran with %v, want %v", cycled, want)
 	}
 }
 
