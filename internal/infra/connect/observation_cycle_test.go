@@ -96,7 +96,10 @@ func startFlowStub(t *testing.T) (*flowStub, string) {
 	mux := http.NewServeMux()
 	mux.Handle(flowv1connect.NewFlowControlServiceHandler(stub))
 
-	server := httptest.NewServer(mux)
+	server := httptest.NewUnstartedServer(mux)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	t.Cleanup(server.Close)
 
 	return stub, server.URL
@@ -111,6 +114,10 @@ func (s *flowStub) Optimize(
 
 	if s.unavailable {
 		return nil, connectrpc.NewError(connectrpc.CodeUnavailable, errors.New("flow control is down"))
+	}
+
+	if req.Peer().Protocol != connectrpc.ProtocolGRPC {
+		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, errors.New("flow control serves gRPC only"))
 	}
 
 	s.requests = append(s.requests, req.Msg)

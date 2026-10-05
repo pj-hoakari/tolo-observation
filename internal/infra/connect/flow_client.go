@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"net/http"
 
 	connectrpc "connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -22,8 +23,16 @@ type FlowControlClient struct {
 	client flowv1connect.FlowControlServiceClient
 }
 
-func NewFlowControlClient(httpClient connectrpc.HTTPClient, baseURL string) *FlowControlClient {
-	return &FlowControlClient{client: flowv1connect.NewFlowControlServiceClient(httpClient, baseURL)}
+func NewFlowControlClient(baseURL string) *FlowControlClient {
+	protocols := new(http.Protocols)
+	protocols.SetHTTP2(true)
+	protocols.SetUnencryptedHTTP2(true)
+
+	httpClient := &http.Client{Transport: &http.Transport{Protocols: protocols}}
+
+	return &FlowControlClient{
+		client: flowv1connect.NewFlowControlServiceClient(httpClient, baseURL, connectrpc.WithGRPC()),
+	}
 }
 
 func (c *FlowControlClient) Optimize(
