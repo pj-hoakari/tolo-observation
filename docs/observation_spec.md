@@ -264,7 +264,7 @@ message EventOverview {
   tenant_id／event_id で分割し、保護境界の強制点を本サービスに集約する
 - Flow／Line への履歴（時系列窓・統計・最適化履歴・フィードバック）の切り出し・同梱は本サービスの責務
   Flow／Line は永続化層を直接参照しない（`OptimizeRequest.history`／`GuideQueuesRequest.history`）
-  Flow／Line への呼び出しは Service Gateway を経由しない直接呼び出しとし、ワークロード資格情報を宛先が直接検証する（Flow Control、Line Control）。他のサービス間呼び出しは Service Gateway 経由のまま
+  Flow／Line への呼び出しは Service Gateway を経由しない直接呼び出しとし、Observation 以外から到達できないことをインフラ層で保証する（Flow Control、Line Control）。他のサービス間呼び出しは Service Gateway 経由のまま
 - ゲスト向け状況の生成と `guest-status` トピックへの publish は本サービスの責務（スナップショット確定・行列状態更新を契機。sequence を単調増加で付与）
   publish する内容は状況（混雑・行列・並び先案内）の ID と数値のみ。表示名の付与・文言化は Guest Service の責務
   誘導提案はスタッフ向けで、Operation の配送（開＝Realtime／閉＝Notification）でのみ届く
