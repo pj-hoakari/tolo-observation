@@ -126,7 +126,7 @@ func run() error {
 
 	cycle := application.NewObservationCycle(
 		connectinfra.NewGraphSupplyClient(http.DefaultClient, graphAuthoringURL),
-		connectinfra.NewFlowControlClient(http.DefaultClient, flowControlURL),
+		connectinfra.NewFlowControlClient(flowControlURL),
 		edgeDeviceRepository,
 		measurementRepository,
 		snapshots,

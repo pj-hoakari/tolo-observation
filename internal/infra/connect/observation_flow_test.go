@@ -125,7 +125,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 
 	cycle := application.NewObservationCycle(
 		NewGraphSupplyClient(http.DefaultClient, graphURL),
-		NewFlowControlClient(http.DefaultClient, flowURL),
+		NewFlowControlClient(flowURL),
 		devices,
 		measurements,
 		snapshots,
