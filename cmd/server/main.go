@@ -20,11 +20,13 @@ import (
 )
 
 const (
-	defaultAddr             = ":8080"
-	defaultLogLevel         = "info"
-	defaultHeartbeatTimeout = 2 * time.Minute
-	shutdownTimeout         = 10 * time.Second
-	readHeaderTimeout       = 10 * time.Second
+	defaultAddr              = ":8080"
+	defaultLogLevel          = "info"
+	defaultHeartbeatTimeout  = 2 * time.Minute
+	defaultObservationWindow = time.Minute
+	defaultOptimizeTimeout   = 30 * time.Second
+	shutdownTimeout          = 10 * time.Second
+	readHeaderTimeout        = 10 * time.Second
 )
 
 func main() {
@@ -68,6 +70,26 @@ func run() error {
 		return fmt.Errorf("read HEARTBEAT_TIMEOUT: %w", err)
 	}
 
+	graphAuthoringURL := os.Getenv("GRAPH_AUTHORING_URL")
+	if graphAuthoringURL == "" {
+		return errors.New("GRAPH_AUTHORING_URL is required")
+	}
+
+	flowControlURL := os.Getenv("FLOW_CONTROL_URL")
+	if flowControlURL == "" {
+		return errors.New("FLOW_CONTROL_URL is required")
+	}
+
+	observationWindow, err := time.ParseDuration(getenv("OBSERVATION_WINDOW", defaultObservationWindow.String()))
+	if err != nil {
+		return fmt.Errorf("read OBSERVATION_WINDOW: %w", err)
+	}
+
+	optimizeTimeout, err := time.ParseDuration(getenv("OPTIMIZE_TIMEOUT", defaultOptimizeTimeout.String()))
+	if err != nil {
+		return fmt.Errorf("read OPTIMIZE_TIMEOUT: %w", err)
+	}
+
 	shutdownTracing, err := telemetry.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("setup tracing: %w", err)
@@ -88,8 +110,10 @@ func run() error {
 		}
 	}()
 
+	edgeDeviceRepository := dbinfra.NewPostgresEdgeDeviceRepository(db)
+
 	edgeDevices := application.NewEdgeDeviceService(
-		dbinfra.NewPostgresEdgeDeviceRepository(db),
+		edgeDeviceRepository,
 		application.EdgeDeviceConfig{
 			ObservationPageBaseURL: observationPageBaseURL,
 			HeartbeatTimeout:       heartbeatTimeout,
@@ -97,12 +121,32 @@ func run() error {
 		},
 	)
 
-	measurements := application.NewMeasurementIngestService(
-		dbinfra.NewPostgresEdgeDeviceRepository(db),
-		dbinfra.NewPostgresMeasurementRepository(db),
+	measurementRepository := dbinfra.NewPostgresMeasurementRepository(db)
+	snapshots := dbinfra.NewPostgresSnapshotRepository(db)
+
+	cycle := application.NewObservationCycle(
+		connectinfra.NewGraphSupplyClient(http.DefaultClient, graphAuthoringURL),
+		connectinfra.NewFlowControlClient(http.DefaultClient, flowControlURL),
+		edgeDeviceRepository,
+		measurementRepository,
+		snapshots,
+		application.ObservationCycleConfig{
+			Window:           observationWindow,
+			OptimizeTimeout:  optimizeTimeout,
+			HeartbeatTimeout: heartbeatTimeout,
+			Now:              nil,
+		},
 	)
 
-	serviceRoutes, err := connectinfra.RoutesWithJWTSettings(jwtSettings, edgeDevices, measurements)
+	measurements := application.NewMeasurementIngestService(
+		edgeDeviceRepository,
+		measurementRepository,
+		cycle,
+	)
+
+	serviceRoutes, err := connectinfra.RoutesWithJWTSettings(
+		jwtSettings, edgeDevices, measurements, application.NewStatusQueryService(snapshots),
+	)
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)
 	}

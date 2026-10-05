@@ -98,6 +98,9 @@ type observationFlow struct {
 	generator     *jwtgen.Generator
 	edgeDevices   observationv1connect.EdgeDeviceServiceClient
 	measurements  observationv1connect.MeasurementIngestServiceClient
+	statusQueries observationv1connect.StatusQueryServiceClient
+	graph         *graphStub
+	flow          *flowStub
 	observedStart time.Time
 }
 
@@ -115,6 +118,24 @@ func newObservationFlow(t *testing.T) observationFlow {
 	}
 
 	devices := dbinfra.NewPostgresEdgeDeviceRepository(testDB)
+	measurements := dbinfra.NewPostgresMeasurementRepository(testDB)
+	snapshots := dbinfra.NewPostgresSnapshotRepository(testDB)
+	graph, graphURL := startGraphStub(t)
+	flow, flowURL := startFlowStub(t)
+
+	cycle := application.NewObservationCycle(
+		NewGraphSupplyClient(http.DefaultClient, graphURL),
+		NewFlowControlClient(http.DefaultClient, flowURL),
+		devices,
+		measurements,
+		snapshots,
+		application.ObservationCycleConfig{
+			Window:           time.Minute,
+			OptimizeTimeout:  5 * time.Second,
+			HeartbeatTimeout: time.Hour,
+			Now:              time.Now,
+		},
+	)
 
 	routes, err := RoutesWithVerifier(
 		newTestVerifier(t, keys),
@@ -123,7 +144,8 @@ func newObservationFlow(t *testing.T) observationFlow {
 			HeartbeatTimeout:       time.Hour,
 			Now:                    time.Now,
 		}),
-		application.NewMeasurementIngestService(devices, dbinfra.NewPostgresMeasurementRepository(testDB)),
+		application.NewMeasurementIngestService(devices, measurements, cycle),
+		application.NewStatusQueryService(snapshots),
 	)
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
@@ -139,6 +161,9 @@ func newObservationFlow(t *testing.T) observationFlow {
 		generator:     generator,
 		edgeDevices:   observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL),
 		measurements:  observationv1connect.NewMeasurementIngestServiceClient(httpServer.Client(), httpServer.URL),
+		statusQueries: observationv1connect.NewStatusQueryServiceClient(httpServer.Client(), httpServer.URL),
+		graph:         graph,
+		flow:          flow,
 		observedStart: time.Now().Add(-time.Minute),
 	}
 }
