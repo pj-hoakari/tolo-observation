@@ -47,7 +47,7 @@ package: `tolo.observation.v1`
 
 | 相手 | RPC | 目的 | 関連ドメインイベント（本コンテキスト側） |
 |---|---|---|---|
-| Graph Authoring | GetCurrentRevision／GetObservationPointMappings／GetGatePoints | 会場グラフ・紐づけ・設計時ゲート指定の取得 | — |
+| Graph Authoring | GetCurrentRevision／GetObservationPointMappings／GetGatePoints | グラフ・紐づけ・設計時ゲート指定の取得 | — |
 | Flow Control | Optimize | 観測スナップショット確定等を契機に最適化要求（検知状態・手動介入を同梱） | OptimizationRequested／OptimizationResultPersisted |
 | Line Control | GuideQueues | 行列把握・案内・形状最適化の要求 | 同上 |
 | Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う） | — |

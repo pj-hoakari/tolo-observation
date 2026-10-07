@@ -24,9 +24,9 @@ package tolo.kernel.v1;
 import "google/protobuf/timestamp.proto";
 
 // event_id はテナントが発番する公開 ID（16 文字 hex）
-// point_id／route_id はグラフ編集のグラフ文書に由来する識別子（エディタ採番。イベントの会場グラフ内で一意。公開 ID の発番規約の対象外）
+// point_id／route_id はグラフ編集のグラフ文書に由来する識別子（エディタ採番。イベントのグラフ内で一意。公開 ID の発番規約の対象外）
 
-// グラフ: 会場をポイントとルートで表す有向グラフ（構造の正本はグラフ編集）
+// グラフ: 現場の接続関係をポイントとルートで表すグラフ（構造の正本はグラフ編集）
 message Graph {
   string event_id = 1;        // グラフはイベント単位
   string revision_id = 2;     // グラフ版（下流は現在の版を消費）
