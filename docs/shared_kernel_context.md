@@ -13,7 +13,7 @@
 | RiskLocation／DangerFlag | Flow が判定／スタッフが宣言 | Flow、Line、スタッフ、ゲスト | 提案・状況表示に含まれる |
 | GraphAnchor | 配置の定義側（グラフ編集・Operation） | 管理 UI、Guest Service、観測（GetObservationPointMappings 経由。Flow／Line へは渡らない） | 配置位置の共有語彙（複数配置可。ルート途中は表示用の比率） |
 
-危険度（Risk Level）は Flow Control 専用のため本 package には置かない（`tolo.flow.v1` 内部）
+危険度（Risk Level）は Flow Control 専用のため本 package には置かない（`tolo.flow.v1` の内部に置く）
 ゲートと行列はカーネルに持ち込まない（`tolo.line.v1` で定義）
 
 ## 参考 proto 定義
