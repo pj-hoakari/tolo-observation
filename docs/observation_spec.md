@@ -23,7 +23,7 @@ package: `tolo.observation.v1`
 | RegisterEdgeDevice | エッジ端末を登録する。登録は実質的に観測点登録を兼ねる | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered |
 | UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。配下観測点は観測不能化する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled |
 | ListEdgeDevices | イベント配下のエッジ端末と観測点の一覧を返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
-| Heartbeat | エッジ端末の稼働を通知する。途絶が一定時間超過で切断・観測不能化に波及 | エッジ端末 | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
+| Heartbeat | エッジ端末の稼働を通知する。途絶が一定時間を超えると、切断と観測不能化に波及する | エッジ端末 | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
 
 ### 手動介入・運用状態の変更（現場誘導のシステム接点。誘導ドメイン所属）
@@ -32,7 +32,7 @@ package: `tolo.observation.v1`
 |---|---|---|---|---|
 | OperateGate | ゲート（窓口）を開設・閉鎖する。開閉とサービスレート設定値は次回の局所行列誘導の入力になる（誘導への介入として本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | GateOpened／GateClosed（局所行列誘導所属） |
 | ToggleDangerFlag | 危険フラグ（手動危険宣言）を立てる・下げる。即時トリガーとして次回最適化要求に同梱 | スタッフアプリ | `event_access` + events.operate | DangerFlagToggledByOperator（Flow 側 DangerFlagRaised/Lowered の契機） |
-| RegisterScheduleEvent | スケジュール（開演等の予定）を登録する。スケジュールトリガーの源 | スタッフアプリ | `event_access` + events.operate | ScheduleEventRegistered |
+| RegisterScheduleEvent | スケジュール（開演等の予定）を登録する。スケジュールトリガーの発生源 | スタッフアプリ | `event_access` + events.operate | ScheduleEventRegistered |
 | ReportCongestion | 混雑を手動報告する | スタッフアプリ | `event_access` + events.operate | CongestionManuallyReported |
 | CorrectQueue | 行列状態を手動補正する（局所行列誘導へ渡す） | スタッフアプリ | `event_access` + events.operate | QueueManuallyCorrected |
 
@@ -259,7 +259,7 @@ message EventOverview {
 
 - 自テナントの計測値のみ収集・永続化（クロステナント集約は参照値集約が担う）
 - 永続化先は PostgreSQL の時系列テーブル（パーティション分割）とし、本コンテキスト内部の実装詳細とする
-  列指向 DWH（BigQuery／ClickHouse 等）への移行は視野に残し、分岐条件を超えたときに検討する。分岐条件の初期値は「履歴切り出しクエリの p95 が数百 ms を超える、または対象テーブルが数億行規模に達する」のいずれかとし、実測にもとづき運用で調整する
+  列指向 DWH（BigQuery／ClickHouse 等）への移行の余地は残し、分岐条件を超えたときに検討する。分岐条件の初期値は「履歴切り出しクエリの p95 が数百 ms を超える、または対象テーブルが数億行規模に達する」のいずれかとし、実測にもとづき運用で調整する
   格納対象: 計測値、観測スナップショット、最適化履歴（提案・判定・発火トリガー）、検知状態、行列状態、フィードバック値
   tenant_id／event_id で分割し、保護境界の強制点を本サービスに集約する
 - Flow／Line への履歴（時系列窓・統計・最適化履歴・フィードバック）の切り出し・同梱は本サービスの責務
@@ -269,7 +269,7 @@ message EventOverview {
   publish する内容は状況（混雑・行列・並び先案内）の ID と数値のみ。表示名の付与・文言化は Guest Service の責務
   誘導提案はスタッフ向けで、Operation の配送（開＝Realtime／閉＝Notification）でのみ届く
   Guest Service はアクセス時に本サービスへ問い合わせない（復旧時の GetGuestSnapshot を除く）
-  publish の失敗は再試行不要（sequence 冪等で次回 publish が回復。配信の再試行はブローカーに委譲）
+  publish の失敗は再試行不要（sequence による冪等性があるため、次回の publish で回復する。配信の再試行はブローカーに任せる）
   publish にはイベント単位の順序キーを付与する（トピック規約。spec-base/README.md）
 - 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、UnregisterEdgeDevice、UpdateObservationPointConfig）も例外としない
   内部 JWT に `event_id` クレームがあればリクエストの `event_id` と突合し、不一致は `permission_denied` を返す
@@ -281,7 +281,7 @@ message EventOverview {
   切断は Heartbeat 途絶で判定し、復帰すれば観測再開する（一時的）
   登録解除は `UnregisterEdgeDevice` による明示の操作であり、復帰しない（恒久的）。両者は `EdgeDevice.unregistered` で区別する
 - 登録解除は論理削除であり、エッジ端末と配下観測点の識別子を保持する
-  観測点を物理削除するとグラフ編集が持つ観測点とグラフ要素の対応が宙づりになるため、識別子は残す
+  観測点を物理削除するとグラフ編集が持つ観測点とグラフ要素の対応の参照先が失われるため、識別子は残す
   配下観測点は観測不能化（`enabled = false`）し、観測再開の対象から外す
 - 登録解除の取り消しは設けない。撤去した端末を再び使う場合は新規登録とし、グラフ紐づけをやり直す
   機材の入れ替えは登録解除を伴わない。新しい機材に同じ観測ページ URL を設定すれば同一のエッジ端末として続く
@@ -300,8 +300,8 @@ message EventOverview {
   機材を入れ替える場合は、新しい機材に同じ URL を設定すれば同一のエッジ端末として続く
   URL は秘密ではない。提示しても権限は生じず、計測値の送信には別途 `event_access` を要する
 - `edge_device_id` は URL に載るため、テナント・イベントと同じく公開 ID（ランダムな 16 文字 hex）とし、内部主キーを外へ出さない
-- 観測サイクル（スナップショット確定 → Flow／Line への要求、設定値の取得）は計測値の到着を契機に同期で回る
-  タイマー駆動ではないため、後段の呼び出しは計測値を運んだリクエストの文脈の中で行われる
+- 観測サイクル（スナップショット確定 → Flow／Line への要求、設定値の取得）は計測値の到着を契機に同期で実行される
+  タイマー駆動ではないため、後段の呼び出しは、計測値を送ってきたリクエストの文脈の中で行う
   最後の後段呼び出しは、入口内部 JWT の実際の `exp` より前に開始する。入口変換の `exp` は元トークンの残存時間で120秒より短くなる場合があるため、固定の TTL とは比較しない。厳密モードの求解にも、この開始期限へ収まる時間予算を与える
   `time_to_last_downstream_start_seconds` は入口から最後の後段呼び出しの開始までを計測し、入口 JWT の `exp` までの実時間予算と比較する
   `cycle_end_to_end_duration_seconds` は入口から後段呼び出しの完了までを計測し、30秒の配信 SLO と各 RPC の timeout に対する性能指標とする。JWT の TTL または `exp` をサイクル完了期限として扱わない（spec-base/nonfunctional.md）
