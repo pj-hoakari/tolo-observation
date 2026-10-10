@@ -266,6 +266,7 @@ message EventOverview {
 - Flow／Line への履歴の切り出し・同梱は本サービスの責務。Flow へは同一イベントの観測値から計算した統計と時系列（`OptimizeRequest.history_digest`）と前回の最適化結果（`previous_result`）を、Line へは履歴一式（`GuideQueuesRequest.history`）を渡す
   Flow／Line は永続化層を直接参照しない
 - Flow へ渡すグラフと観測値は、本サービスが共有カーネルの型から Flow 独自の型（`tolo.flow.v1`）へ変換する（Flow Control）
+  入退出点は、共有カーネルの `Point.boundary` を Flow の `Node.boundary` へそのまま写す。入退出点の開閉は `boundary.active` で伝え、`Node.enabled`（ノード自体の有効無効）には反映しない
 - Flow／Line の型（`tolo.flow.v1`／`tolo.line.v1`）を使うのは本サービスだけである。本サービスは Flow／Line と他サービスの間の腐敗防止層として、次の経路で型を変換する
   - Operation.RequestProposalDelivery: Flow の最適化結果（`OptimizeResponse.optimization_result`）を `tolo.operation.v1.FlowProposals` へ、Line の応答（`GuideQueuesResponse`）を `tolo.operation.v1.LineGuidance` へ変換する。Line の `guest_digest` は含めない
   - Operation.RecordFeedbackValues: Flow のフィードバック値（`OptimizeResponse.feedback_values`）を `tolo.operation.v1.FeedbackValues` へ変換する

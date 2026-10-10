@@ -3,6 +3,7 @@ package connect
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -63,6 +64,9 @@ func (s *graphStub) GetCurrentRevision(
 		Points: []*kernelv1.Point{
 			{PointId: "p1", Type: kernelv1.PointType_POINT_TYPE_GOAL},
 			{PointId: "p2", Type: kernelv1.PointType_POINT_TYPE_TRANSIT_ONLY},
+			{PointId: "p3", Type: kernelv1.PointType_POINT_TYPE_TRANSIT_ONLY, Boundary: &kernelv1.Boundary{Direction: kernelv1.BoundaryDirection_BOUNDARY_DIRECTION_ENTRY, Active: true}},
+			{PointId: "p4", Type: kernelv1.PointType_POINT_TYPE_TRANSIT_ONLY, Boundary: &kernelv1.Boundary{Direction: kernelv1.BoundaryDirection_BOUNDARY_DIRECTION_EXIT, Active: false}},
+			{PointId: "p5", Type: kernelv1.PointType_POINT_TYPE_GOAL, Boundary: &kernelv1.Boundary{Direction: kernelv1.BoundaryDirection_BOUNDARY_DIRECTION_ENTRY_AND_EXIT, Active: true}},
 		},
 		Routes: []*kernelv1.Route{
 			{RouteId: "r1", FromPointId: "p1", ToPointId: "p2", Direction: kernelv1.DirectionAttribute_DIRECTION_ATTRIBUTE_BOTH_WAYS},
@@ -211,8 +215,36 @@ func TestObservationCycle(t *testing.T) {
 		t.Errorf("Optimize event/tenant = %q/%q", optimize.GetEventId(), optimize.GetTenantContext().GetTenantId())
 	}
 
-	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 3 {
-		t.Errorf("Optimize graph has %d elements, want 3", got)
+	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 6 {
+		t.Errorf("Optimize graph has %d elements, want 6", got)
+	}
+
+	type nodeBoundary struct {
+		boundary  bool
+		direction flowv1.BoundaryDirection
+		active    bool
+		enabled   bool
+	}
+
+	gotNodes := map[string]nodeBoundary{}
+	for _, node := range optimize.GetGraph().GetNodes() {
+		gotNodes[node.GetNodeId()] = nodeBoundary{
+			boundary:  node.GetBoundary() != nil,
+			direction: node.GetBoundary().GetDirection(),
+			active:    node.GetBoundary().GetActive(),
+			enabled:   node.GetEnabled(),
+		}
+	}
+
+	wantNodes := map[string]nodeBoundary{
+		"p1": {enabled: true},
+		"p2": {enabled: true},
+		"p3": {boundary: true, direction: flowv1.BoundaryDirection_BOUNDARY_DIRECTION_ENTRY, active: true, enabled: true},
+		"p4": {boundary: true, direction: flowv1.BoundaryDirection_BOUNDARY_DIRECTION_EXIT, active: false, enabled: true},
+		"p5": {boundary: true, direction: flowv1.BoundaryDirection_BOUNDARY_DIRECTION_ENTRY_AND_EXIT, active: true, enabled: true},
+	}
+	if !maps.Equal(gotNodes, wantNodes) {
+		t.Errorf("Optimize node boundaries = %+v, want %+v", gotNodes, wantNodes)
 	}
 
 	flows := map[flowv1.FlowDirection]float64{}

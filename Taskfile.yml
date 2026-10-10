@@ -8,7 +8,7 @@ vars:
     # compose.yml の postgres サービスを指す既定接続先
     # 環境変数 DATABASE_URL で migrate タスク上書き
     DEFAULT_DATABASE_URL: postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@localhost:5432/{{.POSTGRES_DB}}?sslmode=disable
-    FLOW_CONTROL_PROTO: ghcr.io/pj-hoakari/tolo-flow-control-proto:0.1.0-dev@sha256:2d1f6e0b1598342936a635a323e0422000873c36810c05ebfeee382c92914c33
+    FLOW_CONTROL_PROTO: ghcr.io/pj-hoakari/tolo-flow-control-proto:0.2.0-dev@sha256:b91892f6d34f734bd1d93859b56c2a1250b71aca9d57123aa884f0a6a2a58572
     FLOW_CONTROL_PROTO_OUT: .proto-deps/tolo-flow-control
 
 tasks:

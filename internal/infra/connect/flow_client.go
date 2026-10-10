@@ -124,12 +124,12 @@ func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]
 		nodes = append(nodes, &flowv1.Node{
 			NodeId:          proto.String(point.ID),
 			Kind:            flowNodeKind(point.Type).Enum(),
-			IsBoundary:      proto.Bool(point.IsBoundary),
-			Enabled:         proto.Bool(!point.IsBoundary || point.BoundaryActive),
+			Enabled:         proto.Bool(true),
 			AttributeTags:   nil,
 			TimeResolutionS: proto.Int32(resolution),
 			DangerFlag:      proto.Bool(false),
 			DangerCapacity:  nil,
+			Boundary:        flowBoundary(point.Boundary),
 		})
 	}
 
@@ -177,6 +177,32 @@ func flowNodeKind(pointType domain.PointType) flowv1.NodeKind {
 		return flowv1.NodeKind_NODE_KIND_UNSPECIFIED
 	default:
 		return flowv1.NodeKind_NODE_KIND_UNSPECIFIED
+	}
+}
+
+func flowBoundary(boundary *domain.Boundary) *flowv1.Boundary {
+	if boundary == nil {
+		return nil
+	}
+
+	return &flowv1.Boundary{
+		Direction: flowBoundaryDirection(boundary.Direction).Enum(),
+		Active:    proto.Bool(boundary.Active),
+	}
+}
+
+func flowBoundaryDirection(direction domain.BoundaryDirection) flowv1.BoundaryDirection {
+	switch direction {
+	case domain.BoundaryDirectionEntry:
+		return flowv1.BoundaryDirection_BOUNDARY_DIRECTION_ENTRY
+	case domain.BoundaryDirectionExit:
+		return flowv1.BoundaryDirection_BOUNDARY_DIRECTION_EXIT
+	case domain.BoundaryDirectionEntryAndExit:
+		return flowv1.BoundaryDirection_BOUNDARY_DIRECTION_ENTRY_AND_EXIT
+	case domain.BoundaryDirectionUnspecified:
+		return flowv1.BoundaryDirection_BOUNDARY_DIRECTION_UNSPECIFIED
+	default:
+		return flowv1.BoundaryDirection_BOUNDARY_DIRECTION_UNSPECIFIED
 	}
 }
 
