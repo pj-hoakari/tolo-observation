@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ func TestNewMeasurement(t *testing.T) {
 	start := time.Date(2026, time.September, 22, 10, 0, 0, 0, time.UTC)
 	end := start.Add(30 * time.Second)
 
-	measurement, err := domain.NewMeasurement(testObservationPointID, start, end, 3, 1)
+	measurement, err := domain.NewMeasurement(testObservationPointID, start, end, 3, 1, nil)
 	if err != nil {
 		t.Fatalf("NewMeasurement: %v", err)
 	}
@@ -43,8 +44,17 @@ func TestNewMeasurementValidation(t *testing.T) {
 		windowEnd          time.Time
 		countIn            int32
 		countOut           int32
+		meanDetectedPeople *float64
 		wantErr            error
 	}{
+		{
+			name: "negative mean detected people", observationPointID: testObservationPointID,
+			windowStart: start, windowEnd: end, meanDetectedPeople: new(-0.5), wantErr: domain.ErrInvalidDetectedPeople,
+		},
+		{
+			name: "NaN mean detected people", observationPointID: testObservationPointID,
+			windowStart: start, windowEnd: end, meanDetectedPeople: new(math.NaN()), wantErr: domain.ErrInvalidDetectedPeople,
+		},
 		{
 			name: "window end equals start", observationPointID: testObservationPointID,
 			windowStart: start, windowEnd: start, wantErr: domain.ErrInvalidMeasurementWindow,
@@ -76,7 +86,7 @@ func TestNewMeasurementValidation(t *testing.T) {
 			t.Parallel()
 
 			_, err := domain.NewMeasurement(test.observationPointID,
-				test.windowStart, test.windowEnd, test.countIn, test.countOut)
+				test.windowStart, test.windowEnd, test.countIn, test.countOut, test.meanDetectedPeople)
 			if !errors.Is(err, test.wantErr) {
 				t.Errorf("NewMeasurement error = %v, want %v", err, test.wantErr)
 			}
@@ -107,7 +117,7 @@ func TestMeasurementRates(t *testing.T) {
 			t.Parallel()
 
 			measurement, err := domain.NewMeasurement(testObservationPointID,
-				start, start.Add(test.window), test.countIn, test.countOut)
+				start, start.Add(test.window), test.countIn, test.countOut, nil)
 			if err != nil {
 				t.Fatalf("NewMeasurement: %v", err)
 			}

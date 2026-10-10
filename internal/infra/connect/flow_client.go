@@ -105,7 +105,7 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 		},
 		Graph:          graph,
 		Observations:   flowObservations(snapshot, nodes, edges),
-		HistoryDigest:  new(flowv1.HistoryDigest),
+		HistoryDigest:  flowHistoryDigest(input.History, edges),
 		DetectionState: detectionState,
 		References:     new(flowv1.Reference),
 		PreviousResult: previousResult,
@@ -212,6 +212,14 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 				ConfidenceFlag: ok.Enum(),
 			},
 		)
+
+		observations.ArcStagnations = append(observations.ArcStagnations, &flowv1.ArcStagnation{
+			EdgeId:         proto.String(score.RouteID),
+			Stagnation:     proto.Float64(score.StagnationScore),
+			Derivation:     flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC.Enum(),
+			SameSensorFlow: proto.Bool(false),
+			ConfidenceFlag: ok.Enum(),
+		})
 	}
 
 	for _, score := range snapshot.PointScores {
@@ -229,6 +237,38 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 	}
 
 	return observations
+}
+
+func flowHistoryDigest(history []domain.Snapshot, edgeIDs map[string]bool) *flowv1.HistoryDigest {
+	series := map[string]*flowv1.ArcWindowSeries{}
+	digest := new(flowv1.HistoryDigest)
+
+	for _, snapshot := range history {
+		at := timestamppb.New(snapshot.WindowEnd)
+
+		for _, score := range snapshot.RouteScores {
+			if !edgeIDs[score.RouteID] {
+				continue
+			}
+
+			arc, ok := series[score.RouteID]
+			if !ok {
+				arc = &flowv1.ArcWindowSeries{
+					EdgeId:                 score.RouteID,
+					FlowSamples:            nil,
+					StagnationSamples:      nil,
+					DirectionalFlowSamples: nil,
+				}
+				series[score.RouteID] = arc
+				digest.WindowSeries = append(digest.WindowSeries, arc)
+			}
+
+			arc.FlowSamples = append(arc.FlowSamples, &flowv1.TimedValue{At: at, Value: score.Forward + score.Backward})
+			arc.StagnationSamples = append(arc.StagnationSamples, &flowv1.TimedValue{At: at, Value: score.StagnationScore})
+		}
+	}
+
+	return digest
 }
 
 func defaultFlowConfig() *flowv1.ResolvedConfig {

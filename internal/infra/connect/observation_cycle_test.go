@@ -225,8 +225,19 @@ func TestObservationCycle(t *testing.T) {
 	}
 
 	occupancies := optimize.GetObservations().GetNodeOccupancies()
-	if len(occupancies) != 1 || occupancies[0].GetNodeId() != "p2" || occupancies[0].GetOccupancyDelta() != 4 {
-		t.Errorf("Optimize node occupancies = %v, want a delta of 4 on p2", occupancies)
+	if len(occupancies) != 1 || occupancies[0].GetNodeId() != "p2" ||
+		occupancies[0].GetOccupancy() != 2.5 || occupancies[0].GetOccupancyDelta() != 4 {
+		t.Errorf("Optimize node occupancies = %v, want 2.5 people and a delta of 4 on p2", occupancies)
+	}
+
+	stagnations := optimize.GetObservations().GetArcStagnations()
+	if len(stagnations) != 1 || stagnations[0].GetEdgeId() != "r1" || stagnations[0].GetStagnation() != 2.5 ||
+		stagnations[0].GetDerivation() != flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC {
+		t.Errorf("Optimize arc stagnations = %v, want 2.5 detected people on r1", stagnations)
+	}
+
+	if series := optimize.GetHistoryDigest().GetWindowSeries(); len(series) != 0 {
+		t.Errorf("first Optimize window series = %v, want none before any past snapshot", series)
 	}
 
 	if flowAuthorizations[0] != "" {
@@ -267,6 +278,28 @@ func TestObservationCycle(t *testing.T) {
 		requests, _ := flow.flow.received()
 		if got := requests[len(requests)-1].GetDetectionState().GetConsecutiveSkipCount(); got != 1 {
 			t.Errorf("detection_state.consecutive_skip_count = %d, want 1 from the previous response", got)
+		}
+	})
+
+	t.Run("sends past snapshots as the window series", func(t *testing.T) {
+		requests, _ := flow.flow.received()
+		latest := requests[len(requests)-1]
+
+		series := latest.GetHistoryDigest().GetWindowSeries()
+		if len(series) != 1 || series[0].GetEdgeId() != "r1" {
+			t.Fatalf("window series = %v, want one series for r1", series)
+		}
+
+		flows := series[0].GetFlowSamples()
+		stagnations := series[0].GetStagnationSamples()
+
+		if len(flows) != 1 || flows[0].GetValue() != 10 || len(stagnations) != 1 || stagnations[0].GetValue() != 2.5 {
+			t.Errorf("window series samples = %v / %v, want the first cycle's flow 10 and stagnation 2.5", flows, stagnations)
+		}
+
+		if !flows[0].GetAt().AsTime().Equal(optimize.GetObservations().GetObservedAt().AsTime()) {
+			t.Errorf("window series sample at %v, want the first cycle's %v",
+				flows[0].GetAt().AsTime(), optimize.GetObservations().GetObservedAt().AsTime())
 		}
 	})
 

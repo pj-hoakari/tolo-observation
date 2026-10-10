@@ -83,6 +83,7 @@ func (s *MeasurementIngestService) ReportMeasurements(
 			WindowEnd:          timestampTime(measurement.GetWindowEnd()),
 			CountIn:            measurement.GetCountIn(),
 			CountOut:           measurement.GetCountOut(),
+			MeanDetectedPeople: measurement.MeanDetectedPeople,
 		})
 	}
 
@@ -260,6 +261,7 @@ func observationError(ctx context.Context, err error) error {
 		errors.Is(err, domain.ErrObservationPointNameRequired),
 		errors.Is(err, domain.ErrInvalidMeasurementWindow),
 		errors.Is(err, domain.ErrNegativeCount),
+		errors.Is(err, domain.ErrInvalidDetectedPeople),
 		errors.Is(err, application.ErrEdgeDeviceRequired):
 		return connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
 	case errors.Is(err, repository.ErrEdgeDeviceNotFound),

@@ -183,6 +183,7 @@ type Measurement struct {
 	CountOut           int32                  `protobuf:"varint,5,opt,name=count_out,json=countOut,proto3" json:"count_out,omitempty"`
 	Source             MeasurementSource      `protobuf:"varint,6,opt,name=source,proto3,enum=tolo.observation.v1.MeasurementSource" json:"source,omitempty"`
 	QrLocationId       string                 `protobuf:"bytes,7,opt,name=qr_location_id,json=qrLocationId,proto3" json:"qr_location_id,omitempty"`
+	MeanDetectedPeople *float64               `protobuf:"fixed64,8,opt,name=mean_detected_people,json=meanDetectedPeople,proto3,oneof" json:"mean_detected_people,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -264,6 +265,13 @@ func (x *Measurement) GetQrLocationId() string {
 		return x.QrLocationId
 	}
 	return ""
+}
+
+func (x *Measurement) GetMeanDetectedPeople() float64 {
+	if x != nil && x.MeanDetectedPeople != nil {
+		return *x.MeanDetectedPeople
+	}
+	return 0
 }
 
 type ReportMeasurementsRequest struct {
@@ -1712,7 +1720,7 @@ var File_tolo_observation_v1_observation_proto protoreflect.FileDescriptor
 
 const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\n" +
-	"%tolo/observation/v1/observation.proto\x12\x13tolo.observation.v1\x1a\x16authz/v1/options.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1btolo/kernel/v1/kernel.proto\"\xd7\x02\n" +
+	"%tolo/observation/v1/observation.proto\x12\x13tolo.observation.v1\x1a\x16authz/v1/options.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1btolo/kernel/v1/kernel.proto\"\xa7\x03\n" +
 	"\vMeasurement\x120\n" +
 	"\x14observation_point_id\x18\x01 \x01(\tR\x12observationPointId\x12=\n" +
 	"\fwindow_start\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\vwindowStart\x129\n" +
@@ -1721,7 +1729,9 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\bcount_in\x18\x04 \x01(\x05R\acountIn\x12\x1b\n" +
 	"\tcount_out\x18\x05 \x01(\x05R\bcountOut\x12>\n" +
 	"\x06source\x18\x06 \x01(\x0e2&.tolo.observation.v1.MeasurementSourceR\x06source\x12$\n" +
-	"\x0eqr_location_id\x18\a \x01(\tR\fqrLocationId\"\xa2\x01\n" +
+	"\x0eqr_location_id\x18\a \x01(\tR\fqrLocationId\x125\n" +
+	"\x14mean_detected_people\x18\b \x01(\x01H\x00R\x12meanDetectedPeople\x88\x01\x01B\x17\n" +
+	"\x15_mean_detected_people\"\xa2\x01\n" +
 	"\x19ReportMeasurementsRequest\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12$\n" +
 	"\x0eedge_device_id\x18\x02 \x01(\tR\fedgeDeviceId\x12D\n" +
@@ -1945,6 +1955,7 @@ func file_tolo_observation_v1_observation_proto_init() {
 	if File_tolo_observation_v1_observation_proto != nil {
 		return
 	}
+	file_tolo_observation_v1_observation_proto_msgTypes[0].OneofWrappers = []any{}
 	file_tolo_observation_v1_observation_proto_msgTypes[15].OneofWrappers = []any{}
 	file_tolo_observation_v1_observation_proto_msgTypes[21].OneofWrappers = []any{
 		(*ReportCongestionRequest_PointId)(nil),
