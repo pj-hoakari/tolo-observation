@@ -50,10 +50,10 @@ package: `tolo.observation.v1`
 | Graph Authoring | GetCurrentRevision／GetObservationPointMappings／GetGatePoints | グラフ・紐づけ・設計時ゲート指定の取得 | — |
 | Flow Control | Optimize | 観測スナップショット確定等を契機に最適化要求（検知状態・手動介入を同梱） | OptimizationRequested／OptimizationResultPersisted |
 | Line Control | GuideQueues | 行列把握・案内・形状最適化の要求 | 同上 |
-| Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う） | — |
+| Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う）。Flow／Line の応答を Operation の型へ変換して渡す | — |
 | Guest Service | （PubSub: `guest-status` へ publish） | スナップショット確定・行列状態更新のたびにゲスト向け状況（混雑・行列。`tolo.guest.v1.GuestStatus`。ID と数値のみ）を publish。誘導提案・表示名は含めない（提案はスタッフ向け、表示名の付与は Guest Service） | （ゲスト側 GuestViewUpdated の源） |
-| Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用） | — |
-| Reference Aggregation | GetReferenceValues | コールドスタート用参照値の取得（短期イベント等） | — |
+| Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用）。Operation の型へ変換して渡す | — |
+| Reference Aggregation | GetReferenceValues | コールドスタート用参照値の取得（短期イベント等）。Flow の型へ変換して `OptimizeRequest.references` に同梱する | — |
 | Graph Authoring | GetQrLocations | QR 設置箇所の取得（QR 方式の観測点として扱う） | — |
 | Tenant Management | GetObservationSettings | 設定値・履歴期間の参照 | — |
 
@@ -215,7 +215,7 @@ message ReportCongestionRequest {
 }
 message ReportCongestionResponse {}
 
-// Flow へは tolo.flow.v1.CongestionLevel に本サービスが変換して渡す（観測が ACL として翻訳。循環 import の回避）
+// Flow へは OptimizeRequest.events に本サービスが変換して渡す（観測が ACL として翻訳。対応する種類は実装フェーズで確定する）
 enum CongestionLevel {
   CONGESTION_LEVEL_UNSPECIFIED = 0;
   CONGESTION_LEVEL_LOW = 1;
@@ -250,8 +250,8 @@ message EventOverview {
   tolo.kernel.v1.ObservationSnapshot snapshot = 1;
   repeated tolo.kernel.v1.RiskLocation risks = 2;
   repeated tolo.kernel.v1.DangerFlag danger_flags = 3;
-  // 提案・行列状態のフィールド（tolo.flow.v1.ProposalSet／tolo.line.v1.QueueState 等の永続化分）は意図的に未宣言
-  // （参考 proto の範囲外とし、実装フェーズで宣言する）
+  // 提案・行列状態のフィールドは意図的に未宣言（参考 proto の範囲外とし、実装フェーズで宣言する）
+  // 宣言するときも tolo.flow.v1／tolo.line.v1 の型は使わない（本 RPC は Service Gateway を経由してスタッフアプリへ返す）
 }
 ```
 
@@ -260,10 +260,17 @@ message EventOverview {
 - 自テナントの計測値のみ収集・永続化（クロステナント集約は参照値集約が担う）
 - 永続化先は PostgreSQL の時系列テーブル（パーティション分割）とし、本コンテキスト内部の実装詳細とする
   列指向 DWH（BigQuery／ClickHouse 等）への移行の余地は残し、分岐条件を超えたときに検討する。分岐条件の初期値は「履歴切り出しクエリの p95 が数百 ms を超える、または対象テーブルが数億行規模に達する」のいずれかとし、実測にもとづき運用で調整する
-  格納対象: 計測値、観測スナップショット、最適化履歴（提案・判定・発火トリガー）、検知状態、行列状態、フィードバック値
+  格納対象: 計測値、観測スナップショット、最適化履歴（提案・判定）、検知状態、行列状態、フィードバック値
   tenant_id／event_id で分割し、保護境界の強制点を本サービスに集約する
-- Flow／Line への履歴（時系列窓・統計・最適化履歴・フィードバック）の切り出し・同梱は本サービスの責務
-  Flow／Line は永続化層を直接参照しない（`OptimizeRequest.history`／`GuideQueuesRequest.history`）
+- Flow／Line への履歴の切り出し・同梱は本サービスの責務。Flow へは同一イベントの観測値から計算した統計と時系列（`OptimizeRequest.history_digest`）と前回の最適化結果（`previous_result`）を、Line へは履歴一式（`GuideQueuesRequest.history`）を渡す
+  Flow／Line は永続化層を直接参照しない
+- Flow へ渡すグラフと観測値は、本サービスが共有カーネルの型から Flow 独自の型（`tolo.flow.v1`）へ変換する（Flow Control）
+- Flow／Line の型（`tolo.flow.v1`／`tolo.line.v1`）を使うのは本サービスだけである。本サービスは Flow／Line と他サービスの間の腐敗防止層として、次の経路で型を変換する
+  - Operation.RequestProposalDelivery: Flow の最適化結果（`OptimizeResponse.optimization_result`）を `tolo.operation.v1.FlowProposals` へ、Line の応答（`GuideQueuesResponse`）を `tolo.operation.v1.LineGuidance` へ変換する。Line の `guest_digest` は含めない
+  - Operation.RecordFeedbackValues: Flow のフィードバック値（`OptimizeResponse.feedback_values`）を `tolo.operation.v1.FeedbackValues` へ変換する
+  - Reference Aggregation.GetReferenceValues: 応答の `tolo.refagg.v1.ReferenceValue` を Flow の参照値（`OptimizeRequest.references`）へ変換する
+  変換では、Flow／Line の識別子（ノード・エッジ）をグラフ要素の識別子（`point_id`／`route_id`）へ、エッジ端点の向きをルートの from→to の向きへ戻す
+  変換で値が落ちても、受け手の型は変わらないためエラーにならない。Flow／Line の enum の値がすべて変換先を持つことを、descriptor から値を列挙して確かめるテストを本サービスに置く
   Flow／Line への呼び出しは Service Gateway を経由しない直接呼び出しとし、Observation 以外から到達できないことをインフラ層で保証する（Flow Control、Line Control）。他のサービス間呼び出しは Service Gateway 経由のまま
 - ゲスト向け状況の生成と `guest-status` トピックへの publish は本サービスの責務（スナップショット確定・行列状態更新を契機。sequence を単調増加で付与）
   publish する内容は状況（混雑・行列・並び先案内）の ID と数値のみ。表示名の付与・文言化は Guest Service の責務
@@ -292,6 +299,7 @@ message EventOverview {
 - ゲートの扱い: 設計時指定（Graph Authoring の GetGatePoints が正本）を基に、未開設のゲートは閉状態の GateState として Line へ渡す
   開閉とサービスレート設定値は本サービスの OperateGate（スタッフアプリが直接呼ぶ）で上書きする
 - 検知状態（Flow 所有）と行列状態（Line 所有）は本サービスが解釈せず永続化し、次回要求で返送する
+  行列状態は Operation への配信のため `tolo.operation.v1.QueueSummary` へ機械的に写すが、本サービスの判断には用いない
   ゲスト向けの行列数値は Line の案内ダイジェスト（`GuideQueuesResponse.guest_digest`）をそのまま `tolo.guest.v1.QueueStatus` へ写して publish し、QueueState の中身には依存しない
 - エッジ端末の認証・認可は IdP 発行トークン（`event_access`）による。観測ページはブラウザで動き、OIDC で認証してトークンを自動更新する
 - どの端末からの計測かは、観測ページの発行 URL に含まれる `edge_device_id` で示す
