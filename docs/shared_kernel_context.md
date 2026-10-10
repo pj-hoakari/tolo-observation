@@ -66,7 +66,7 @@ enum DirectionAttribute {
   DIRECTION_ATTRIBUTE_BOTH_WAYS = 2;  // 両通行
 }
 
-// 観測スナップショット: 観測ウィンドウ確定分（正準単位 人/分）
+// 観測スナップショット: 観測ウィンドウ確定分（流量・占有量変化は正準単位 人/分、人数スコア・停滞量スコアは人）
 message ObservationSnapshot {
   string snapshot_id = 1;
   string event_id = 2;
@@ -151,7 +151,7 @@ message DangerFlag {
 ## 不変条件との対応
 
 - スコア比較は同一イベント内の過去スコアに対してのみ → 履歴（時系列・統計・最適化履歴）は観測が永続化層（PostgreSQL の時系列テーブル）から同一イベント分のみ切り出して Flow／Line へ同梱する（Flow Control）
-- 受け渡しは正準単位（人/分）に正規化 → 正規化は観測の責務（計測値受信時）
+- 流量と占有量変化は正準単位（人/分）に正規化し、人数スコアと停滞量スコアは人数（人）のまま受け渡す → 正規化は観測の責務（計測値受信時）
 - スコアの悉皆性は計測方式で決まる → カメラ方式の観測点は `exhaustive = true`、QR 方式は `false`（observation_spec.md）
   `exhaustive = false` のスコアは採取率が未知のため絶対量として比較できない。消費側は時系列比較にのみ用いる
 - グラフは Flow が保持せず外部が毎回渡す → `OptimizeRequest.graph` に、観測が変換したグラフを必ず同梱

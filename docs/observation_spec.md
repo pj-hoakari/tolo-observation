@@ -103,6 +103,7 @@ message Measurement {
   int32 count_out = 5;  // ウィンドウ内の流出計上
   MeasurementSource source = 6;
   string qr_location_id = 7;  // source=QR のとき必須（設置箇所。正本はグラフ編集の QrLocation）。source=EDGE のときは空
+  optional double mean_detected_people = 8;  // ウィンドウ内の視野内検知人数（検知フレームごとの人数の平均。人）。0 以上の有限値
 }
 
 enum MeasurementSource {
@@ -283,6 +284,7 @@ message EventOverview {
   リクエストが指す子資源（`edge_device_id`、`observation_point_id`、`Measurement.qr_location_id`）がリクエストの `event_id` に属さない場合も `permission_denied` を返す
   Guest Service からの QR 由来計上はマシン起点の `token_use=service` でクレームを持たないため、リクエストの `event_id` と `qr_location_id` の所属の一致で対象イベントを確定する
 - 正準単位への正規化（人/分）は本サービスの責務。エッジはウィンドウ内の計上数を送る
+  視野内検知人数（`mean_detected_people`）は時点の人数を表す量であり、人/分へ換算せず人数のまま扱う。停滞量スコアと人数スコアの源泉になる
 - 観測点はグラフのポイントと1対1ではない。スコア算出時に紐づけ（グラフ編集所有）で変換
 - エッジ端末の切断・登録解除は配下観測点の観測不能化に波及
   切断は Heartbeat 途絶で判定し、復帰すれば観測再開する（一時的）
