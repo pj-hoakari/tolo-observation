@@ -134,7 +134,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 			Window:           time.Minute,
 			OptimizeTimeout:  5 * time.Second,
 			HeartbeatTimeout: time.Hour,
-			Now:              time.Now,
+			Now:              func() time.Time { return time.Now().Add(123 * time.Nanosecond) },
 		},
 	)
 

@@ -84,7 +84,7 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("get observation point mappings: %w", err)
 	}
 
-	windowEnd := c.config.Now()
+	windowEnd := c.config.Now().Truncate(time.Microsecond)
 	windowStart := windowEnd.Add(-c.config.Window)
 
 	measurements, err := c.measurements.ListWindowEndingAfter(ctx, eventID, windowStart)
