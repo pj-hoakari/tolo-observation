@@ -1,7 +1,8 @@
 # 共有カーネル 入出力整理（tolo.kernel.v1）
 
 ドメイン定義: shared_kernel_domain.md
-共有カーネルはデプロイ単位を持たないため、受け渡し DTO の proto はここを正本とする
+共有カーネルはデプロイ単位を持たないため、受け渡し DTO の proto の原本は専用の Go モジュール `github.com/pj-hoakari/tolo-kernel-proto` に置く
+本ファイルの proto 定義は参照用の写しである
 生成は観測、グラフ構造の正本はグラフ編集、消費は Flow Control と Line Control
 
 ## 利用箇所
