@@ -40,7 +40,10 @@ func (c *GraphSupplyClient) CurrentGraph(ctx context.Context, eventID string) (d
 	for _, point := range res.Msg.GetPoints() {
 		var boundary *domain.Boundary
 		if point.GetBoundary() != nil {
-			boundary = &domain.Boundary{Active: point.GetBoundary().GetActive()}
+			boundary = &domain.Boundary{
+				Direction: domain.BoundaryDirection(point.GetBoundary().GetDirection()),
+				Active:    point.GetBoundary().GetActive(),
+			}
 		}
 
 		graph.Points = append(graph.Points, domain.Point{

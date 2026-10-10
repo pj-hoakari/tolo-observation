@@ -21,8 +21,18 @@ type Point struct {
 	Boundary *Boundary
 }
 
+type BoundaryDirection int
+
+const (
+	BoundaryDirectionUnspecified BoundaryDirection = iota
+	BoundaryDirectionEntry
+	BoundaryDirectionExit
+	BoundaryDirectionEntryAndExit
+)
+
 type Boundary struct {
-	Active bool
+	Direction BoundaryDirection
+	Active    bool
 }
 
 type Route struct {
