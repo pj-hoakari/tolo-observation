@@ -22,7 +22,7 @@ require (
 	github.com/pj-hoakari/internal-jwt-handling v0.2.0
 	github.com/pj-hoakari/protoc-gen-authz-go v0.3.0
 	github.com/pj-hoakari/tolo-graph-authoring v0.0.0-20261010050359-0612e47d588e
-	github.com/pj-hoakari/tolo-kernel-proto v0.1.0
+	github.com/pj-hoakari/tolo-kernel-proto v0.3.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	go.opentelemetry.io/otel v1.47.0

@@ -16,10 +16,13 @@ const (
 )
 
 type Point struct {
-	ID             string
-	Type           PointType
-	IsBoundary     bool
-	BoundaryActive bool
+	ID       string
+	Type     PointType
+	Boundary *Boundary
+}
+
+type Boundary struct {
+	Active bool
 }
 
 type Route struct {

@@ -38,11 +38,15 @@ func (c *GraphSupplyClient) CurrentGraph(ctx context.Context, eventID string) (d
 	}
 
 	for _, point := range res.Msg.GetPoints() {
+		var boundary *domain.Boundary
+		if point.GetBoundary() != nil {
+			boundary = &domain.Boundary{Active: point.GetBoundary().GetActive()}
+		}
+
 		graph.Points = append(graph.Points, domain.Point{
-			ID:             point.GetPointId(),
-			Type:           domain.PointType(point.GetType()),
-			IsBoundary:     point.GetIsBoundary(),
-			BoundaryActive: point.GetBoundaryActive(),
+			ID:       point.GetPointId(),
+			Type:     domain.PointType(point.GetType()),
+			Boundary: boundary,
 		})
 	}
 

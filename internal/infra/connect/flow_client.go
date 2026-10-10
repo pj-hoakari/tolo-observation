@@ -124,8 +124,8 @@ func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]
 		nodes = append(nodes, &flowv1.Node{
 			NodeId:          proto.String(point.ID),
 			Kind:            flowNodeKind(point.Type).Enum(),
-			IsBoundary:      proto.Bool(point.IsBoundary),
-			Enabled:         proto.Bool(!point.IsBoundary || point.BoundaryActive),
+			IsBoundary:      proto.Bool(point.Boundary != nil),
+			Enabled:         proto.Bool(point.Boundary == nil || point.Boundary.Active),
 			AttributeTags:   nil,
 			TimeResolutionS: proto.Int32(resolution),
 			DangerFlag:      proto.Bool(false),

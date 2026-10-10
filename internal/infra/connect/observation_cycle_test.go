@@ -3,6 +3,7 @@ package connect
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -63,6 +64,8 @@ func (s *graphStub) GetCurrentRevision(
 		Points: []*kernelv1.Point{
 			{PointId: "p1", Type: kernelv1.PointType_POINT_TYPE_GOAL},
 			{PointId: "p2", Type: kernelv1.PointType_POINT_TYPE_TRANSIT_ONLY},
+			{PointId: "p3", Type: kernelv1.PointType_POINT_TYPE_TRANSIT_ONLY, Boundary: &kernelv1.Boundary{Direction: kernelv1.BoundaryDirection_BOUNDARY_DIRECTION_ENTRY, Active: true}},
+			{PointId: "p4", Type: kernelv1.PointType_POINT_TYPE_TRANSIT_ONLY, Boundary: &kernelv1.Boundary{Direction: kernelv1.BoundaryDirection_BOUNDARY_DIRECTION_EXIT, Active: false}},
 		},
 		Routes: []*kernelv1.Route{
 			{RouteId: "r1", FromPointId: "p1", ToPointId: "p2", Direction: kernelv1.DirectionAttribute_DIRECTION_ATTRIBUTE_BOTH_WAYS},
@@ -211,8 +214,20 @@ func TestObservationCycle(t *testing.T) {
 		t.Errorf("Optimize event/tenant = %q/%q", optimize.GetEventId(), optimize.GetTenantContext().GetTenantId())
 	}
 
-	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 3 {
-		t.Errorf("Optimize graph has %d elements, want 3", got)
+	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 5 {
+		t.Errorf("Optimize graph has %d elements, want 5", got)
+	}
+
+	type nodeFlags struct{ boundary, enabled bool }
+
+	gotFlags := map[string]nodeFlags{}
+	for _, node := range optimize.GetGraph().GetNodes() {
+		gotFlags[node.GetNodeId()] = nodeFlags{node.GetIsBoundary(), node.GetEnabled()}
+	}
+
+	wantFlags := map[string]nodeFlags{"p1": {false, true}, "p2": {false, true}, "p3": {true, true}, "p4": {true, false}}
+	if !maps.Equal(gotFlags, wantFlags) {
+		t.Errorf("Optimize node boundary/enabled flags = %v, want %v", gotFlags, wantFlags)
 	}
 
 	flows := map[flowv1.FlowDirection]float64{}
