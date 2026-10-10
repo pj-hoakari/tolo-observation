@@ -83,11 +83,16 @@ func NewSnapshot(
 	}
 
 	latest := make(map[ObservationPointID]Measurement, len(measurements))
+	detected := map[ObservationPointID][]float64{}
 
 	for _, measurement := range measurements {
 		current, ok := latest[measurement.ObservationPointID]
 		if !ok || measurement.WindowEnd.After(current.WindowEnd) {
 			latest[measurement.ObservationPointID] = measurement
+		}
+
+		if measurement.MeanDetectedPeople != nil {
+			detected[measurement.ObservationPointID] = append(detected[measurement.ObservationPointID], *measurement.MeanDetectedPeople)
 		}
 	}
 
@@ -110,6 +115,7 @@ func NewSnapshot(
 
 			score.Forward += measurement.RateIn()
 			score.Backward += measurement.RateOut()
+			score.StagnationScore += mean(detected[mapping.ObservationPointID])
 		case mapping.Anchor.PointID != "":
 			score, ok := points[mapping.Anchor.PointID]
 			if !ok {
@@ -117,6 +123,7 @@ func NewSnapshot(
 				points[mapping.Anchor.PointID] = score
 			}
 
+			score.PeopleScore += mean(detected[mapping.ObservationPointID])
 			score.OccupancyDelta += float64(measurement.CountIn - measurement.CountOut)
 		}
 	}
@@ -129,6 +136,19 @@ func NewSnapshot(
 		PointScores: sortedScores(points, func(score PointScore) string { return score.PointID }),
 		RouteScores: sortedScores(routes, func(score RouteScore) string { return score.RouteID }),
 	}, nil
+}
+
+func mean(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+
+	var sum float64
+	for _, value := range values {
+		sum += value
+	}
+
+	return sum / float64(len(values))
 }
 
 func sortedScores[S any](scores map[string]*S, key func(S) string) []S {

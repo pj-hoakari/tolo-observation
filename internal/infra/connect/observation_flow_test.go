@@ -17,6 +17,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	internaljwt "github.com/pj-hoakari/internal-jwt-handling"
@@ -133,7 +134,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 			Window:           time.Minute,
 			OptimizeTimeout:  5 * time.Second,
 			HeartbeatTimeout: time.Hour,
-			Now:              time.Now,
+			Now:              func() time.Time { return time.Now().Add(123 * time.Nanosecond) },
 		},
 	)
 
@@ -365,5 +366,6 @@ func edgeMeasurement(pointID string, windowStart time.Time) *observationv1.Measu
 		WindowEnd:          timestamppb.New(windowStart.Add(time.Minute)),
 		CountIn:            7,
 		CountOut:           3,
+		MeanDetectedPeople: proto.Float64(2.5),
 	}
 }

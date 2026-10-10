@@ -11,6 +11,8 @@ import (
 	"github.com/pj-hoakari/tolo-observation/internal/repository"
 )
 
+const historyWindow = 30 * time.Minute
+
 type GraphSupply interface {
 	CurrentGraph(ctx context.Context, eventID string) (domain.Graph, error)
 	ObservationPointMappings(ctx context.Context, eventID string) ([]domain.ObservationPointMapping, error)
@@ -20,6 +22,7 @@ type OptimizeInput struct {
 	TenantPublicID string
 	Graph          domain.Graph
 	Snapshot       domain.Snapshot
+	History        []domain.Snapshot
 	Previous       *domain.OptimizationOutcome
 	ServerTime     time.Time
 }
@@ -81,7 +84,7 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("get observation point mappings: %w", err)
 	}
 
-	windowEnd := c.config.Now()
+	windowEnd := c.config.Now().Truncate(time.Microsecond)
 	windowStart := windowEnd.Add(-c.config.Window)
 
 	measurements, err := c.measurements.ListWindowEndingAfter(ctx, eventID, windowStart)
@@ -101,6 +104,11 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	snapshot, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings)
 	if err != nil {
 		return err
+	}
+
+	history, err := c.snapshots.ListSnapshotsEndingAfter(ctx, eventID, windowEnd.Add(-historyWindow))
+	if err != nil {
+		return fmt.Errorf("list history snapshots: %w", err)
 	}
 
 	if err := c.snapshots.SaveSnapshot(ctx, tenantPublicID, snapshot); err != nil {
@@ -125,6 +133,7 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		TenantPublicID: tenantPublicID,
 		Graph:          graph,
 		Snapshot:       snapshot,
+		History:        history,
 		Previous:       previous,
 		ServerTime:     windowEnd,
 	})

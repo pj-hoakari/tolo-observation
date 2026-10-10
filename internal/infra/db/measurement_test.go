@@ -48,13 +48,13 @@ func TestPostgresMeasurementRepositoryRecordAll(t *testing.T) {
 	start := time.Now().UTC().Truncate(time.Microsecond)
 
 	first, err := domain.NewMeasurement(string(device.ObservationPoints[0].ID),
-		start, start.Add(30*time.Second), 6, 3)
+		start, start.Add(30*time.Second), 6, 3, nil)
 	if err != nil {
 		t.Fatalf("NewMeasurement first: %v", err)
 	}
 
 	second, err := domain.NewMeasurement(string(device.ObservationPoints[1].ID),
-		start, start.Add(2*time.Minute), 10, 0)
+		start, start.Add(2*time.Minute), 10, 0, nil)
 	if err != nil {
 		t.Fatalf("NewMeasurement second: %v", err)
 	}

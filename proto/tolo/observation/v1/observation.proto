@@ -111,6 +111,7 @@ message Measurement {
   int32 count_out = 5;
   MeasurementSource source = 6;
   string qr_location_id = 7;
+  optional double mean_detected_people = 8;
 }
 
 enum MeasurementSource {

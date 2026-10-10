@@ -23,6 +23,7 @@ type MeasurementInput struct {
 	WindowEnd          time.Time
 	CountIn            int32
 	CountOut           int32
+	MeanDetectedPeople *float64
 }
 
 type ReportMeasurementsInput struct {
@@ -68,6 +69,7 @@ func (s *MeasurementIngestService) ReportMeasurements(
 			reported.WindowEnd,
 			reported.CountIn,
 			reported.CountOut,
+			reported.MeanDetectedPeople,
 		)
 		if err != nil {
 			return 0, err

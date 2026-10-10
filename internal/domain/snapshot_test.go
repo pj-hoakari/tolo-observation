@@ -12,8 +12,8 @@ func TestNewSnapshot(t *testing.T) {
 
 	start := time.Date(2026, time.October, 3, 10, 0, 0, 0, time.UTC)
 
-	measurement := func(pointID string, offset time.Duration, countIn, countOut int32) domain.Measurement {
-		m, err := domain.NewMeasurement(pointID, start.Add(offset), start.Add(offset+time.Minute), countIn, countOut)
+	measurement := func(pointID string, offset time.Duration, countIn, countOut int32, detected *float64) domain.Measurement {
+		m, err := domain.NewMeasurement(pointID, start.Add(offset), start.Add(offset+time.Minute), countIn, countOut, detected)
 		if err != nil {
 			t.Fatalf("NewMeasurement: %v", err)
 		}
@@ -29,11 +29,12 @@ func TestNewSnapshot(t *testing.T) {
 	)
 
 	measurements := []domain.Measurement{
-		measurement(routePointA, 0, 100, 100),
-		measurement(routePointA, time.Minute, 6, 2),
-		measurement(routePointB, time.Minute, 4, 1),
-		measurement(nodePoint, time.Minute, 9, 4),
-		measurement(unmapped, time.Minute, 50, 50),
+		measurement(routePointA, 0, 100, 100, new(4.0)),
+		measurement(routePointA, time.Minute, 6, 2, new(6.0)),
+		measurement(routePointB, 0, 1, 1, nil),
+		measurement(routePointB, time.Minute, 4, 1, new(2.0)),
+		measurement(nodePoint, time.Minute, 9, 4, new(3.0)),
+		measurement(unmapped, time.Minute, 50, 50, new(40.0)),
 	}
 
 	mappings := []domain.ObservationPointMapping{
@@ -52,12 +53,12 @@ func TestNewSnapshot(t *testing.T) {
 		t.Errorf("snapshot ID = %q, want a 16 character public ID", snapshot.ID)
 	}
 
-	wantRoutes := []domain.RouteScore{{RouteID: "r1", Forward: 10, Backward: 3, Exhaustive: true}}
+	wantRoutes := []domain.RouteScore{{RouteID: "r1", Forward: 10, Backward: 3, StagnationScore: 7, Exhaustive: true}}
 	if len(snapshot.RouteScores) != 1 || snapshot.RouteScores[0] != wantRoutes[0] {
 		t.Errorf("route scores = %+v, want %+v", snapshot.RouteScores, wantRoutes)
 	}
 
-	wantPoints := []domain.PointScore{{PointID: "p1", OccupancyDelta: 5, Exhaustive: true}}
+	wantPoints := []domain.PointScore{{PointID: "p1", PeopleScore: 3, OccupancyDelta: 5, Exhaustive: true}}
 	if len(snapshot.PointScores) != 1 || snapshot.PointScores[0] != wantPoints[0] {
 		t.Errorf("point scores = %+v, want %+v", snapshot.PointScores, wantPoints)
 	}

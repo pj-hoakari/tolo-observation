@@ -101,6 +101,40 @@ func (r *PostgresSnapshotRepository) LatestSnapshot(ctx context.Context, eventID
 		return domain.Snapshot{}, fmt.Errorf("select snapshot: %w", err)
 	}
 
+	return row.snapshot()
+}
+
+func (r *PostgresSnapshotRepository) ListSnapshotsEndingAfter(
+	ctx context.Context,
+	eventID string,
+	after time.Time,
+) ([]domain.Snapshot, error) {
+	var rows []snapshotRow
+
+	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
+		SELECT snapshot_id, event_id, window_start, window_end, scores
+		FROM snapshots
+		WHERE event_id = $1 AND window_end > $2
+		ORDER BY window_end, id`, eventID, after)
+	if err != nil {
+		return nil, fmt.Errorf("select snapshots: %w", err)
+	}
+
+	snapshots := make([]domain.Snapshot, 0, len(rows))
+
+	for _, row := range rows {
+		snapshot, err := row.snapshot()
+		if err != nil {
+			return nil, err
+		}
+
+		snapshots = append(snapshots, snapshot)
+	}
+
+	return snapshots, nil
+}
+
+func (row snapshotRow) snapshot() (domain.Snapshot, error) {
 	var scores snapshotScores
 	if err := json.Unmarshal(row.Scores, &scores); err != nil {
 		return domain.Snapshot{}, fmt.Errorf("decode snapshot scores: %w", err)

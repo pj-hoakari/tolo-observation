@@ -30,12 +30,12 @@ func (r *PostgresMeasurementRepository) RecordAll(ctx context.Context, tenantPub
 			_, err := executor.ExecContext(ctx, `
 				INSERT INTO measurements (
 					tenant_public_id, event_id, observation_point_id,
-					window_start, window_end, count_in, count_out, rate_in, rate_out)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+					window_start, window_end, count_in, count_out, rate_in, rate_out, mean_detected_people)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 				tenantPublicID, eventID, string(measurement.ObservationPointID),
 				measurement.WindowStart, measurement.WindowEnd,
 				measurement.CountIn, measurement.CountOut,
-				measurement.RateIn(), measurement.RateOut())
+				measurement.RateIn(), measurement.RateOut(), measurement.MeanDetectedPeople)
 			if err != nil {
 				return fmt.Errorf("insert measurement: %w", err)
 			}
@@ -51,6 +51,7 @@ type measurementWindowRow struct {
 	WindowEnd          time.Time `db:"window_end"`
 	CountIn            int32     `db:"count_in"`
 	CountOut           int32     `db:"count_out"`
+	MeanDetectedPeople *float64  `db:"mean_detected_people"`
 }
 
 func (r *PostgresMeasurementRepository) ListWindowEndingAfter(
@@ -61,7 +62,7 @@ func (r *PostgresMeasurementRepository) ListWindowEndingAfter(
 	var rows []measurementWindowRow
 
 	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
-		SELECT observation_point_id, window_start, window_end, count_in, count_out
+		SELECT observation_point_id, window_start, window_end, count_in, count_out, mean_detected_people
 		FROM measurements
 		WHERE event_id = $1 AND window_end > $2
 		ORDER BY window_end, id`, eventID, after)
@@ -77,6 +78,7 @@ func (r *PostgresMeasurementRepository) ListWindowEndingAfter(
 			WindowEnd:          row.WindowEnd,
 			CountIn:            row.CountIn,
 			CountOut:           row.CountOut,
+			MeanDetectedPeople: row.MeanDetectedPeople,
 		})
 	}
 
