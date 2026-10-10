@@ -59,9 +59,9 @@ type EdgeDeviceUseCases interface {
 }
 
 type EdgeDeviceConfig struct {
-	ObservationPageBaseURL string
-	HeartbeatTimeout       time.Duration
-	Now                    func() time.Time
+	ObservationPageURLTemplate string
+	HeartbeatTimeout           time.Duration
+	Now                        func() time.Time
 }
 
 type EdgeDeviceService struct {
@@ -98,7 +98,11 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 
 	return RegisterEdgeDeviceOutput{
 		Device:             device,
-		ObservationPageURL: strings.TrimRight(s.config.ObservationPageBaseURL, "/") + "/" + string(device.ID),
+		ObservationPageURL: strings.NewReplacer(
+			"{tenant_id}", device.TenantPublicID,
+			"{event_id}", device.EventID,
+			"{edge_device_id}", string(device.ID),
+		).Replace(s.config.ObservationPageURLTemplate),
 	}, nil
 }
 

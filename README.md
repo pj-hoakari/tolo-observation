@@ -50,7 +50,7 @@ RPC を呼び出すには Service Gateway 発行の内部 JWT が必要なので
 | --- | --- | --- |
 | `SERVER_ADDR` | `:8080` | 待ち受けるアドレス |
 | `DATABASE_URL` | なし（必須） | PostgreSQL の接続先 |
-| `OBSERVATION_PAGE_BASE_URL` | なし（必須） | 端末登録時に返す観測ページ URL の基底。末尾に `edge_device_id` を付けて返す |
+| `OBSERVATION_PAGE_URL_TEMPLATE` | なし（必須） | 端末登録時に返す観測ページ URL のテンプレート。`{tenant_id}`、`{event_id}`、`{edge_device_id}` をすべて含め、登録した端末の公開 ID で置き換えて返す |
 | `HEARTBEAT_TIMEOUT` | `2m` | 観測点の実効的な `enabled` を判定する Heartbeat の鮮度。`time.ParseDuration` が解釈する形式を取る |
 | `GRAPH_AUTHORING_URL` | なし（必須） | GraphSupplyService の呼び出し先。受領した内部 JWT をそのまま `Authorization` に載せて呼ぶ |
 | `FLOW_CONTROL_URL` | なし（必須） | FlowControlService の呼び出し先。gRPC で、認証情報を付けずに呼ぶ |

@@ -140,9 +140,9 @@ func newObservationFlow(t *testing.T) observationFlow {
 	routes, err := RoutesWithVerifier(
 		newTestVerifier(t, keys),
 		application.NewEdgeDeviceService(devices, application.EdgeDeviceConfig{
-			ObservationPageBaseURL: "https://example.test/observe",
-			HeartbeatTimeout:       time.Hour,
-			Now:                    time.Now,
+			ObservationPageURLTemplate: "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}",
+			HeartbeatTimeout:           time.Hour,
+			Now:                        time.Now,
 		}),
 		application.NewMeasurementIngestService(devices, measurements, cycle),
 		application.NewStatusQueryService(snapshots),
