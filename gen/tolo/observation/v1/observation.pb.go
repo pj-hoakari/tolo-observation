@@ -8,7 +8,7 @@ package observationv1
 
 import (
 	_ "github.com/pj-hoakari/protoc-gen-authz-go/authz/v1"
-	v1 "github.com/pj-hoakari/tolo-observation/gen/tolo/kernel/v1"
+	v1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"

@@ -117,10 +117,18 @@ go tool jwtgen -audience tolo-observation -token-use event_access -tenant-public
 出力は `token` / `claims` / `jwks` を持つ JSON である  
 `jwks` を任意の HTTP エンドポイント（例: ローカルのファイルサーバ）で配信し、`INTERNAL_JWKS_URL` にその URL を設定すると、`Authorization: Bearer <token>` で呼び出せる
 
+### tolo-kernel-proto と tolo-graph-authoring の proto
+
+`tolo/kernel/v1/kernel.proto` の Go コードは自前で生成せず、`github.com/pj-hoakari/tolo-kernel-proto` の生成コードを使う  
+`task proto:write-kernel` が、go.mod が参照する版の `kernel.proto` を `proto/`（git 管理外）に書き出す  
+GraphSupply のクライアントには `github.com/pj-hoakari/tolo-graph-authoring` の生成コードを使う  
+同じ proto ファイルを 2 つの Go パッケージが登録すると、両方を読み込むプロセス（Gateway など）が起動時に panic する
+
 ### tolo-flow-control の proto
 
 tolo-flow-control の proto は `Taskfile.yml` の `FLOW_CONTROL_PROTO` が指すアーティファクトから取得する  
 `task proto:gen:go` が `.proto-deps/tolo-flow-control`（git 管理外）に展開し、クライアントを `gen/tolo/flow` に生成する  
+展開先には `kernel.proto` も書き出すが、kernel の Go コードは生成しない  
 `FLOW_CONTROL_PROTO` のタグとダイジェストは Renovate が更新する  
 更新の PR では `gen/` が古くなり proto-gen-check が失敗するので、その PR のブランチで `task proto:gen:go` を実行してコミットする
 
@@ -187,3 +195,6 @@ oras pull ghcr.io/<owner>/<repo>-proto:latest -o proto
 ```
 
 取得した `.proto` は `buf` や `protoc` の入力としてそのまま利用できる
+
+`tolo/kernel/v1/kernel.proto` はこのアーティファクトに含まれない  
+`kernel.proto` は、go.mod が参照する `github.com/pj-hoakari/tolo-kernel-proto` と同じ版を `ghcr.io/pj-hoakari/tolo-kernel-proto` から取得する

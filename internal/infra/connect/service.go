@@ -9,7 +9,7 @@ import (
 	connectrpc "connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	kernelv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/kernel/v1"
+	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
 	"github.com/pj-hoakari/tolo-observation/internal/application"

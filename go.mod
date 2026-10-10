@@ -6,6 +6,7 @@ tool (
 	connectrpc.com/connect/cmd/protoc-gen-connect-go
 	github.com/pj-hoakari/internal-jwt-handling/cmd/jwtgen
 	github.com/pj-hoakari/protoc-gen-authz-go/cmd/protoc-gen-authz-go
+	github.com/pj-hoakari/tolo-kernel-proto/cmd/tolo-kernel-proto
 	go.uber.org/mock/mockgen
 	google.golang.org/protobuf/cmd/protoc-gen-go
 )
@@ -20,6 +21,8 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/pj-hoakari/internal-jwt-handling v0.2.0
 	github.com/pj-hoakari/protoc-gen-authz-go v0.3.0
+	github.com/pj-hoakari/tolo-graph-authoring v0.0.0-20261010050359-0612e47d588e
+	github.com/pj-hoakari/tolo-kernel-proto v0.1.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	go.opentelemetry.io/otel v1.46.0
@@ -81,13 +84,13 @@ require (
 	go.opentelemetry.io/otel/metric v1.46.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/mod v0.38.0 // indirect
-	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
-	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/tools v0.50.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260819154853-08b0e4226688 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
 	google.golang.org/grpc v1.83.1 // indirect
