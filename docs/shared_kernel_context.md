@@ -38,10 +38,25 @@ message Graph {
 
 // ポイント: 停滞箇所または分岐合流の結節点
 message Point {
+  reserved 3, 4, 5;
+  reserved "is_boundary", "boundary_active", "boundary_direction";
+
   string point_id = 1;
   PointType type = 2;
-  bool is_boundary = 3;       // 入退出点
-  bool boundary_active = 4;   // 有効な入退出点か（Open/Closed モード判定に使用）
+  Boundary boundary = 6;  // 入退出点の属性（入退出点でないポイントは持たない）
+}
+
+// 入退出点の属性
+message Boundary {
+  BoundaryDirection direction = 1;  // 出入りの向き
+  bool active = 2;                  // 有効な入退出点か（Open/Closed モード判定に使用）
+}
+
+enum BoundaryDirection {
+  BOUNDARY_DIRECTION_UNSPECIFIED = 0;
+  BOUNDARY_DIRECTION_ENTRY = 1;           // 入場
+  BOUNDARY_DIRECTION_EXIT = 2;            // 退場
+  BOUNDARY_DIRECTION_ENTRY_AND_EXIT = 3;  // 入退場
 }
 
 enum PointType {
