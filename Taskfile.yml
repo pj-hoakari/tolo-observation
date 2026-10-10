@@ -97,6 +97,11 @@ tasks:
         cmds:
           - go tool protoc-gen-authz-go --write-proto proto
 
+    proto:write-kernel:
+        desc: Write kernel proto to proto directory.
+        cmds:
+          - go tool tolo-kernel-proto --write-proto proto
+
     proto:pull:flow:
         desc: |
             Materialize the tolo-flow-control proto from ghcr, or from a local directory when FLOW_CONTROL_PROTO_DIR is set.
@@ -110,11 +115,13 @@ tasks:
                 else
                   oras pull -o {{.FLOW_CONTROL_PROTO_OUT}} {{.FLOW_CONTROL_PROTO}}
                 fi
+            - go tool tolo-kernel-proto --write-proto {{.FLOW_CONTROL_PROTO_OUT}}
 
     proto:lint:
         desc: Lint proto.
         deps:
           - proto:write-authz
+          - proto:write-kernel
         cmds:
             - buf lint
 
@@ -122,6 +129,7 @@ tasks:
         desc: Regenerate connect-go code from proto.
         deps:
           - proto:write-authz
+          - proto:write-kernel
           - proto:pull:flow
         cmds:
             - buf generate --template buf.gen.go.yaml
@@ -139,6 +147,7 @@ tasks:
         desc: Regenerate connect-es code from proto.
         deps:
           - proto:write-authz
+          - proto:write-kernel
         cmds:
             - buf generate --template buf.gen.es.yaml
         sources:

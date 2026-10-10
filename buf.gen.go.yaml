@@ -9,6 +9,8 @@ managed:
         # authz options are provided by protoc-gen-authz-go as a Go package.
         - file_option: go_package
           path: authz/v1/options.proto
+        - file_option: go_package
+          path: tolo/kernel/v1/kernel.proto
 plugins:
     - local: ["go", "tool", "protoc-gen-go"]
       out: gen
@@ -23,3 +25,4 @@ inputs:
     - directory: proto
       exclude_paths:
         - proto/authz
+        - proto/tolo/kernel

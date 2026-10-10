@@ -5,6 +5,9 @@ managed:
     override:
         - file_option: go_package_prefix
           value: github.com/pj-hoakari/tolo-observation/gen
+    disable:
+        - file_option: go_package
+          path: tolo/kernel/v1/kernel.proto
 plugins:
     - local: ["go", "tool", "protoc-gen-go"]
       out: gen
@@ -14,3 +17,5 @@ plugins:
       opt: paths=source_relative
 inputs:
     - directory: .proto-deps/tolo-flow-control
+      exclude_paths:
+        - .proto-deps/tolo-flow-control/tolo/kernel

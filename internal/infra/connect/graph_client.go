@@ -6,9 +6,9 @@ import (
 
 	connectrpc "connectrpc.com/connect"
 
-	graphv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/graph/v1"
-	"github.com/pj-hoakari/tolo-observation/gen/tolo/graph/v1/graphv1connect"
-	kernelv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/kernel/v1"
+	graphv1 "github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1"
+	"github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1/graphv1connect"
+	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
