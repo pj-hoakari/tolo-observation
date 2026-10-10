@@ -3,15 +3,16 @@
 ドメイン定義: shared_kernel_domain.md
 共有カーネルはデプロイ単位を持たないため、受け渡し DTO の proto の原本は専用の Go モジュール `github.com/pj-hoakari/tolo-kernel-proto` に置く
 本ファイルの proto 定義は参照用の写しである
-生成は観測、グラフ構造の正本はグラフ編集、消費は Flow Control と Line Control
+生成は観測、グラフ構造の正本はグラフ編集、消費は観測と Line Control
+Flow Control は共有カーネルの型を受け取らない。観測がグラフと観測スナップショットを Flow 独自の型（`tolo.flow.v1`）へ変換して渡す（Flow Control）
 
 ## 利用箇所
 
 | 型 | 供給 | 消費 | 経路 |
 |---|---|---|---|
-| Graph | グラフ編集（Graph Authoring） | 観測、Flow、Line | 観測が現在の版を取得し最適化要求に同梱 |
-| ObservationSnapshot | 観測（observation_spec.md） | Flow、Line | 最適化要求に同梱 |
-| RiskLocation／DangerFlag | Flow が判定／スタッフが宣言 | Flow、Line、スタッフ、ゲスト | 提案・状況表示に含まれる |
+| Graph | グラフ編集（Graph Authoring） | 観測、Line | 観測が現在の版を取得し Line への要求に同梱。Flow へは観測が変換して同梱 |
+| ObservationSnapshot | 観測（observation_spec.md） | Line | Line への要求に同梱。Flow へは観測が変換して同梱 |
+| RiskLocation／DangerFlag | Flow が判定（Flow の応答からの組み立て方は未確定であり実装フェーズで確定する）／スタッフが宣言 | Line、スタッフ、ゲスト | 提案・状況表示に含まれる。Flow へは危険フラグを `events` に変換して渡す |
 | GraphAnchor | 配置の定義側（グラフ編集・Operation） | 管理 UI、Guest Service、観測（GetObservationPointMappings 経由。Flow／Line へは渡らない） | 配置位置の共有語彙（複数配置可。ルート途中は表示用の比率） |
 
 危険度（Risk Level）は Flow Control 専用のため本 package には置かない（`tolo.flow.v1` の内部に置く）
@@ -153,5 +154,5 @@ message DangerFlag {
 - 受け渡しは正準単位（人/分）に正規化 → 正規化は観測の責務（計測値受信時）
 - スコアの悉皆性は計測方式で決まる → カメラ方式の観測点は `exhaustive = true`、QR 方式は `false`（observation_spec.md）
   `exhaustive = false` のスコアは採取率が未知のため絶対量として比較できない。消費側は時系列比較にのみ用いる
-- グラフは Flow が保持せず外部が毎回渡す → `OptimizeRequest` に Graph を必ず同梱
+- グラフは Flow が保持せず外部が毎回渡す → `OptimizeRequest.graph` に、観測が変換したグラフを必ず同梱
 - 共有カーネル自体は固有のドメインイベントを持たない → 本ファイルにイベント対応表はない
