@@ -233,7 +233,7 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 
 func defaultFlowConfig() *flowv1.ResolvedConfig {
 	return &flowv1.ResolvedConfig{
-		SurgeRateThresholdPercentPerMin: proto.Float64(50),
+		SurgeRateThresholdPercentPerMin: proto.Float64(10),
 		HighStagnationDurationMin:       proto.Float64(5),
 		Beta:                            proto.Float64(1),
 		ThetaDemand:                     nil,
