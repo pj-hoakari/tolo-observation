@@ -22,8 +22,13 @@ type RegisterEdgeDeviceInput struct {
 	ObservationPointNames []string
 }
 
+type EdgeDeviceView struct {
+	Device domain.EdgeDevice
+	Online bool
+}
+
 type RegisterEdgeDeviceOutput struct {
-	Device             domain.EdgeDevice
+	Device             EdgeDeviceView
 	ObservationPageURL string
 }
 
@@ -52,8 +57,8 @@ type UpdateObservationPointConfigInput struct {
 
 type EdgeDeviceUseCases interface {
 	RegisterEdgeDevice(ctx context.Context, input RegisterEdgeDeviceInput) (RegisterEdgeDeviceOutput, error)
-	UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (domain.EdgeDevice, error)
-	ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]domain.EdgeDevice, error)
+	UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (EdgeDeviceView, error)
+	ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]EdgeDeviceView, error)
 	Heartbeat(ctx context.Context, input HeartbeatInput) error
 	UpdateObservationPointConfig(ctx context.Context, input UpdateObservationPointConfigInput) (domain.ObservationPoint, error)
 }
@@ -97,7 +102,7 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 	}
 
 	return RegisterEdgeDeviceOutput{
-		Device:             device,
+		Device:             s.view(device),
 		ObservationPageURL: strings.NewReplacer(
 			"{tenant_id}", device.TenantPublicID,
 			"{event_id}", device.EventID,
@@ -106,37 +111,37 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 	}, nil
 }
 
-func (s *EdgeDeviceService) UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (domain.EdgeDevice, error) {
+func (s *EdgeDeviceService) UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (EdgeDeviceView, error) {
 	if err := tenantctx.EnsureEvent(ctx, input.EventID); err != nil {
-		return domain.EdgeDevice{}, err
+		return EdgeDeviceView{}, err
 	}
 
 	id, err := domain.ParseEdgeDeviceID(input.EdgeDeviceID)
 	if err != nil {
-		return domain.EdgeDevice{}, err
+		return EdgeDeviceView{}, err
 	}
 
 	device, err := s.devices.FindByID(ctx, id)
 	if err != nil {
-		return domain.EdgeDevice{}, fmt.Errorf("find edge device: %w", err)
+		return EdgeDeviceView{}, fmt.Errorf("find edge device: %w", err)
 	}
 
 	if device.EventID != input.EventID {
-		return domain.EdgeDevice{}, ErrForeignEvent
+		return EdgeDeviceView{}, ErrForeignEvent
 	}
 
 	if err := device.Unregister(); err != nil {
-		return domain.EdgeDevice{}, err
+		return EdgeDeviceView{}, err
 	}
 
 	if err := s.devices.Save(ctx, device); err != nil {
-		return domain.EdgeDevice{}, fmt.Errorf("save edge device: %w", err)
+		return EdgeDeviceView{}, fmt.Errorf("save edge device: %w", err)
 	}
 
-	return device, nil
+	return s.view(device), nil
 }
 
-func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]domain.EdgeDevice, error) {
+func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]EdgeDeviceView, error) {
 	if err := tenantctx.EnsureEvent(ctx, input.EventID); err != nil {
 		return nil, err
 	}
@@ -146,11 +151,15 @@ func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeD
 		return nil, fmt.Errorf("list edge devices: %w", err)
 	}
 
-	for i := range devices {
-		s.applyEffectiveEnabled(&devices[i])
+	views := make([]EdgeDeviceView, 0, len(devices))
+
+	for _, device := range devices {
+		view := s.view(device)
+		applyEffectiveEnabled(&view.Device, view.Online)
+		views = append(views, view)
 	}
 
-	return devices, nil
+	return views, nil
 }
 
 func (s *EdgeDeviceService) Heartbeat(ctx context.Context, input HeartbeatInput) error {
@@ -221,7 +230,7 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(ctx context.Context, in
 		return domain.ObservationPoint{}, fmt.Errorf("save edge device: %w", err)
 	}
 
-	s.applyEffectiveEnabled(&device)
+	applyEffectiveEnabled(&device, s.view(device).Online)
 
 	for _, point := range device.ObservationPoints {
 		if point.ID == id {
@@ -232,9 +241,11 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(ctx context.Context, in
 	return domain.ObservationPoint{}, domain.ErrObservationPointNotFound
 }
 
-func (s *EdgeDeviceService) applyEffectiveEnabled(device *domain.EdgeDevice) {
-	online := device.Online(s.config.Now(), s.config.HeartbeatTimeout)
+func (s *EdgeDeviceService) view(device domain.EdgeDevice) EdgeDeviceView {
+	return EdgeDeviceView{Device: device, Online: device.Online(s.config.Now(), s.config.HeartbeatTimeout)}
+}
 
+func applyEffectiveEnabled(device *domain.EdgeDevice, online bool) {
 	for i := range device.ObservationPoints {
 		device.ObservationPoints[i].Enabled = device.ObservationPoints[i].Enabled && online
 	}

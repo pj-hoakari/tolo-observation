@@ -213,6 +213,10 @@ func TestObservationFlow(t *testing.T) {
 
 	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
 
+	if registered.Msg.GetDevice().GetOnline() || registered.Msg.GetDevice().GetLastHeartbeatAt() != nil {
+		t.Errorf("registered device = %v, want offline without last_heartbeat_at", registered.Msg.GetDevice())
+	}
+
 	pointIDs := make([]string, 0, 2)
 	for _, point := range registered.Msg.GetDevice().GetObservationPoints() {
 		pointIDs = append(pointIDs, point.GetObservationPointId())
@@ -262,6 +266,14 @@ func TestObservationFlow(t *testing.T) {
 	devices := listed.Msg.GetDevices()
 	if len(devices) != 1 {
 		t.Fatalf("devices = %v, want one device", devices)
+	}
+
+	if !devices[0].GetOnline() {
+		t.Errorf("online = false, want true after a heartbeat")
+	}
+
+	if devices[0].GetLastHeartbeatAt() == nil {
+		t.Errorf("last_heartbeat_at is unset, want the heartbeat time")
 	}
 
 	for _, point := range devices[0].GetObservationPoints() {
@@ -337,14 +349,19 @@ func TestObservationFlow(t *testing.T) {
 	})
 
 	t.Run("refuses measurements from an unregistered device", func(t *testing.T) {
-		if _, err := flow.edgeDevices.UnregisterEdgeDevice(ctx, authorized(
+		unregistered, err := flow.edgeDevices.UnregisterEdgeDevice(ctx, authorized(
 			flow.token(t, testEventPublicID, "events.manage"),
 			&observationv1.UnregisterEdgeDeviceRequest{EventId: testEventPublicID, EdgeDeviceId: deviceID},
-		)); err != nil {
+		))
+		if err != nil {
 			t.Fatalf("UnregisterEdgeDevice() error = %v", err)
 		}
 
-		_, err := flow.measurements.ReportMeasurements(ctx, authorized(
+		if unregistered.Msg.GetDevice().GetOnline() {
+			t.Errorf("online = true, want false for an unregistered device")
+		}
+
+		_, err = flow.measurements.ReportMeasurements(ctx, authorized(
 			reportToken,
 			&observationv1.ReportMeasurementsRequest{
 				EventId:      testEventPublicID,

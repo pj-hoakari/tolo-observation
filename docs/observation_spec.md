@@ -22,8 +22,8 @@ package: `tolo.observation.v1`
 |---|---|---|---|---|
 | RegisterEdgeDevice | エッジ端末を登録する。登録は実質的に観測点登録を兼ねる | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered |
 | UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。配下観測点は観測不能化する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled |
-| ListEdgeDevices | イベント配下のエッジ端末と観測点の一覧を返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
-| Heartbeat | エッジ端末の稼働を通知する。途絶が一定時間を超えると、切断と観測不能化に波及する | エッジ端末 | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
+| ListEdgeDevices | イベント配下のエッジ端末と観測点の一覧を、エッジ端末の稼働状態とあわせて返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
+| Heartbeat | エッジ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する | エッジ端末 | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
 
 ### 手動介入・運用状態の変更（現場誘導のシステム接点。誘導ドメイン所属）
@@ -130,6 +130,8 @@ message EdgeDevice {
   string name = 3;
   repeated ObservationPoint observation_points = 4;  // エッジ端末 ∋ 観測点（0個以上）
   bool unregistered = 5;  // 登録解除済み（論理削除）。識別子と配下観測点は保持
+  google.protobuf.Timestamp last_heartbeat_at = 6;  // 最後に Heartbeat を受けた時刻。一度も受けていなければ未設定
+  bool online = 7;  // 稼働中（WebRTC で待ち受け中）。Heartbeat の途絶が30秒以内なら true。登録解除済みは常に false
 }
 
 // 観測点: 計測対象（ポイント／ルート）ごとの計測単位。グラフ要素との関連はグラフ編集が保持
@@ -290,6 +292,9 @@ message EventOverview {
 - エッジ端末の切断・登録解除は配下観測点の観測不能化に波及
   切断は Heartbeat 途絶で判定し、復帰すれば観測再開する（一時的）
   登録解除は `UnregisterEdgeDevice` による明示の操作であり、復帰しない（恒久的）。両者は `EdgeDevice.unregistered` で区別する
+- エッジ端末の稼働状態は本サービスが Heartbeat から判定し、`ListEdgeDevices` の `EdgeDevice.online` と `last_heartbeat_at` で返す
+  稼働中は、観測ページが WebRTC で待ち受けていることを表す（Edge Bridge Service）。観測ページは待ち受けている間だけ Heartbeat を送り、待ち受けをやめたら送らない
+  `online` の判定は切断の判定と同じ基準を使う。基準は Heartbeat の途絶30秒とし、観測ページは基準より短い10秒間隔で送る。基準の時間は本サービスの設定であり、呼び出し側に判定を複製させない
 - 登録解除は論理削除であり、エッジ端末と配下観測点の識別子を保持する
   観測点を物理削除するとグラフ編集が持つ観測点とグラフ要素の対応の参照先が失われるため、識別子は残す
   配下観測点は観測不能化（`enabled = false`）し、観測再開の対象から外す

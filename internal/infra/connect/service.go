@@ -228,7 +228,14 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(
 	}), nil
 }
 
-func newProtoEdgeDevice(device domain.EdgeDevice) *observationv1.EdgeDevice {
+func newProtoEdgeDevice(view application.EdgeDeviceView) *observationv1.EdgeDevice {
+	device := view.Device
+
+	var lastHeartbeatAt *timestamppb.Timestamp
+	if device.LastHeartbeatAt != nil {
+		lastHeartbeatAt = timestamppb.New(*device.LastHeartbeatAt)
+	}
+
 	points := make([]*observationv1.ObservationPoint, 0, len(device.ObservationPoints))
 	for _, point := range device.ObservationPoints {
 		points = append(points, newProtoObservationPoint(point))
@@ -240,6 +247,8 @@ func newProtoEdgeDevice(device domain.EdgeDevice) *observationv1.EdgeDevice {
 		Name:              device.Name,
 		ObservationPoints: points,
 		Unregistered:      device.Unregistered,
+		LastHeartbeatAt:   lastHeartbeatAt,
+		Online:            view.Online,
 	}
 }
 

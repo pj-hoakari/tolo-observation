@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	connectrpc "connectrpc.com/connect"
 
@@ -20,8 +21,8 @@ const testEdgeDeviceID = "1122334455667788"
 // what the test put in it, so the handler's mapping is what gets exercised.
 type fakeEdgeDeviceUseCases struct {
 	registerOutput application.RegisterEdgeDeviceOutput
-	device         domain.EdgeDevice
-	devices        []domain.EdgeDevice
+	device         application.EdgeDeviceView
+	devices        []application.EdgeDeviceView
 	point          domain.ObservationPoint
 	err            error
 }
@@ -40,14 +41,14 @@ func (f *fakeEdgeDeviceUseCases) RegisterEdgeDevice(
 func (f *fakeEdgeDeviceUseCases) UnregisterEdgeDevice(
 	_ context.Context,
 	_ application.UnregisterEdgeDeviceInput,
-) (domain.EdgeDevice, error) {
+) (application.EdgeDeviceView, error) {
 	return f.device, f.err
 }
 
 func (f *fakeEdgeDeviceUseCases) ListEdgeDevices(
 	_ context.Context,
 	_ application.ListEdgeDevicesInput,
-) ([]domain.EdgeDevice, error) {
+) ([]application.EdgeDeviceView, error) {
 	return f.devices, f.err
 }
 
@@ -91,13 +92,16 @@ func TestRegisterEdgeDevice(t *testing.T) {
 
 	useCases := &fakeEdgeDeviceUseCases{
 		registerOutput: application.RegisterEdgeDeviceOutput{
-			Device: domain.EdgeDevice{
-				ID:      domain.EdgeDeviceID(testEdgeDeviceID),
-				EventID: testEventPublicID,
-				Name:    "gate-1",
-				ObservationPoints: []domain.ObservationPoint{
-					{ID: domain.ObservationPointID("99aabbccddeeff00"), Name: "north", Enabled: true},
+			Device: application.EdgeDeviceView{
+				Device: domain.EdgeDevice{
+					ID:      domain.EdgeDeviceID(testEdgeDeviceID),
+					EventID: testEventPublicID,
+					Name:    "gate-1",
+					ObservationPoints: []domain.ObservationPoint{
+						{ID: domain.ObservationPointID("99aabbccddeeff00"), Name: "north", Enabled: true},
+					},
 				},
+				Online: false,
 			},
 			ObservationPageURL: "https://example.test/observe/" + testEdgeDeviceID,
 		},
@@ -136,6 +140,82 @@ func TestRegisterEdgeDevice(t *testing.T) {
 
 	if !points[0].GetEnabled() {
 		t.Errorf("enabled = false, want true")
+	}
+}
+
+func TestListEdgeDevicesReportsLiveness(t *testing.T) {
+	t.Parallel()
+
+	heartbeatAt := time.Date(2026, time.October, 11, 9, 30, 0, 0, time.UTC)
+
+	tests := []struct {
+		name          string
+		view          application.EdgeDeviceView
+		wantOnline    bool
+		wantHeartbeat *time.Time
+	}{
+		{
+			name:          "heartbeat within the timeout",
+			view:          application.EdgeDeviceView{Device: domain.EdgeDevice{LastHeartbeatAt: &heartbeatAt}, Online: true},
+			wantOnline:    true,
+			wantHeartbeat: &heartbeatAt,
+		},
+		{
+			name:          "heartbeat past the timeout",
+			view:          application.EdgeDeviceView{Device: domain.EdgeDevice{LastHeartbeatAt: &heartbeatAt}, Online: false},
+			wantOnline:    false,
+			wantHeartbeat: &heartbeatAt,
+		},
+		{
+			name:          "never heartbeated",
+			view:          application.EdgeDeviceView{Device: domain.EdgeDevice{}, Online: false},
+			wantOnline:    false,
+			wantHeartbeat: nil,
+		},
+		{
+			name: "unregistered",
+			view: application.EdgeDeviceView{
+				Device: domain.EdgeDevice{Unregistered: true, LastHeartbeatAt: &heartbeatAt},
+				Online: false,
+			},
+			wantOnline:    false,
+			wantHeartbeat: &heartbeatAt,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tt.view.Device.ID = domain.EdgeDeviceID(testEdgeDeviceID)
+			client := newEdgeDeviceClient(t, "events.read", &fakeEdgeDeviceUseCases{
+				devices: []application.EdgeDeviceView{tt.view},
+			})
+
+			res, err := client.ListEdgeDevices(context.Background(), connectrpc.NewRequest(
+				&observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID, IncludeUnregistered: true},
+			))
+			if err != nil {
+				t.Fatalf("ListEdgeDevices() error = %v", err)
+			}
+
+			devices := res.Msg.GetDevices()
+			if len(devices) != 1 {
+				t.Fatalf("devices = %v, want one device", devices)
+			}
+
+			if got := devices[0].GetOnline(); got != tt.wantOnline {
+				t.Errorf("online = %v, want %v", got, tt.wantOnline)
+			}
+
+			got := devices[0].GetLastHeartbeatAt()
+			switch {
+			case tt.wantHeartbeat == nil && got != nil:
+				t.Errorf("last_heartbeat_at = %v, want unset", got.AsTime())
+			case tt.wantHeartbeat != nil && (got == nil || !got.AsTime().Equal(*tt.wantHeartbeat)):
+				t.Errorf("last_heartbeat_at = %v, want %v", got, *tt.wantHeartbeat)
+			}
+		})
 	}
 }
 
