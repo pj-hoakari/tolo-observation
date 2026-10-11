@@ -23,7 +23,7 @@ import (
 const (
 	defaultAddr              = ":8080"
 	defaultLogLevel          = "info"
-	defaultHeartbeatTimeout  = 2 * time.Minute
+	defaultHeartbeatTimeout  = 30 * time.Second
 	defaultObservationWindow = time.Minute
 	defaultOptimizeTimeout   = 30 * time.Second
 	shutdownTimeout          = 10 * time.Second
