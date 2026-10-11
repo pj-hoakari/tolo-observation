@@ -60,11 +60,11 @@ func TestRegisterEdgeDeviceBuildsObservationPageURL(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	if got, want := output.ObservationPageURL, "https://"+testTenantPublicID+".example.test/event/"+testEventPublicID+"/observation/"+string(output.Device.ID); got != want {
+	if got, want := output.ObservationPageURL, "https://"+testTenantPublicID+".example.test/event/"+testEventPublicID+"/observation/"+string(output.Device.Device.ID); got != want {
 		t.Errorf("ObservationPageURL = %q, want %q", got, want)
 	}
 
-	if got, want := output.Device.TenantPublicID, testTenantPublicID; got != want {
+	if got, want := output.Device.Device.TenantPublicID, testTenantPublicID; got != want {
 		t.Errorf("TenantPublicID = %q, want %q", got, want)
 	}
 }
@@ -101,17 +101,20 @@ func TestUnregisterEdgeDeviceRejectsAnotherEventsDevice(t *testing.T) {
 	}
 }
 
-func TestListEdgeDevicesDerivesEnabledFromHeartbeat(t *testing.T) {
+func TestListEdgeDevicesDerivesLivenessFromHeartbeat(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name            string
 		lastHeartbeatAt *time.Time
+		unregistered    bool
 		want            bool
 	}{
 		{name: "fresh heartbeat", lastHeartbeatAt: ptr(testNow.Add(-time.Minute)), want: true},
-		{name: "stale heartbeat", lastHeartbeatAt: ptr(testNow.Add(-10 * time.Minute)), want: false},
+		{name: "heartbeat at the timeout", lastHeartbeatAt: ptr(testNow.Add(-2 * time.Minute)), want: true},
+		{name: "stale heartbeat", lastHeartbeatAt: ptr(testNow.Add(-2*time.Minute - time.Second)), want: false},
 		{name: "never seen", lastHeartbeatAt: nil, want: false},
+		{name: "unregistered with fresh heartbeat", lastHeartbeatAt: ptr(testNow), unregistered: true, want: false},
 	}
 
 	for _, tt := range tests {
@@ -124,6 +127,7 @@ func TestListEdgeDevicesDerivesEnabledFromHeartbeat(t *testing.T) {
 				Return([]domain.EdgeDevice{{
 					ID:              "1122334455667788",
 					EventID:         testEventPublicID,
+					Unregistered:    tt.unregistered,
 					LastHeartbeatAt: tt.lastHeartbeatAt,
 					ObservationPoints: []domain.ObservationPoint{
 						{ID: "99aabbccddeeff00", Name: "north", Enabled: true},
@@ -138,11 +142,15 @@ func TestListEdgeDevicesDerivesEnabledFromHeartbeat(t *testing.T) {
 				t.Fatalf("ListEdgeDevices() error = %v", err)
 			}
 
-			if len(got) != 1 || len(got[0].ObservationPoints) != 1 {
+			if len(got) != 1 || len(got[0].Device.ObservationPoints) != 1 {
 				t.Fatalf("ListEdgeDevices() = %v, want one device with one point", got)
 			}
 
-			if enabled := got[0].ObservationPoints[0].Enabled; enabled != tt.want {
+			if online := got[0].Online; online != tt.want {
+				t.Errorf("Online = %v, want %v", online, tt.want)
+			}
+
+			if enabled := got[0].Device.ObservationPoints[0].Enabled; enabled != tt.want {
 				t.Errorf("Enabled = %v, want %v", enabled, tt.want)
 			}
 		})

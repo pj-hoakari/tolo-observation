@@ -136,6 +136,8 @@ message EdgeDevice {
   string name = 3;
   repeated ObservationPoint observation_points = 4;
   bool unregistered = 5;
+  google.protobuf.Timestamp last_heartbeat_at = 6;
+  bool online = 7;
 }
 
 message ObservationPoint {
