@@ -20,6 +20,7 @@ type GraphSupply interface {
 
 type OptimizeInput struct {
 	TenantPublicID string
+	EventType      domain.EventType
 	Graph          domain.Graph
 	Snapshot       domain.Snapshot
 	History        []domain.Snapshot
@@ -48,6 +49,7 @@ type ObservationCycle struct {
 	devices      repository.EdgeDeviceRepository
 	measurements repository.MeasurementRepository
 	snapshots    repository.SnapshotRepository
+	settings     repository.ObservationSettingsRepository
 	config       ObservationCycleConfig
 }
 
@@ -57,6 +59,7 @@ func NewObservationCycle(
 	devices repository.EdgeDeviceRepository,
 	measurements repository.MeasurementRepository,
 	snapshots repository.SnapshotRepository,
+	settings repository.ObservationSettingsRepository,
 	config ObservationCycleConfig,
 ) *ObservationCycle {
 	if config.Now == nil {
@@ -69,6 +72,7 @@ func NewObservationCycle(
 		devices:      devices,
 		measurements: measurements,
 		snapshots:    snapshots,
+		settings:     settings,
 		config:       config,
 	}
 }
@@ -115,6 +119,11 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("save snapshot: %w", err)
 	}
 
+	settings, err := findObservationSettings(ctx, c.settings, eventID)
+	if err != nil {
+		return err
+	}
+
 	var previous *domain.OptimizationOutcome
 
 	latest, err := c.snapshots.LatestOptimizationOutcome(ctx, eventID)
@@ -131,6 +140,7 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 
 	outcome, err := c.flow.Optimize(optimizeCtx, OptimizeInput{
 		TenantPublicID: tenantPublicID,
+		EventType:      settings.EventType,
 		Graph:          graph,
 		Snapshot:       snapshot,
 		History:        history,

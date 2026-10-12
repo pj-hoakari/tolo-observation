@@ -100,7 +100,7 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 		EventId:       proto.String(snapshot.EventID),
 		TenantContext: &flowv1.TenantContext{
 			TenantId:              proto.String(input.TenantPublicID),
-			TenantCategory:        flowv1.TenantCategory_TENANT_CATEGORY_SHORT_TERM.Enum(),
+			TenantCategory:        flowTenantCategory(input.EventType).Enum(),
 			AvailableHistoryHours: proto.Float64(0),
 		},
 		Graph:          graph,
@@ -113,6 +113,14 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 		Config:         defaultFlowConfig(),
 		ServerTime:     timestamppb.New(input.ServerTime),
 	}, nil
+}
+
+func flowTenantCategory(eventType domain.EventType) flowv1.TenantCategory {
+	if eventType == domain.EventTypeLongTerm {
+		return flowv1.TenantCategory_TENANT_CATEGORY_LONG_TERM
+	}
+
+	return flowv1.TenantCategory_TENANT_CATEGORY_SHORT_TERM
 }
 
 func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]bool, map[string]bool) {

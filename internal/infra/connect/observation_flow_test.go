@@ -122,6 +122,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 	devices := dbinfra.NewPostgresEdgeDeviceRepository(testDB)
 	measurements := dbinfra.NewPostgresMeasurementRepository(testDB)
 	snapshots := dbinfra.NewPostgresSnapshotRepository(testDB)
+	settings := dbinfra.NewPostgresObservationSettingsRepository(testDB)
 	graph, graphURL := startGraphStub(t)
 	flow, flowURL := startFlowStub(t)
 
@@ -131,6 +132,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 		devices,
 		measurements,
 		snapshots,
+		settings,
 		application.ObservationCycleConfig{
 			Window:           time.Minute,
 			OptimizeTimeout:  5 * time.Second,
@@ -148,7 +150,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 		}),
 		application.NewMeasurementIngestService(devices, measurements, cycle),
 		application.NewStatusQueryService(snapshots),
-		application.NewObservationSettingsService(dbinfra.NewPostgresObservationSettingsRepository(testDB)),
+		application.NewObservationSettingsService(settings),
 	)
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)

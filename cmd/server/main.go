@@ -126,6 +126,7 @@ func run() error {
 
 	measurementRepository := dbinfra.NewPostgresMeasurementRepository(db)
 	snapshots := dbinfra.NewPostgresSnapshotRepository(db)
+	observationSettings := dbinfra.NewPostgresObservationSettingsRepository(db)
 
 	cycle := application.NewObservationCycle(
 		connectinfra.NewGraphSupplyClient(http.DefaultClient, graphAuthoringURL),
@@ -133,6 +134,7 @@ func run() error {
 		edgeDeviceRepository,
 		measurementRepository,
 		snapshots,
+		observationSettings,
 		application.ObservationCycleConfig{
 			Window:           observationWindow,
 			OptimizeTimeout:  optimizeTimeout,
@@ -152,7 +154,7 @@ func run() error {
 		edgeDevices,
 		measurements,
 		application.NewStatusQueryService(snapshots),
-		application.NewObservationSettingsService(dbinfra.NewPostgresObservationSettingsRepository(db)),
+		application.NewObservationSettingsService(observationSettings),
 	)
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)
