@@ -73,36 +73,39 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 		return fmt.Errorf("encode snapshot scores: %w", err)
 	}
 
-	_, err = Executor(ctx, r.db).ExecContext(ctx, `
-		WITH s AS (
-			INSERT INTO snapshots (snapshot_id, tenant_public_id, event_id, window_start, window_end, scores)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			RETURNING event_id, window_start, window_end, scores
-		)
-		INSERT INTO arc_stagnation_hourly AS h (
-			event_id, hour_start, route_id, stagnation_bucket, sample_count, stagnation_sum, first_start, last_end)
-		SELECT s.event_id,
-			date_trunc('hour', s.window_start, 'UTC'),
-			route->>'route_id',
-			arc_stagnation_bucket((route->>'stagnation_score')::float8),
-			1,
-			(route->>'stagnation_score')::float8,
-			s.window_start,
-			s.window_end
-		FROM s
-		CROSS JOIN LATERAL jsonb_array_elements(s.scores->'routes') AS route
-		WHERE jsonb_typeof(route->'stagnation_score') = 'number'
-		ON CONFLICT (event_id, hour_start, route_id, stagnation_bucket) DO UPDATE
-		SET sample_count = h.sample_count + 1,
-			stagnation_sum = h.stagnation_sum + EXCLUDED.stagnation_sum,
-			first_start = LEAST(h.first_start, EXCLUDED.first_start),
-			last_end = GREATEST(h.last_end, EXCLUDED.last_end)`,
-		snapshot.ID, tenantPublicID, snapshot.EventID, snapshot.WindowStart, snapshot.WindowEnd, encoded)
-	if err != nil {
-		return fmt.Errorf("insert snapshot: %w", err)
-	}
+	return RunInTransaction(ctx, r.db, func(ctx context.Context) error {
+		executor := Executor(ctx, r.db)
 
-	return nil
+		_, err := executor.ExecContext(ctx, `
+			INSERT INTO snapshots (snapshot_id, tenant_public_id, event_id, window_start, window_end, scores)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
+			snapshot.ID, tenantPublicID, snapshot.EventID, snapshot.WindowStart, snapshot.WindowEnd, encoded)
+		if err != nil {
+			return fmt.Errorf("insert snapshot: %w", err)
+		}
+
+		for _, score := range snapshot.RouteScores {
+			if score.StagnationScore == nil {
+				continue
+			}
+
+			_, err := executor.ExecContext(ctx, `
+				INSERT INTO arc_stagnation_hourly AS h (
+					event_id, hour_start, route_id, stagnation_bucket, sample_count, stagnation_sum, first_start, last_end)
+				VALUES ($1, date_trunc('hour', $2::timestamptz, 'UTC'), $3, arc_stagnation_bucket($4), 1, $4, $2, $5)
+				ON CONFLICT (event_id, hour_start, route_id, stagnation_bucket) DO UPDATE
+				SET sample_count = h.sample_count + 1,
+					stagnation_sum = h.stagnation_sum + EXCLUDED.stagnation_sum,
+					first_start = LEAST(h.first_start, EXCLUDED.first_start),
+					last_end = GREATEST(h.last_end, EXCLUDED.last_end)`,
+				snapshot.EventID, snapshot.WindowStart, score.RouteID, *score.StagnationScore, snapshot.WindowEnd)
+			if err != nil {
+				return fmt.Errorf("upsert arc stagnation: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *PostgresSnapshotRepository) LatestSnapshot(ctx context.Context, eventID string) (domain.Snapshot, error) {
