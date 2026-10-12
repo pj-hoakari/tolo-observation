@@ -73,15 +73,39 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 		return fmt.Errorf("encode snapshot scores: %w", err)
 	}
 
-	_, err = Executor(ctx, r.db).ExecContext(ctx, `
-		INSERT INTO snapshots (snapshot_id, tenant_public_id, event_id, window_start, window_end, scores)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
-		snapshot.ID, tenantPublicID, snapshot.EventID, snapshot.WindowStart, snapshot.WindowEnd, encoded)
-	if err != nil {
-		return fmt.Errorf("insert snapshot: %w", err)
-	}
+	return RunInTransaction(ctx, r.db, func(ctx context.Context) error {
+		executor := Executor(ctx, r.db)
 
-	return nil
+		_, err := executor.ExecContext(ctx, `
+			INSERT INTO snapshots (snapshot_id, tenant_public_id, event_id, window_start, window_end, scores)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
+			snapshot.ID, tenantPublicID, snapshot.EventID, snapshot.WindowStart, snapshot.WindowEnd, encoded)
+		if err != nil {
+			return fmt.Errorf("insert snapshot: %w", err)
+		}
+
+		for _, score := range snapshot.RouteScores {
+			if score.StagnationScore == nil {
+				continue
+			}
+
+			_, err := executor.ExecContext(ctx, `
+				INSERT INTO arc_stagnation_hourly AS h (
+					event_id, hour_start, route_id, stagnation_bucket, sample_count, stagnation_sum, first_start, last_end)
+				VALUES ($1, date_trunc('hour', $2::timestamptz, 'UTC'), $3, arc_stagnation_bucket($4), 1, $4, $2, $5)
+				ON CONFLICT (event_id, hour_start, route_id, stagnation_bucket) DO UPDATE
+				SET sample_count = h.sample_count + 1,
+					stagnation_sum = h.stagnation_sum + EXCLUDED.stagnation_sum,
+					first_start = LEAST(h.first_start, EXCLUDED.first_start),
+					last_end = GREATEST(h.last_end, EXCLUDED.last_end)`,
+				snapshot.EventID, snapshot.WindowStart, score.RouteID, *score.StagnationScore, snapshot.WindowEnd)
+			if err != nil {
+				return fmt.Errorf("upsert arc stagnation: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *PostgresSnapshotRepository) LatestSnapshot(ctx context.Context, eventID string) (domain.Snapshot, error) {
@@ -151,22 +175,29 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 	var rows []arcHistoryRow
 
 	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
-		WITH samples AS MATERIALIZED (
-			SELECT route->>'route_id' AS route_id,
-				(route->>'stagnation_score')::float8 AS stagnation,
-				s.window_start,
-				s.window_end
-			FROM snapshots s
-			CROSS JOIN LATERAL jsonb_array_elements(s.scores->'routes') AS route
-			WHERE s.event_id = $1 AND s.window_end > $2 AND jsonb_typeof(route->'stagnation_score') = 'number'
+		WITH buckets AS (
+			SELECT route_id,
+				stagnation_bucket,
+				sum(sample_count) AS sample_count,
+				sum(stagnation_sum) AS stagnation_sum,
+				min(first_start) AS first_start,
+				max(last_end) AS last_end
+			FROM arc_stagnation_hourly
+			WHERE event_id = $1 AND hour_start >= $2
+			GROUP BY route_id, stagnation_bucket
+		), ranked AS (
+			SELECT *,
+				sum(sample_count) OVER (PARTITION BY route_id ORDER BY stagnation_bucket) AS cumulative,
+				sum(sample_count) OVER (PARTITION BY route_id) AS total
+			FROM buckets
 		)
 		SELECT route_id,
-			count(*) AS sample_count,
-			percentile_cont(0.9) WITHIN GROUP (ORDER BY stagnation) AS p90_stagnation,
-			avg(stagnation) AS mean_stagnation,
-			min(window_start) AS first_start,
-			max(window_end) AS last_end
-		FROM samples
+			max(total) AS sample_count,
+			min(stagnation_bucket) FILTER (WHERE cumulative >= 0.9 * total) AS p90_stagnation,
+			sum(stagnation_sum) / max(total) AS mean_stagnation,
+			min(first_start) AS first_start,
+			max(last_end) AS last_end
+		FROM ranked
 		GROUP BY route_id
 		ORDER BY route_id`, eventID, since)
 	if err != nil {

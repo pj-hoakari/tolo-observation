@@ -117,10 +117,10 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 	}
 
 	r1 := stats["r1"]
-	if r1.P90Stagnation == nil || math.Abs(r1.GetP90Stagnation()-5.5) > 1e-9 ||
+	if r1.P90Stagnation == nil || math.Abs(r1.GetP90Stagnation()-6) > 0.06 ||
 		r1.BaselineStagnation == nil || math.Abs(r1.GetBaselineStagnation()-3.5) > 1e-9 ||
 		math.Abs(r1.GetAvailableSpanHours()-(5*time.Hour+time.Minute).Hours()) > 1e-9 || r1.FlowSensitivityEta != nil {
-		t.Errorf("r1 arc stat = %v, want p90 5.5 and baseline 3.5 over the last day only, spanning 5h1m", r1)
+		t.Errorf("r1 arc stat = %v, want p90 6 and baseline 3.5 over the last day only, spanning 5h1m", r1)
 	}
 
 	r2 := stats["r2"]
