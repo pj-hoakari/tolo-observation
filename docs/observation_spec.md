@@ -43,19 +43,25 @@ package: `tolo.observation.v1`
 | GetGuestSnapshot | その時点のゲスト向け状況を集約して返す。通常経路は Guest Service への push であり、本 RPC は push 欠落時の復旧・突き合わせ用 | Guest Service（復旧時のみ） | サービス間（token_use=service） | （復旧用参照） |
 | GetEventOverview | スタッフ向けの詳細状況（スナップショット・提案・危険フラグ・行列状態）を返す | スタッフアプリ | `event_access` + events.read | （参照のみ） |
 
+### 観測設定値
+
+| RPC | 説明（ユビキタス言語） | 呼び出し元 | 認可 | 関連ドメインイベント |
+|---|---|---|---|---|
+| GetObservationSettings | イベントの観測設定値（履歴期間とイベント種別）を返す | 管理 UI | `event_access` + events.read | （参照のみ） |
+| UpdateObservationSettings | イベントの観測設定値（履歴期間とイベント種別）を変更する | 管理 UI | `event_access` + events.manage | ObservationSettingsChanged／EventTypeAssigned |
+
 ### 呼び出す側（本サービスがクライアントになる RPC）
 
 | 相手 | RPC | 目的 | 関連ドメインイベント（本コンテキスト側） |
 |---|---|---|---|
-| Graph Authoring | GetCurrentRevision／GetObservationPointMappings／GetGatePoints | グラフ・紐づけ・設計時ゲート指定の取得 | — |
+| Graph Authoring | GetCurrentRevision／GetObservationPointMappings／GetGatePoints | グラフ・紐づけ・設計時ゲート指定の取得。紐づけは GetCurrentRevision で得た `revision_id` を指定して読み、グラフと同じ版にそろえる | — |
 | Flow Control | Optimize | 観測スナップショット確定等を契機に最適化要求（検知状態・手動介入を同梱） | OptimizationRequested／OptimizationResultPersisted |
 | Line Control | GuideQueues | 行列把握・案内・形状最適化の要求 | 同上 |
 | Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う）。Flow／Line の応答を Operation の型へ変換して渡す | — |
 | Guest Service | （PubSub: `guest-status` へ publish） | スナップショット確定・行列状態更新のたびにゲスト向け状況（混雑・行列。`tolo.guest.v1.GuestStatus`。ID と数値のみ）を publish。誘導提案・表示名は含めない（提案はスタッフ向け、表示名の付与は Guest Service） | （ゲスト側 GuestViewUpdated の源） |
 | Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用）。Operation の型へ変換して渡す | — |
 | Reference Aggregation | GetReferenceValues | コールドスタート用参照値の取得（短期イベント等）。Flow の型へ変換して `OptimizeRequest.references` に同梱する | — |
-| Graph Authoring | GetQrLocations | QR 設置箇所の取得（QR 方式の観測点として扱う） | — |
-| Tenant Management | GetObservationSettings | 設定値・履歴期間の参照 | — |
+| Graph Authoring | GetQrLocations | QR 設置箇所の取得（QR 方式の観測点として扱う）。GetCurrentRevision で得た `revision_id` を指定する | — |
 
 ## 参考 proto 定義
 
@@ -90,6 +96,11 @@ service StatusQueryService {
   // ゲスト向け状況の型は tolo.guest.v1 が正本（受信側の公開言語）。復旧・突き合わせ用
   rpc GetGuestSnapshot(GetGuestSnapshotRequest) returns (tolo.guest.v1.GuestStatus);
   rpc GetEventOverview(GetEventOverviewRequest) returns (EventOverview);
+}
+
+service ObservationSettingsService {
+  rpc GetObservationSettings(GetObservationSettingsRequest) returns (GetObservationSettingsResponse);
+  rpc UpdateObservationSettings(UpdateObservationSettingsRequest) returns (UpdateObservationSettingsResponse);
 }
 
 // ---- 計測値 ----
@@ -256,6 +267,35 @@ message EventOverview {
   // 提案・行列状態のフィールドは意図的に未宣言（参考 proto の範囲外とし、実装フェーズで宣言する）
   // 宣言するときも tolo.flow.v1／tolo.line.v1 の型は使わない（本 RPC は Service Gateway を経由してスタッフアプリへ返す）
 }
+
+// ---- 観測設定値 ----
+
+// イベント種別: イベントの性質。履歴がどれだけたまっているかは表さない
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_SHORT_TERM = 1;  // 短期（会期が数日に満たない）
+  EVENT_TYPE_LONG_TERM = 2;   // 長期（会期が数日以上。常設を含む）
+}
+
+// 観測設定値: イベント単位
+message ObservationSettings {
+  int32 history_window_days = 1;  // Flow／Line へ同梱する履歴を切り出す期間（日）。既定 30
+  EventType event_type = 2;
+}
+
+message GetObservationSettingsRequest {
+  string event_id = 1;
+}
+message GetObservationSettingsResponse {
+  ObservationSettings settings = 1;
+}
+message UpdateObservationSettingsRequest {
+  string event_id = 1;
+  ObservationSettings settings = 2;
+}
+message UpdateObservationSettingsResponse {
+  ObservationSettings settings = 1;
+}
 ```
 
 ## 補足
@@ -267,6 +307,14 @@ message EventOverview {
   tenant_id／event_id で分割し、保護境界の強制点を本サービスに集約する
 - Flow／Line への履歴の切り出し・同梱は本サービスの責務。Flow へは同一イベントの観測値から計算した統計と時系列（`OptimizeRequest.history_digest`）と前回の最適化結果（`previous_result`）を、Line へは履歴一式（`GuideQueuesRequest.history`）を渡す
   Flow／Line は永続化層を直接参照しない
+- 観測設定値（`ObservationSettings`）はイベント単位で本サービスが持つ。`history_window_days` は Flow／Line へ同梱する履歴を切り出す期間、`event_type` はイベントの性質を表す
+  イベントの作成は Tenant Management から同期しない。観測設定値を保存していないイベントには、`GetObservationSettings` が既定値（`history_window_days = 30`、`EVENT_TYPE_UNSPECIFIED`）を返す
+  `UpdateObservationSettings` は2つの項目をまとめて置き換える。`history_window_days` が1未満の場合と、`event_type` が `EVENT_TYPE_UNSPECIFIED` の場合は `invalid_argument` を返す
+  `history_window_days` が変わったときは ObservationSettingsChanged、`event_type` が変わったときは EventTypeAssigned が成立する
+  既定値の30日は、実測にもとづき運用で調整する前提の初期値である。観測設定値に新しい項目を足すのは、必要が生じた時点とする
+- Flow へ送る `OptimizeRequest.event_context.term` は、イベントの性質（短期＝会期が数日に満たないイベント、長期＝会期が数日以上にわたるイベント）を表し、本サービスがイベント種別から決める。境界の日数は定めず、管理者が会期から種別を選ぶ。`EVENT_TYPE_LONG_TERM` は `EVENT_TERM_LONG`、`EVENT_TYPE_SHORT_TERM` と種別が未設定のイベントは `EVENT_TERM_SHORT` として送る
+  未設定を短期として扱うのは、性質の分からないイベントのフィードバック値を、長期イベントの参照値に混ぜないためである
+  履歴がどれだけたまっているかは `event_context.available_history_hours` だけで表し、本サービスが保存している履歴の期間から求める
 - Flow へ渡すグラフと観測値は、本サービスが共有カーネルの型から Flow 独自の型（`tolo.flow.v1`）へ変換する（Flow Control）
   入退出点は、共有カーネルの `Point.boundary` を Flow の `Node.boundary` へそのまま写す。入退出点の開閉は `boundary.active` で伝え、`Node.enabled`（ノード自体の有効無効）には反映しない
 - Flow／Line の型（`tolo.flow.v1`／`tolo.line.v1`）を使うのは本サービスだけである。本サービスは Flow／Line と他サービスの間の腐敗防止層として、次の経路で型を変換する
@@ -316,7 +364,7 @@ message EventOverview {
   機材を入れ替える場合は、新しい機材に同じ URL を設定すれば同一のエッジ端末として続く
   URL は秘密ではない。提示しても権限は生じず、計測値の送信には別途 `event_access` を要する
 - `edge_device_id` は URL に載るため、テナント・イベントと同じく公開 ID（ランダムな 16 文字 hex）とし、内部主キーを外へ出さない
-- 観測サイクル（スナップショット確定 → Flow／Line への要求、設定値の取得）は計測値の到着を契機に同期で実行される
+- 観測サイクル（スナップショット確定 → Flow／Line への要求）は計測値の到着を契機に同期で実行される
   タイマー駆動ではないため、後段の呼び出しは、計測値を送ってきたリクエストの文脈の中で行う
   最後の後段呼び出しは、入口内部 JWT の実際の `exp` より前に開始する。入口変換の `exp` は元トークンの残存時間で120秒より短くなる場合があるため、固定の TTL とは比較しない。厳密モードの求解にも、この開始期限へ収まる時間予算を与える
   `time_to_last_downstream_start_seconds` は入口から最後の後段呼び出しの開始までを計測し、入口 JWT の `exp` までの実時間予算と比較する

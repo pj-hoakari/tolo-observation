@@ -31,7 +31,7 @@ import "google/protobuf/timestamp.proto";
 // グラフ: 現場の接続関係をポイントとルートで表すグラフ（構造の正本はグラフ編集）
 message Graph {
   string event_id = 1;        // グラフはイベント単位
-  string revision_id = 2;     // グラフ版（下流は現在の版を消費）
+  string revision_id = 2;     // 供給内容の版（グラフと配置の版。配置だけの変更でも変わる。下流は現在の版を消費）
   repeated Point points = 3;
   repeated Route routes = 4;
 }

@@ -68,9 +68,9 @@ func (c *GraphSupplyClient) CurrentGraph(ctx context.Context, eventID string) (d
 
 func (c *GraphSupplyClient) ObservationPointMappings(
 	ctx context.Context,
-	eventID string,
+	eventID, revisionID string,
 ) ([]domain.ObservationPointMapping, error) {
-	res, err := c.client.GetObservationPointMappings(ctx, connectrpc.NewRequest(&graphv1.GetMappingsRequest{EventId: eventID}))
+	res, err := c.client.GetObservationPointMappings(ctx, connectrpc.NewRequest(&graphv1.GetMappingsRequest{EventId: eventID, RevisionId: revisionID}))
 	if err != nil {
 		return nil, fmt.Errorf("call GetObservationPointMappings: %w", err)
 	}
