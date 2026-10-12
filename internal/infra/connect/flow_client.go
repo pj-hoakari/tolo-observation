@@ -249,9 +249,13 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 			},
 		)
 
+		if score.StagnationScore == nil {
+			continue
+		}
+
 		observations.ArcStagnations = append(observations.ArcStagnations, &flowv1.ArcStagnation{
 			EdgeId:         proto.String(score.RouteID),
-			Stagnation:     proto.Float64(score.StagnationScore),
+			Stagnation:     score.StagnationScore,
 			Derivation:     flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC.Enum(),
 			SameSensorFlow: proto.Bool(false),
 			ConfidenceFlag: ok.Enum(),
@@ -300,7 +304,10 @@ func flowHistoryDigest(history []domain.Snapshot, edgeIDs map[string]bool) *flow
 			}
 
 			arc.FlowSamples = append(arc.FlowSamples, &flowv1.TimedValue{At: at, Value: score.Forward + score.Backward})
-			arc.StagnationSamples = append(arc.StagnationSamples, &flowv1.TimedValue{At: at, Value: score.StagnationScore})
+
+			if score.StagnationScore != nil {
+				arc.StagnationSamples = append(arc.StagnationSamples, &flowv1.TimedValue{At: at, Value: *score.StagnationScore})
+			}
 		}
 	}
 

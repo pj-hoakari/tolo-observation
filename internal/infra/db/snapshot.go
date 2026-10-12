@@ -35,11 +35,11 @@ type pointScoreJSON struct {
 }
 
 type routeScoreJSON struct {
-	RouteID         string  `json:"route_id"`
-	Forward         float64 `json:"forward"`
-	Backward        float64 `json:"backward"`
-	StagnationScore float64 `json:"stagnation_score"`
-	Exhaustive      bool    `json:"exhaustive"`
+	RouteID         string   `json:"route_id"`
+	Forward         float64  `json:"forward"`
+	Backward        float64  `json:"backward"`
+	StagnationScore *float64 `json:"stagnation_score"`
+	Exhaustive      bool     `json:"exhaustive"`
 }
 
 type snapshotRow struct {

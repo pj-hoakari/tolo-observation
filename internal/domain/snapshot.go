@@ -71,7 +71,7 @@ type RouteScore struct {
 	RouteID         string
 	Forward         float64
 	Backward        float64
-	StagnationScore float64
+	StagnationScore *float64
 	Exhaustive      bool
 }
 
@@ -122,13 +122,21 @@ func NewSnapshot(
 		case mapping.Anchor.RouteID != "":
 			score, ok := routes[mapping.Anchor.RouteID]
 			if !ok {
-				score = &RouteScore{RouteID: mapping.Anchor.RouteID, Forward: 0, Backward: 0, StagnationScore: 0, Exhaustive: true}
+				score = &RouteScore{RouteID: mapping.Anchor.RouteID, Forward: 0, Backward: 0, StagnationScore: nil, Exhaustive: true}
 				routes[mapping.Anchor.RouteID] = score
 			}
 
 			score.Forward += measurement.RateIn()
 			score.Backward += measurement.RateOut()
-			score.StagnationScore += mean(detected[mapping.ObservationPointID])
+
+			if values := detected[mapping.ObservationPointID]; len(values) > 0 {
+				stagnation := mean(values)
+				if score.StagnationScore != nil {
+					stagnation += *score.StagnationScore
+				}
+
+				score.StagnationScore = &stagnation
+			}
 		case mapping.Anchor.PointID != "":
 			score, ok := points[mapping.Anchor.PointID]
 			if !ok {

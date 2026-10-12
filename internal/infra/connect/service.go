@@ -349,12 +349,17 @@ func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
 
 	routes := make([]*kernelv1.RouteScore, 0, len(snapshot.RouteScores))
 	for _, score := range snapshot.RouteScores {
+		var stagnation float64
+		if score.StagnationScore != nil {
+			stagnation = *score.StagnationScore
+		}
+
 		routes = append(routes, &kernelv1.RouteScore{
 			RouteId: score.RouteID,
 			Flow: &kernelv1.RouteScore_DirectionalFlow{
 				DirectionalFlow: &kernelv1.DirectionalFlow{Forward: score.Forward, Backward: score.Backward},
 			},
-			StagnationScore: score.StagnationScore,
+			StagnationScore: stagnation,
 			TurnRatio:       nil,
 			Exhaustive:      score.Exhaustive,
 		})
