@@ -74,8 +74,29 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 	}
 
 	_, err = Executor(ctx, r.db).ExecContext(ctx, `
-		INSERT INTO snapshots (snapshot_id, tenant_public_id, event_id, window_start, window_end, scores)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
+		WITH s AS (
+			INSERT INTO snapshots (snapshot_id, tenant_public_id, event_id, window_start, window_end, scores)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING event_id, window_start, window_end, scores
+		)
+		INSERT INTO arc_stagnation_hourly AS h (
+			event_id, hour_start, route_id, stagnation_bucket, sample_count, stagnation_sum, first_start, last_end)
+		SELECT s.event_id,
+			date_trunc('hour', s.window_start, 'UTC'),
+			route->>'route_id',
+			arc_stagnation_bucket((route->>'stagnation_score')::float8),
+			1,
+			(route->>'stagnation_score')::float8,
+			s.window_start,
+			s.window_end
+		FROM s
+		CROSS JOIN LATERAL jsonb_array_elements(s.scores->'routes') AS route
+		WHERE jsonb_typeof(route->'stagnation_score') = 'number'
+		ON CONFLICT (event_id, hour_start, route_id, stagnation_bucket) DO UPDATE
+		SET sample_count = h.sample_count + 1,
+			stagnation_sum = h.stagnation_sum + EXCLUDED.stagnation_sum,
+			first_start = LEAST(h.first_start, EXCLUDED.first_start),
+			last_end = GREATEST(h.last_end, EXCLUDED.last_end)`,
 		snapshot.ID, tenantPublicID, snapshot.EventID, snapshot.WindowStart, snapshot.WindowEnd, encoded)
 	if err != nil {
 		return fmt.Errorf("insert snapshot: %w", err)
@@ -151,22 +172,29 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 	var rows []arcHistoryRow
 
 	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
-		WITH samples AS MATERIALIZED (
-			SELECT route->>'route_id' AS route_id,
-				(route->>'stagnation_score')::float8 AS stagnation,
-				s.window_start,
-				s.window_end
-			FROM snapshots s
-			CROSS JOIN LATERAL jsonb_array_elements(s.scores->'routes') AS route
-			WHERE s.event_id = $1 AND s.window_end > $2 AND jsonb_typeof(route->'stagnation_score') = 'number'
+		WITH buckets AS (
+			SELECT route_id,
+				stagnation_bucket,
+				sum(sample_count) AS sample_count,
+				sum(stagnation_sum) AS stagnation_sum,
+				min(first_start) AS first_start,
+				max(last_end) AS last_end
+			FROM arc_stagnation_hourly
+			WHERE event_id = $1 AND hour_start >= $2
+			GROUP BY route_id, stagnation_bucket
+		), ranked AS (
+			SELECT *,
+				sum(sample_count) OVER (PARTITION BY route_id ORDER BY stagnation_bucket) AS cumulative,
+				sum(sample_count) OVER (PARTITION BY route_id) AS total
+			FROM buckets
 		)
 		SELECT route_id,
-			count(*) AS sample_count,
-			percentile_cont(0.9) WITHIN GROUP (ORDER BY stagnation) AS p90_stagnation,
-			avg(stagnation) AS mean_stagnation,
-			min(window_start) AS first_start,
-			max(window_end) AS last_end
-		FROM samples
+			max(total) AS sample_count,
+			min(stagnation_bucket) FILTER (WHERE cumulative >= 0.9 * total) AS p90_stagnation,
+			sum(stagnation_sum) / max(total) AS mean_stagnation,
+			min(first_start) AS first_start,
+			max(last_end) AS last_end
+		FROM ranked
 		GROUP BY route_id
 		ORDER BY route_id`, eventID, since)
 	if err != nil {
