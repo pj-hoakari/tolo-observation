@@ -84,6 +84,15 @@ type Snapshot struct {
 	RouteScores []RouteScore
 }
 
+type ArcHistory struct {
+	RouteID        string
+	SampleCount    int
+	P90Stagnation  float64
+	MeanStagnation float64
+	FirstStart     time.Time
+	LastEnd        time.Time
+}
+
 func NewSnapshot(
 	eventID string,
 	windowStart, windowEnd time.Time,

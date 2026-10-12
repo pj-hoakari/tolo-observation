@@ -134,6 +134,62 @@ func (r *PostgresSnapshotRepository) ListSnapshotsEndingAfter(
 	return snapshots, nil
 }
 
+type arcHistoryRow struct {
+	RouteID        string    `db:"route_id"`
+	SampleCount    int       `db:"sample_count"`
+	P90Stagnation  float64   `db:"p90_stagnation"`
+	MeanStagnation float64   `db:"mean_stagnation"`
+	FirstStart     time.Time `db:"first_start"`
+	LastEnd        time.Time `db:"last_end"`
+}
+
+func (r *PostgresSnapshotRepository) SummarizeArcHistory(
+	ctx context.Context,
+	eventID string,
+	since time.Time,
+) ([]domain.ArcHistory, error) {
+	var rows []arcHistoryRow
+
+	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
+		SELECT route->>'route_id' AS route_id,
+			count(*) AS sample_count,
+			percentile_cont(0.9) WITHIN GROUP (ORDER BY (route->>'stagnation_score')::float8) AS p90_stagnation,
+			avg((route->>'stagnation_score')::float8) AS mean_stagnation,
+			min(s.window_start) AS first_start,
+			max(s.window_end) AS last_end
+		FROM snapshots s
+		CROSS JOIN LATERAL jsonb_array_elements(s.scores->'routes') AS route
+		WHERE s.event_id = $1 AND s.window_end > $2 AND jsonb_typeof(route->'stagnation_score') = 'number'
+		GROUP BY route->>'route_id'
+		ORDER BY route->>'route_id'`, eventID, since)
+	if err != nil {
+		return nil, fmt.Errorf("summarize arc history: %w", err)
+	}
+
+	histories := make([]domain.ArcHistory, 0, len(rows))
+	for _, row := range rows {
+		histories = append(histories, domain.ArcHistory(row))
+	}
+
+	return histories, nil
+}
+
+func (r *PostgresSnapshotRepository) EarliestSnapshotStart(ctx context.Context, eventID string) (time.Time, error) {
+	var earliest sql.NullTime
+
+	err := sqlx.GetContext(ctx, Executor(ctx, r.db), &earliest, `
+		SELECT min(window_start) FROM snapshots WHERE event_id = $1`, eventID)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("select earliest snapshot start: %w", err)
+	}
+
+	if !earliest.Valid {
+		return time.Time{}, repository.ErrSnapshotNotFound
+	}
+
+	return earliest.Time, nil
+}
+
 func (row snapshotRow) snapshot() (domain.Snapshot, error) {
 	var scores snapshotScores
 	if err := json.Unmarshal(row.Scores, &scores); err != nil {
