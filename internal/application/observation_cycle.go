@@ -19,13 +19,15 @@ type GraphSupply interface {
 }
 
 type OptimizeInput struct {
-	TenantPublicID string
-	EventType      domain.EventType
-	Graph          domain.Graph
-	Snapshot       domain.Snapshot
-	History        []domain.Snapshot
-	Previous       *domain.OptimizationOutcome
-	ServerTime     time.Time
+	TenantPublicID   string
+	EventType        domain.EventType
+	Graph            domain.Graph
+	Snapshot         domain.Snapshot
+	History          []domain.Snapshot
+	ArcHistory       []domain.ArcHistory
+	AvailableHistory time.Duration
+	Previous         *domain.OptimizationOutcome
+	ServerTime       time.Time
 }
 
 type FlowControl interface {
@@ -110,18 +112,30 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return err
 	}
 
+	settings, err := findObservationSettings(ctx, c.settings, eventID)
+	if err != nil {
+		return err
+	}
+
 	history, err := c.snapshots.ListSnapshotsEndingAfter(ctx, eventID, windowEnd.Add(-historyWindow))
 	if err != nil {
 		return fmt.Errorf("list history snapshots: %w", err)
 	}
 
-	if err := c.snapshots.SaveSnapshot(ctx, tenantPublicID, snapshot); err != nil {
-		return fmt.Errorf("save snapshot: %w", err)
+	since := windowEnd.Add(-time.Duration(settings.HistoryWindowDays) * 24 * time.Hour)
+
+	arcHistory, err := c.snapshots.SummarizeArcHistory(ctx, eventID, since)
+	if err != nil {
+		return fmt.Errorf("summarize arc history: %w", err)
 	}
 
-	settings, err := findObservationSettings(ctx, c.settings, eventID)
+	availableHistory, err := c.availableHistory(ctx, eventID, windowEnd)
 	if err != nil {
 		return err
+	}
+
+	if err := c.snapshots.SaveSnapshot(ctx, tenantPublicID, snapshot); err != nil {
+		return fmt.Errorf("save snapshot: %w", err)
 	}
 
 	var previous *domain.OptimizationOutcome
@@ -139,13 +153,15 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	defer cancel()
 
 	outcome, err := c.flow.Optimize(optimizeCtx, OptimizeInput{
-		TenantPublicID: tenantPublicID,
-		EventType:      settings.EventType,
-		Graph:          graph,
-		Snapshot:       snapshot,
-		History:        history,
-		Previous:       previous,
-		ServerTime:     windowEnd,
+		TenantPublicID:   tenantPublicID,
+		EventType:        settings.EventType,
+		Graph:            graph,
+		Snapshot:         snapshot,
+		History:          history,
+		ArcHistory:       arcHistory,
+		AvailableHistory: availableHistory,
+		Previous:         previous,
+		ServerTime:       windowEnd,
 	})
 	if err != nil {
 		return fmt.Errorf("optimize: %w", err)
@@ -158,6 +174,19 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	}
 
 	return nil
+}
+
+func (c *ObservationCycle) availableHistory(ctx context.Context, eventID string, now time.Time) (time.Duration, error) {
+	earliest, err := c.snapshots.EarliestSnapshotStart(ctx, eventID)
+	if errors.Is(err, repository.ErrSnapshotNotFound) {
+		return 0, nil
+	}
+
+	if err != nil {
+		return 0, fmt.Errorf("find earliest snapshot start: %w", err)
+	}
+
+	return now.Sub(earliest), nil
 }
 
 func (c *ObservationCycle) enabledObservationPoints(

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"time"
 
 	connectrpc "connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -17,7 +18,10 @@ import (
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
-const flowRequestSchemaVersion = "request/1"
+const (
+	flowRequestSchemaVersion = "request/1"
+	minArcHistorySpan        = 4 * time.Hour
+)
 
 type FlowControlClient struct {
 	client flowv1connect.FlowControlServiceClient
@@ -103,11 +107,11 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 		},
 		EventContext: &flowv1.EventContext{
 			Term:                  flowEventTerm(input.EventType).Enum(),
-			AvailableHistoryHours: proto.Float64(0),
+			AvailableHistoryHours: proto.Float64(input.AvailableHistory.Hours()),
 		},
 		Graph:          graph,
 		Observations:   flowObservations(snapshot, nodes, edges),
-		HistoryDigest:  flowHistoryDigest(input.History, edges),
+		HistoryDigest:  flowHistoryDigest(input.History, input.ArcHistory, edges),
 		DetectionState: detectionState,
 		References:     new(flowv1.Reference),
 		PreviousResult: previousResult,
@@ -279,9 +283,35 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 	return observations
 }
 
-func flowHistoryDigest(history []domain.Snapshot, edgeIDs map[string]bool) *flowv1.HistoryDigest {
+func flowHistoryDigest(
+	history []domain.Snapshot,
+	arcHistory []domain.ArcHistory,
+	edgeIDs map[string]bool,
+) *flowv1.HistoryDigest {
 	series := map[string]*flowv1.ArcWindowSeries{}
 	digest := new(flowv1.HistoryDigest)
+
+	for _, arc := range arcHistory {
+		if !edgeIDs[arc.RouteID] {
+			continue
+		}
+
+		span := arc.LastEnd.Sub(arc.FirstStart)
+		stat := &flowv1.ArcHistoryStat{
+			EdgeId:             arc.RouteID,
+			P90Stagnation:      nil,
+			BaselineStagnation: nil,
+			FlowSensitivityEta: nil,
+			AvailableSpanHours: proto.Float64(span.Hours()),
+		}
+
+		if span >= minArcHistorySpan {
+			stat.P90Stagnation = proto.Float64(arc.P90Stagnation)
+			stat.BaselineStagnation = proto.Float64(arc.MeanStagnation)
+		}
+
+		digest.ArcStats = append(digest.ArcStats, stat)
+	}
 
 	for _, snapshot := range history {
 		at := timestamppb.New(snapshot.WindowEnd)

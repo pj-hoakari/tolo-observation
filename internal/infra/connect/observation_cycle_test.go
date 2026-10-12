@@ -70,6 +70,7 @@ func (s *graphStub) GetCurrentRevision(
 		},
 		Routes: []*kernelv1.Route{
 			{RouteId: "r1", FromPointId: "p1", ToPointId: "p2", Direction: kernelv1.DirectionAttribute_DIRECTION_ATTRIBUTE_BOTH_WAYS},
+			{RouteId: "r2", FromPointId: "p2", ToPointId: "p3", Direction: kernelv1.DirectionAttribute_DIRECTION_ATTRIBUTE_BOTH_WAYS},
 		},
 	}), nil
 }
@@ -219,8 +220,8 @@ func TestObservationCycle(t *testing.T) {
 		t.Errorf("Optimize event_context.term = %v, want short for an event without settings", got)
 	}
 
-	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 6 {
-		t.Errorf("Optimize graph has %d elements, want 6", got)
+	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 7 {
+		t.Errorf("Optimize graph has %d elements, want 7", got)
 	}
 
 	type nodeBoundary struct {
