@@ -215,8 +215,8 @@ func TestObservationCycle(t *testing.T) {
 		t.Errorf("Optimize event/tenant = %q/%q", optimize.GetEventId(), optimize.GetTenantContext().GetTenantId())
 	}
 
-	if got := optimize.GetTenantContext().GetTenantCategory(); got != flowv1.TenantCategory_TENANT_CATEGORY_SHORT_TERM {
-		t.Errorf("Optimize tenant_category = %v, want short-term for an event without settings", got)
+	if got := optimize.GetEventContext().GetTerm(); got != flowv1.EventTerm_EVENT_TERM_SHORT {
+		t.Errorf("Optimize event_context.term = %v, want short for an event without settings", got)
 	}
 
 	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 6 {
@@ -374,8 +374,8 @@ func TestObservationCycle(t *testing.T) {
 		report(t)
 
 		requests, _ := flow.flow.received()
-		if got := requests[len(requests)-1].GetTenantContext().GetTenantCategory(); got != flowv1.TenantCategory_TENANT_CATEGORY_LONG_TERM {
-			t.Errorf("Optimize tenant_category = %v, want long-term", got)
+		if got := requests[len(requests)-1].GetEventContext().GetTerm(); got != flowv1.EventTerm_EVENT_TERM_LONG {
+			t.Errorf("Optimize event_context.term = %v, want long", got)
 		}
 	})
 }

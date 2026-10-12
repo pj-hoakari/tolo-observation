@@ -439,52 +439,52 @@ func (StagnationDerivation) EnumDescriptor() ([]byte, []int) {
 	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{7}
 }
 
-type TenantCategory int32
+type EventTerm int32
 
 const (
-	TenantCategory_TENANT_CATEGORY_UNSPECIFIED TenantCategory = 0
-	TenantCategory_TENANT_CATEGORY_SHORT_TERM  TenantCategory = 1
-	TenantCategory_TENANT_CATEGORY_LONG_TERM   TenantCategory = 2
+	EventTerm_EVENT_TERM_UNSPECIFIED EventTerm = 0
+	EventTerm_EVENT_TERM_SHORT       EventTerm = 1
+	EventTerm_EVENT_TERM_LONG        EventTerm = 2
 )
 
-// Enum value maps for TenantCategory.
+// Enum value maps for EventTerm.
 var (
-	TenantCategory_name = map[int32]string{
-		0: "TENANT_CATEGORY_UNSPECIFIED",
-		1: "TENANT_CATEGORY_SHORT_TERM",
-		2: "TENANT_CATEGORY_LONG_TERM",
+	EventTerm_name = map[int32]string{
+		0: "EVENT_TERM_UNSPECIFIED",
+		1: "EVENT_TERM_SHORT",
+		2: "EVENT_TERM_LONG",
 	}
-	TenantCategory_value = map[string]int32{
-		"TENANT_CATEGORY_UNSPECIFIED": 0,
-		"TENANT_CATEGORY_SHORT_TERM":  1,
-		"TENANT_CATEGORY_LONG_TERM":   2,
+	EventTerm_value = map[string]int32{
+		"EVENT_TERM_UNSPECIFIED": 0,
+		"EVENT_TERM_SHORT":       1,
+		"EVENT_TERM_LONG":        2,
 	}
 )
 
-func (x TenantCategory) Enum() *TenantCategory {
-	p := new(TenantCategory)
+func (x EventTerm) Enum() *EventTerm {
+	p := new(EventTerm)
 	*p = x
 	return p
 }
 
-func (x TenantCategory) String() string {
+func (x EventTerm) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (TenantCategory) Descriptor() protoreflect.EnumDescriptor {
+func (EventTerm) Descriptor() protoreflect.EnumDescriptor {
 	return file_tolo_flow_v1_flow_proto_enumTypes[8].Descriptor()
 }
 
-func (TenantCategory) Type() protoreflect.EnumType {
+func (EventTerm) Type() protoreflect.EnumType {
 	return &file_tolo_flow_v1_flow_proto_enumTypes[8]
 }
 
-func (x TenantCategory) Number() protoreflect.EnumNumber {
+func (x EventTerm) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use TenantCategory.Descriptor instead.
-func (TenantCategory) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use EventTerm.Descriptor instead.
+func (EventTerm) EnumDescriptor() ([]byte, []int) {
 	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{8}
 }
 
@@ -1629,6 +1629,7 @@ type OptimizeRequest struct {
 	Events         []*Event               `protobuf:"bytes,11,rep,name=events,proto3" json:"events,omitempty"`
 	Config         *ResolvedConfig        `protobuf:"bytes,12,opt,name=config,proto3" json:"config,omitempty"`
 	ServerTime     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
+	EventContext   *EventContext          `protobuf:"bytes,14,opt,name=event_context,json=eventContext,proto3" json:"event_context,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1754,6 +1755,13 @@ func (x *OptimizeRequest) GetServerTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *OptimizeRequest) GetEventContext() *EventContext {
+	if x != nil {
+		return x.EventContext
+	}
+	return nil
+}
+
 type OptimizeResponse struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	RequestId             *string                `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3,oneof" json:"request_id,omitempty"`
@@ -1847,12 +1855,10 @@ func (x *OptimizeResponse) GetElapsedMs() int64 {
 }
 
 type TenantContext struct {
-	state                 protoimpl.MessageState `protogen:"open.v1"`
-	TenantId              *string                `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
-	TenantCategory        *TenantCategory        `protobuf:"varint,2,opt,name=tenant_category,json=tenantCategory,proto3,enum=tolo.flow.v1.TenantCategory,oneof" json:"tenant_category,omitempty"`
-	AvailableHistoryHours *float64               `protobuf:"fixed64,3,opt,name=available_history_hours,json=availableHistoryHours,proto3,oneof" json:"available_history_hours,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      *string                `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TenantContext) Reset() {
@@ -1892,14 +1898,52 @@ func (x *TenantContext) GetTenantId() string {
 	return ""
 }
 
-func (x *TenantContext) GetTenantCategory() TenantCategory {
-	if x != nil && x.TenantCategory != nil {
-		return *x.TenantCategory
-	}
-	return TenantCategory_TENANT_CATEGORY_UNSPECIFIED
+type EventContext struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Term                  *EventTerm             `protobuf:"varint,1,opt,name=term,proto3,enum=tolo.flow.v1.EventTerm,oneof" json:"term,omitempty"`
+	AvailableHistoryHours *float64               `protobuf:"fixed64,2,opt,name=available_history_hours,json=availableHistoryHours,proto3,oneof" json:"available_history_hours,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
-func (x *TenantContext) GetAvailableHistoryHours() float64 {
+func (x *EventContext) Reset() {
+	*x = EventContext{}
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EventContext) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventContext) ProtoMessage() {}
+
+func (x *EventContext) ProtoReflect() protoreflect.Message {
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventContext.ProtoReflect.Descriptor instead.
+func (*EventContext) Descriptor() ([]byte, []int) {
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EventContext) GetTerm() EventTerm {
+	if x != nil && x.Term != nil {
+		return *x.Term
+	}
+	return EventTerm_EVENT_TERM_UNSPECIFIED
+}
+
+func (x *EventContext) GetAvailableHistoryHours() float64 {
 	if x != nil && x.AvailableHistoryHours != nil {
 		return *x.AvailableHistoryHours
 	}
@@ -1916,7 +1960,7 @@ type Graph struct {
 
 func (x *Graph) Reset() {
 	*x = Graph{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[3]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1928,7 +1972,7 @@ func (x *Graph) String() string {
 func (*Graph) ProtoMessage() {}
 
 func (x *Graph) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[3]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1941,7 +1985,7 @@ func (x *Graph) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Graph.ProtoReflect.Descriptor instead.
 func (*Graph) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{3}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Graph) GetNodes() []*Node {
@@ -1974,7 +2018,7 @@ type Node struct {
 
 func (x *Node) Reset() {
 	*x = Node{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[4]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1986,7 +2030,7 @@ func (x *Node) String() string {
 func (*Node) ProtoMessage() {}
 
 func (x *Node) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[4]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1999,7 +2043,7 @@ func (x *Node) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Node.ProtoReflect.Descriptor instead.
 func (*Node) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{4}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Node) GetNodeId() string {
@@ -2068,7 +2112,7 @@ type Boundary struct {
 
 func (x *Boundary) Reset() {
 	*x = Boundary{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[5]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2080,7 +2124,7 @@ func (x *Boundary) String() string {
 func (*Boundary) ProtoMessage() {}
 
 func (x *Boundary) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[5]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2093,7 +2137,7 @@ func (x *Boundary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Boundary.ProtoReflect.Descriptor instead.
 func (*Boundary) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{5}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Boundary) GetDirection() BoundaryDirection {
@@ -2130,7 +2174,7 @@ type Edge struct {
 
 func (x *Edge) Reset() {
 	*x = Edge{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[6]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2142,7 +2186,7 @@ func (x *Edge) String() string {
 func (*Edge) ProtoMessage() {}
 
 func (x *Edge) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[6]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2155,7 +2199,7 @@ func (x *Edge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Edge.ProtoReflect.Descriptor instead.
 func (*Edge) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{6}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Edge) GetEdgeId() string {
@@ -2257,7 +2301,7 @@ type Observations struct {
 
 func (x *Observations) Reset() {
 	*x = Observations{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[7]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2269,7 +2313,7 @@ func (x *Observations) String() string {
 func (*Observations) ProtoMessage() {}
 
 func (x *Observations) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[7]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2282,7 +2326,7 @@ func (x *Observations) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Observations.ProtoReflect.Descriptor instead.
 func (*Observations) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{7}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Observations) GetObservedAt() *timestamppb.Timestamp {
@@ -2346,7 +2390,7 @@ type ArcFlow struct {
 
 func (x *ArcFlow) Reset() {
 	*x = ArcFlow{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[8]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2358,7 +2402,7 @@ func (x *ArcFlow) String() string {
 func (*ArcFlow) ProtoMessage() {}
 
 func (x *ArcFlow) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[8]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2371,7 +2415,7 @@ func (x *ArcFlow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcFlow.ProtoReflect.Descriptor instead.
 func (*ArcFlow) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{8}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ArcFlow) GetEdgeId() string {
@@ -2415,7 +2459,7 @@ type ArcStagnation struct {
 
 func (x *ArcStagnation) Reset() {
 	*x = ArcStagnation{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[9]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2427,7 +2471,7 @@ func (x *ArcStagnation) String() string {
 func (*ArcStagnation) ProtoMessage() {}
 
 func (x *ArcStagnation) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[9]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2440,7 +2484,7 @@ func (x *ArcStagnation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcStagnation.ProtoReflect.Descriptor instead.
 func (*ArcStagnation) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{9}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ArcStagnation) GetEdgeId() string {
@@ -2489,7 +2533,7 @@ type ArcScalarFlow struct {
 
 func (x *ArcScalarFlow) Reset() {
 	*x = ArcScalarFlow{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[10]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2501,7 +2545,7 @@ func (x *ArcScalarFlow) String() string {
 func (*ArcScalarFlow) ProtoMessage() {}
 
 func (x *ArcScalarFlow) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[10]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2514,7 +2558,7 @@ func (x *ArcScalarFlow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcScalarFlow.ProtoReflect.Descriptor instead.
 func (*ArcScalarFlow) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{10}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ArcScalarFlow) GetEdgeId() string {
@@ -2551,7 +2595,7 @@ type NodeOccupancy struct {
 
 func (x *NodeOccupancy) Reset() {
 	*x = NodeOccupancy{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[11]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2563,7 +2607,7 @@ func (x *NodeOccupancy) String() string {
 func (*NodeOccupancy) ProtoMessage() {}
 
 func (x *NodeOccupancy) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[11]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2576,7 +2620,7 @@ func (x *NodeOccupancy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeOccupancy.ProtoReflect.Descriptor instead.
 func (*NodeOccupancy) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{11}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *NodeOccupancy) GetNodeId() string {
@@ -2627,7 +2671,7 @@ type TurningObservation struct {
 
 func (x *TurningObservation) Reset() {
 	*x = TurningObservation{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[12]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2639,7 +2683,7 @@ func (x *TurningObservation) String() string {
 func (*TurningObservation) ProtoMessage() {}
 
 func (x *TurningObservation) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[12]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2652,7 +2696,7 @@ func (x *TurningObservation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurningObservation.ProtoReflect.Descriptor instead.
 func (*TurningObservation) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{12}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TurningObservation) GetNodeId() string {
@@ -2701,7 +2745,7 @@ type HistoryDigest struct {
 
 func (x *HistoryDigest) Reset() {
 	*x = HistoryDigest{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[13]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2713,7 +2757,7 @@ func (x *HistoryDigest) String() string {
 func (*HistoryDigest) ProtoMessage() {}
 
 func (x *HistoryDigest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[13]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2726,7 +2770,7 @@ func (x *HistoryDigest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HistoryDigest.ProtoReflect.Descriptor instead.
 func (*HistoryDigest) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{13}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *HistoryDigest) GetArcStats() []*ArcHistoryStat {
@@ -2763,7 +2807,7 @@ type ArcHistoryStat struct {
 
 func (x *ArcHistoryStat) Reset() {
 	*x = ArcHistoryStat{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[14]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2775,7 +2819,7 @@ func (x *ArcHistoryStat) String() string {
 func (*ArcHistoryStat) ProtoMessage() {}
 
 func (x *ArcHistoryStat) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[14]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2788,7 +2832,7 @@ func (x *ArcHistoryStat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcHistoryStat.ProtoReflect.Descriptor instead.
 func (*ArcHistoryStat) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{14}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ArcHistoryStat) GetEdgeId() string {
@@ -2838,7 +2882,7 @@ type ArcWindowSeries struct {
 
 func (x *ArcWindowSeries) Reset() {
 	*x = ArcWindowSeries{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[15]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2850,7 +2894,7 @@ func (x *ArcWindowSeries) String() string {
 func (*ArcWindowSeries) ProtoMessage() {}
 
 func (x *ArcWindowSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[15]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2863,7 +2907,7 @@ func (x *ArcWindowSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcWindowSeries.ProtoReflect.Descriptor instead.
 func (*ArcWindowSeries) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{15}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ArcWindowSeries) GetEdgeId() string {
@@ -2903,7 +2947,7 @@ type DirectionalFlowSamples struct {
 
 func (x *DirectionalFlowSamples) Reset() {
 	*x = DirectionalFlowSamples{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[16]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2915,7 +2959,7 @@ func (x *DirectionalFlowSamples) String() string {
 func (*DirectionalFlowSamples) ProtoMessage() {}
 
 func (x *DirectionalFlowSamples) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[16]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2928,7 +2972,7 @@ func (x *DirectionalFlowSamples) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectionalFlowSamples.ProtoReflect.Descriptor instead.
 func (*DirectionalFlowSamples) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{16}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DirectionalFlowSamples) GetSeries() []*DirectionalSeries {
@@ -2948,7 +2992,7 @@ type DirectionalSeries struct {
 
 func (x *DirectionalSeries) Reset() {
 	*x = DirectionalSeries{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[17]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2960,7 +3004,7 @@ func (x *DirectionalSeries) String() string {
 func (*DirectionalSeries) ProtoMessage() {}
 
 func (x *DirectionalSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[17]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2973,7 +3017,7 @@ func (x *DirectionalSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectionalSeries.ProtoReflect.Descriptor instead.
 func (*DirectionalSeries) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{17}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DirectionalSeries) GetDirection() FlowDirection {
@@ -3000,7 +3044,7 @@ type TimedValue struct {
 
 func (x *TimedValue) Reset() {
 	*x = TimedValue{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[18]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3012,7 +3056,7 @@ func (x *TimedValue) String() string {
 func (*TimedValue) ProtoMessage() {}
 
 func (x *TimedValue) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[18]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3025,7 +3069,7 @@ func (x *TimedValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimedValue.ProtoReflect.Descriptor instead.
 func (*TimedValue) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{18}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TimedValue) GetAt() *timestamppb.Timestamp {
@@ -3057,7 +3101,7 @@ type DetectionState struct {
 
 func (x *DetectionState) Reset() {
 	*x = DetectionState{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[19]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3069,7 +3113,7 @@ func (x *DetectionState) String() string {
 func (*DetectionState) ProtoMessage() {}
 
 func (x *DetectionState) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[19]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3082,7 +3126,7 @@ func (x *DetectionState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetectionState.ProtoReflect.Descriptor instead.
 func (*DetectionState) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{19}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DetectionState) GetCooldownUntil() *timestamppb.Timestamp {
@@ -3143,7 +3187,7 @@ type ArcDemandDigest struct {
 
 func (x *ArcDemandDigest) Reset() {
 	*x = ArcDemandDigest{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[20]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3155,7 +3199,7 @@ func (x *ArcDemandDigest) String() string {
 func (*ArcDemandDigest) ProtoMessage() {}
 
 func (x *ArcDemandDigest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[20]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3168,7 +3212,7 @@ func (x *ArcDemandDigest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcDemandDigest.ProtoReflect.Descriptor instead.
 func (*ArcDemandDigest) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{20}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ArcDemandDigest) GetEntries() []*ArcDemandDigestEntry {
@@ -3188,7 +3232,7 @@ type ArcDemandDigestEntry struct {
 
 func (x *ArcDemandDigestEntry) Reset() {
 	*x = ArcDemandDigestEntry{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3200,7 +3244,7 @@ func (x *ArcDemandDigestEntry) String() string {
 func (*ArcDemandDigestEntry) ProtoMessage() {}
 
 func (x *ArcDemandDigestEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3213,7 +3257,7 @@ func (x *ArcDemandDigestEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcDemandDigestEntry.ProtoReflect.Descriptor instead.
 func (*ArcDemandDigestEntry) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{21}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ArcDemandDigestEntry) GetEdgeId() string {
@@ -3245,7 +3289,7 @@ type QueuedTrigger struct {
 
 func (x *QueuedTrigger) Reset() {
 	*x = QueuedTrigger{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3257,7 +3301,7 @@ func (x *QueuedTrigger) String() string {
 func (*QueuedTrigger) ProtoMessage() {}
 
 func (x *QueuedTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3270,7 +3314,7 @@ func (x *QueuedTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueuedTrigger.ProtoReflect.Descriptor instead.
 func (*QueuedTrigger) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{22}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *QueuedTrigger) GetKind() QueuedTriggerKind {
@@ -3337,7 +3381,7 @@ type ArcWatchState struct {
 
 func (x *ArcWatchState) Reset() {
 	*x = ArcWatchState{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3349,7 +3393,7 @@ func (x *ArcWatchState) String() string {
 func (*ArcWatchState) ProtoMessage() {}
 
 func (x *ArcWatchState) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3362,7 +3406,7 @@ func (x *ArcWatchState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcWatchState.ProtoReflect.Descriptor instead.
 func (*ArcWatchState) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{23}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ArcWatchState) GetEdgeId() string {
@@ -3424,7 +3468,7 @@ type WarmupState struct {
 
 func (x *WarmupState) Reset() {
 	*x = WarmupState{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3436,7 +3480,7 @@ func (x *WarmupState) String() string {
 func (*WarmupState) ProtoMessage() {}
 
 func (x *WarmupState) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3449,7 +3493,7 @@ func (x *WarmupState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarmupState.ProtoReflect.Descriptor instead.
 func (*WarmupState) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{24}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *WarmupState) GetTargetKey() string {
@@ -3478,7 +3522,7 @@ type RetriggerEntry struct {
 
 func (x *RetriggerEntry) Reset() {
 	*x = RetriggerEntry{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3490,7 +3534,7 @@ func (x *RetriggerEntry) String() string {
 func (*RetriggerEntry) ProtoMessage() {}
 
 func (x *RetriggerEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3503,7 +3547,7 @@ func (x *RetriggerEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetriggerEntry.ProtoReflect.Descriptor instead.
 func (*RetriggerEntry) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{25}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RetriggerEntry) GetEdgeId() string {
@@ -3546,7 +3590,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3558,7 +3602,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3571,7 +3615,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{26}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Event) GetKind() EventKind {
@@ -3611,7 +3655,7 @@ type ParamList struct {
 
 func (x *ParamList) Reset() {
 	*x = ParamList{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3623,7 +3667,7 @@ func (x *ParamList) String() string {
 func (*ParamList) ProtoMessage() {}
 
 func (x *ParamList) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3636,7 +3680,7 @@ func (x *ParamList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParamList.ProtoReflect.Descriptor instead.
 func (*ParamList) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{27}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ParamList) GetValues() []*KeyValue {
@@ -3656,7 +3700,7 @@ type KeyValue struct {
 
 func (x *KeyValue) Reset() {
 	*x = KeyValue{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3668,7 +3712,7 @@ func (x *KeyValue) String() string {
 func (*KeyValue) ProtoMessage() {}
 
 func (x *KeyValue) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3681,7 +3725,7 @@ func (x *KeyValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyValue.ProtoReflect.Descriptor instead.
 func (*KeyValue) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{28}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *KeyValue) GetKey() string {
@@ -3714,7 +3758,7 @@ type ScalarValue struct {
 
 func (x *ScalarValue) Reset() {
 	*x = ScalarValue{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3726,7 +3770,7 @@ func (x *ScalarValue) String() string {
 func (*ScalarValue) ProtoMessage() {}
 
 func (x *ScalarValue) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3739,7 +3783,7 @@ func (x *ScalarValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScalarValue.ProtoReflect.Descriptor instead.
 func (*ScalarValue) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{29}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ScalarValue) GetKind() isScalarValue_Kind {
@@ -3839,7 +3883,7 @@ type Reference struct {
 
 func (x *Reference) Reset() {
 	*x = Reference{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3851,7 +3895,7 @@ func (x *Reference) String() string {
 func (*Reference) ProtoMessage() {}
 
 func (x *Reference) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3864,7 +3908,7 @@ func (x *Reference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Reference.ProtoReflect.Descriptor instead.
 func (*Reference) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{30}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *Reference) GetByAttributeTag() []*TagReference {
@@ -3901,7 +3945,7 @@ type TagReference struct {
 
 func (x *TagReference) Reset() {
 	*x = TagReference{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3913,7 +3957,7 @@ func (x *TagReference) String() string {
 func (*TagReference) ProtoMessage() {}
 
 func (x *TagReference) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3926,7 +3970,7 @@ func (x *TagReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TagReference.ProtoReflect.Descriptor instead.
 func (*TagReference) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{31}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *TagReference) GetAttributeTag() string {
@@ -3974,7 +4018,7 @@ type ThresholdDefaults struct {
 
 func (x *ThresholdDefaults) Reset() {
 	*x = ThresholdDefaults{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3986,7 +4030,7 @@ func (x *ThresholdDefaults) String() string {
 func (*ThresholdDefaults) ProtoMessage() {}
 
 func (x *ThresholdDefaults) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3999,7 +4043,7 @@ func (x *ThresholdDefaults) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThresholdDefaults.ProtoReflect.Descriptor instead.
 func (*ThresholdDefaults) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{32}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ThresholdDefaults) GetShortTerm() *ThresholdSet {
@@ -4029,7 +4073,7 @@ type ThresholdSet struct {
 
 func (x *ThresholdSet) Reset() {
 	*x = ThresholdSet{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4041,7 +4085,7 @@ func (x *ThresholdSet) String() string {
 func (*ThresholdSet) ProtoMessage() {}
 
 func (x *ThresholdSet) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4054,7 +4098,7 @@ func (x *ThresholdSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThresholdSet.ProtoReflect.Descriptor instead.
 func (*ThresholdSet) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{33}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ThresholdSet) GetSurgeRateThresholdPercentPerMin() float64 {
@@ -4162,7 +4206,7 @@ type ResolvedConfig struct {
 
 func (x *ResolvedConfig) Reset() {
 	*x = ResolvedConfig{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4174,7 +4218,7 @@ func (x *ResolvedConfig) String() string {
 func (*ResolvedConfig) ProtoMessage() {}
 
 func (x *ResolvedConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4187,7 +4231,7 @@ func (x *ResolvedConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolvedConfig.ProtoReflect.Descriptor instead.
 func (*ResolvedConfig) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{34}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ResolvedConfig) GetSurgeRateThresholdPercentPerMin() float64 {
@@ -4635,7 +4679,7 @@ type ThroughputWeights struct {
 
 func (x *ThroughputWeights) Reset() {
 	*x = ThroughputWeights{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4647,7 +4691,7 @@ func (x *ThroughputWeights) String() string {
 func (*ThroughputWeights) ProtoMessage() {}
 
 func (x *ThroughputWeights) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4660,7 +4704,7 @@ func (x *ThroughputWeights) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThroughputWeights.ProtoReflect.Descriptor instead.
 func (*ThroughputWeights) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{35}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ThroughputWeights) GetTriggerOrigin() float64 {
@@ -4694,7 +4738,7 @@ type EdgeFloat struct {
 
 func (x *EdgeFloat) Reset() {
 	*x = EdgeFloat{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4706,7 +4750,7 @@ func (x *EdgeFloat) String() string {
 func (*EdgeFloat) ProtoMessage() {}
 
 func (x *EdgeFloat) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4719,7 +4763,7 @@ func (x *EdgeFloat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EdgeFloat.ProtoReflect.Descriptor instead.
 func (*EdgeFloat) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{36}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *EdgeFloat) GetEdgeId() string {
@@ -4753,7 +4797,7 @@ type OptimizationResult struct {
 
 func (x *OptimizationResult) Reset() {
 	*x = OptimizationResult{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4765,7 +4809,7 @@ func (x *OptimizationResult) String() string {
 func (*OptimizationResult) ProtoMessage() {}
 
 func (x *OptimizationResult) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4778,7 +4822,7 @@ func (x *OptimizationResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptimizationResult.ProtoReflect.Descriptor instead.
 func (*OptimizationResult) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{37}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *OptimizationResult) GetRouteImportance() []*RouteImportance {
@@ -4856,7 +4900,7 @@ type RouteImportance struct {
 
 func (x *RouteImportance) Reset() {
 	*x = RouteImportance{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4868,7 +4912,7 @@ func (x *RouteImportance) String() string {
 func (*RouteImportance) ProtoMessage() {}
 
 func (x *RouteImportance) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4881,7 +4925,7 @@ func (x *RouteImportance) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteImportance.ProtoReflect.Descriptor instead.
 func (*RouteImportance) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{38}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *RouteImportance) GetEdgeId() string {
@@ -4924,7 +4968,7 @@ type DirectionProposal struct {
 
 func (x *DirectionProposal) Reset() {
 	*x = DirectionProposal{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4936,7 +4980,7 @@ func (x *DirectionProposal) String() string {
 func (*DirectionProposal) ProtoMessage() {}
 
 func (x *DirectionProposal) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4949,7 +4993,7 @@ func (x *DirectionProposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectionProposal.ProtoReflect.Descriptor instead.
 func (*DirectionProposal) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{39}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *DirectionProposal) GetEdgeId() string {
@@ -4994,7 +5038,7 @@ type RestrictionProposal struct {
 
 func (x *RestrictionProposal) Reset() {
 	*x = RestrictionProposal{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5006,7 +5050,7 @@ func (x *RestrictionProposal) String() string {
 func (*RestrictionProposal) ProtoMessage() {}
 
 func (x *RestrictionProposal) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5019,7 +5063,7 @@ func (x *RestrictionProposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestrictionProposal.ProtoReflect.Descriptor instead.
 func (*RestrictionProposal) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{40}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *RestrictionProposal) GetEdgeId() string {
@@ -5075,7 +5119,7 @@ type DetourPathProposal struct {
 
 func (x *DetourPathProposal) Reset() {
 	*x = DetourPathProposal{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5087,7 +5131,7 @@ func (x *DetourPathProposal) String() string {
 func (*DetourPathProposal) ProtoMessage() {}
 
 func (x *DetourPathProposal) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5100,7 +5144,7 @@ func (x *DetourPathProposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetourPathProposal.ProtoReflect.Descriptor instead.
 func (*DetourPathProposal) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{41}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *DetourPathProposal) GetOriginEdgeId() string {
@@ -5135,7 +5179,7 @@ type BoundaryControl struct {
 
 func (x *BoundaryControl) Reset() {
 	*x = BoundaryControl{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5147,7 +5191,7 @@ func (x *BoundaryControl) String() string {
 func (*BoundaryControl) ProtoMessage() {}
 
 func (x *BoundaryControl) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5160,7 +5204,7 @@ func (x *BoundaryControl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BoundaryControl.ProtoReflect.Descriptor instead.
 func (*BoundaryControl) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{42}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *BoundaryControl) GetNodeId() string {
@@ -5194,7 +5238,7 @@ type OptimizationObjectiveValues struct {
 
 func (x *OptimizationObjectiveValues) Reset() {
 	*x = OptimizationObjectiveValues{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5206,7 +5250,7 @@ func (x *OptimizationObjectiveValues) String() string {
 func (*OptimizationObjectiveValues) ProtoMessage() {}
 
 func (x *OptimizationObjectiveValues) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5219,7 +5263,7 @@ func (x *OptimizationObjectiveValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptimizationObjectiveValues.ProtoReflect.Descriptor instead.
 func (*OptimizationObjectiveValues) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{43}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *OptimizationObjectiveValues) GetTauStar() float64 {
@@ -5257,7 +5301,7 @@ type FeedbackValues struct {
 
 func (x *FeedbackValues) Reset() {
 	*x = FeedbackValues{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5269,7 +5313,7 @@ func (x *FeedbackValues) String() string {
 func (*FeedbackValues) ProtoMessage() {}
 
 func (x *FeedbackValues) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5282,7 +5326,7 @@ func (x *FeedbackValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedbackValues.ProtoReflect.Descriptor instead.
 func (*FeedbackValues) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{44}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *FeedbackValues) GetSchemaVersion() string {
@@ -5391,7 +5435,7 @@ type ComputeMeta struct {
 
 func (x *ComputeMeta) Reset() {
 	*x = ComputeMeta{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5403,7 +5447,7 @@ func (x *ComputeMeta) String() string {
 func (*ComputeMeta) ProtoMessage() {}
 
 func (x *ComputeMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5416,7 +5460,7 @@ func (x *ComputeMeta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ComputeMeta.ProtoReflect.Descriptor instead.
 func (*ComputeMeta) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{45}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ComputeMeta) GetMode() Mode {
@@ -5478,7 +5522,7 @@ type ReachabilityConstraints struct {
 
 func (x *ReachabilityConstraints) Reset() {
 	*x = ReachabilityConstraints{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5490,7 +5534,7 @@ func (x *ReachabilityConstraints) String() string {
 func (*ReachabilityConstraints) ProtoMessage() {}
 
 func (x *ReachabilityConstraints) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5503,7 +5547,7 @@ func (x *ReachabilityConstraints) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReachabilityConstraints.ProtoReflect.Descriptor instead.
 func (*ReachabilityConstraints) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{46}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ReachabilityConstraints) GetLocal() bool {
@@ -5530,7 +5574,7 @@ type FeedbackObjectiveValues struct {
 
 func (x *FeedbackObjectiveValues) Reset() {
 	*x = FeedbackObjectiveValues{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5542,7 +5586,7 @@ func (x *FeedbackObjectiveValues) String() string {
 func (*FeedbackObjectiveValues) ProtoMessage() {}
 
 func (x *FeedbackObjectiveValues) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5555,7 +5599,7 @@ func (x *FeedbackObjectiveValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedbackObjectiveValues.ProtoReflect.Descriptor instead.
 func (*FeedbackObjectiveValues) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{47}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *FeedbackObjectiveValues) GetTauStar() float64 {
@@ -5584,7 +5628,7 @@ type TagObservation struct {
 
 func (x *TagObservation) Reset() {
 	*x = TagObservation{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5596,7 +5640,7 @@ func (x *TagObservation) String() string {
 func (*TagObservation) ProtoMessage() {}
 
 func (x *TagObservation) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5609,7 +5653,7 @@ func (x *TagObservation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TagObservation.ProtoReflect.Descriptor instead.
 func (*TagObservation) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{48}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *TagObservation) GetAttributeTag() string {
@@ -5651,7 +5695,7 @@ type PredictionActualDiff struct {
 
 func (x *PredictionActualDiff) Reset() {
 	*x = PredictionActualDiff{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5663,7 +5707,7 @@ func (x *PredictionActualDiff) String() string {
 func (*PredictionActualDiff) ProtoMessage() {}
 
 func (x *PredictionActualDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5676,7 +5720,7 @@ func (x *PredictionActualDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PredictionActualDiff.ProtoReflect.Descriptor instead.
 func (*PredictionActualDiff) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{49}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *PredictionActualDiff) GetExpectedTauStar() float64 {
@@ -5711,7 +5755,7 @@ type ReferenceUsageReport struct {
 
 func (x *ReferenceUsageReport) Reset() {
 	*x = ReferenceUsageReport{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5723,7 +5767,7 @@ func (x *ReferenceUsageReport) String() string {
 func (*ReferenceUsageReport) ProtoMessage() {}
 
 func (x *ReferenceUsageReport) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5736,7 +5780,7 @@ func (x *ReferenceUsageReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReferenceUsageReport.ProtoReflect.Descriptor instead.
 func (*ReferenceUsageReport) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{50}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *ReferenceUsageReport) GetUsedTags() []string {
@@ -5771,7 +5815,7 @@ type QualityMetrics struct {
 
 func (x *QualityMetrics) Reset() {
 	*x = QualityMetrics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5783,7 +5827,7 @@ func (x *QualityMetrics) String() string {
 func (*QualityMetrics) ProtoMessage() {}
 
 func (x *QualityMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5796,7 +5840,7 @@ func (x *QualityMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QualityMetrics.ProtoReflect.Descriptor instead.
 func (*QualityMetrics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{51}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *QualityMetrics) GetVectorCoverageRatio() float64 {
@@ -5831,7 +5875,7 @@ type DetourMetrics struct {
 
 func (x *DetourMetrics) Reset() {
 	*x = DetourMetrics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5843,7 +5887,7 @@ func (x *DetourMetrics) String() string {
 func (*DetourMetrics) ProtoMessage() {}
 
 func (x *DetourMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5856,7 +5900,7 @@ func (x *DetourMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetourMetrics.ProtoReflect.Descriptor instead.
 func (*DetourMetrics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{52}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *DetourMetrics) GetKRequested() int32 {
@@ -5892,7 +5936,7 @@ type RestrictionMetrics struct {
 
 func (x *RestrictionMetrics) Reset() {
 	*x = RestrictionMetrics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5904,7 +5948,7 @@ func (x *RestrictionMetrics) String() string {
 func (*RestrictionMetrics) ProtoMessage() {}
 
 func (x *RestrictionMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5917,7 +5961,7 @@ func (x *RestrictionMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestrictionMetrics.ProtoReflect.Descriptor instead.
 func (*RestrictionMetrics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{53}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *RestrictionMetrics) GetProposedCount() int32 {
@@ -5958,7 +6002,7 @@ type RestrictionCount struct {
 
 func (x *RestrictionCount) Reset() {
 	*x = RestrictionCount{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5970,7 +6014,7 @@ func (x *RestrictionCount) String() string {
 func (*RestrictionCount) ProtoMessage() {}
 
 func (x *RestrictionCount) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5983,7 +6027,7 @@ func (x *RestrictionCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestrictionCount.ProtoReflect.Descriptor instead.
 func (*RestrictionCount) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{54}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *RestrictionCount) GetReason() RestrictionReason {
@@ -6011,7 +6055,7 @@ type DirectionChangeSummary struct {
 
 func (x *DirectionChangeSummary) Reset() {
 	*x = DirectionChangeSummary{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6023,7 +6067,7 @@ func (x *DirectionChangeSummary) String() string {
 func (*DirectionChangeSummary) ProtoMessage() {}
 
 func (x *DirectionChangeSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6036,7 +6080,7 @@ func (x *DirectionChangeSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectionChangeSummary.ProtoReflect.Descriptor instead.
 func (*DirectionChangeSummary) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{55}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *DirectionChangeSummary) GetConvert() int32 {
@@ -6074,7 +6118,7 @@ type AbDiff struct {
 
 func (x *AbDiff) Reset() {
 	*x = AbDiff{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6086,7 +6130,7 @@ func (x *AbDiff) String() string {
 func (*AbDiff) ProtoMessage() {}
 
 func (x *AbDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6099,7 +6143,7 @@ func (x *AbDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AbDiff.ProtoReflect.Descriptor instead.
 func (*AbDiff) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{56}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *AbDiff) GetEnabledExtensions() []string {
@@ -6155,7 +6199,7 @@ type ForecastSummary struct {
 
 func (x *ForecastSummary) Reset() {
 	*x = ForecastSummary{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6167,7 +6211,7 @@ func (x *ForecastSummary) String() string {
 func (*ForecastSummary) ProtoMessage() {}
 
 func (x *ForecastSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6180,7 +6224,7 @@ func (x *ForecastSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForecastSummary.ProtoReflect.Descriptor instead.
 func (*ForecastSummary) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{57}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ForecastSummary) GetNodeDemand() []*NodeDemand {
@@ -6219,7 +6263,7 @@ type NodeDemand struct {
 
 func (x *NodeDemand) Reset() {
 	*x = NodeDemand{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6231,7 +6275,7 @@ func (x *NodeDemand) String() string {
 func (*NodeDemand) ProtoMessage() {}
 
 func (x *NodeDemand) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6244,7 +6288,7 @@ func (x *NodeDemand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeDemand.ProtoReflect.Descriptor instead.
 func (*NodeDemand) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{58}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *NodeDemand) GetNodeId() string {
@@ -6308,7 +6352,7 @@ type NodeResolution struct {
 
 func (x *NodeResolution) Reset() {
 	*x = NodeResolution{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6320,7 +6364,7 @@ func (x *NodeResolution) String() string {
 func (*NodeResolution) ProtoMessage() {}
 
 func (x *NodeResolution) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6333,7 +6377,7 @@ func (x *NodeResolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeResolution.ProtoReflect.Descriptor instead.
 func (*NodeResolution) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{59}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *NodeResolution) GetNodeId() string {
@@ -6374,7 +6418,7 @@ type Warning struct {
 
 func (x *Warning) Reset() {
 	*x = Warning{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6386,7 +6430,7 @@ func (x *Warning) String() string {
 func (*Warning) ProtoMessage() {}
 
 func (x *Warning) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6399,7 +6443,7 @@ func (x *Warning) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Warning.ProtoReflect.Descriptor instead.
 func (*Warning) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{60}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *Warning) GetCode() WarningCode {
@@ -6431,7 +6475,7 @@ type Diagnostics struct {
 
 func (x *Diagnostics) Reset() {
 	*x = Diagnostics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6443,7 +6487,7 @@ func (x *Diagnostics) String() string {
 func (*Diagnostics) ProtoMessage() {}
 
 func (x *Diagnostics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6456,7 +6500,7 @@ func (x *Diagnostics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Diagnostics.ProtoReflect.Descriptor instead.
 func (*Diagnostics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{61}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *Diagnostics) GetMode() Mode {
@@ -6523,7 +6567,7 @@ type TriggerEvidence struct {
 
 func (x *TriggerEvidence) Reset() {
 	*x = TriggerEvidence{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6535,7 +6579,7 @@ func (x *TriggerEvidence) String() string {
 func (*TriggerEvidence) ProtoMessage() {}
 
 func (x *TriggerEvidence) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6548,7 +6592,7 @@ func (x *TriggerEvidence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TriggerEvidence.ProtoReflect.Descriptor instead.
 func (*TriggerEvidence) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{62}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *TriggerEvidence) GetSource() TriggerEvidenceSource {
@@ -6611,7 +6655,7 @@ type FallbackRecord struct {
 
 func (x *FallbackRecord) Reset() {
 	*x = FallbackRecord{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6623,7 +6667,7 @@ func (x *FallbackRecord) String() string {
 func (*FallbackRecord) ProtoMessage() {}
 
 func (x *FallbackRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6636,7 +6680,7 @@ func (x *FallbackRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FallbackRecord.ProtoReflect.Descriptor instead.
 func (*FallbackRecord) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{63}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *FallbackRecord) GetKind() FallbackKind {
@@ -6672,7 +6716,7 @@ type StepRecord struct {
 
 func (x *StepRecord) Reset() {
 	*x = StepRecord{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6684,7 +6728,7 @@ func (x *StepRecord) String() string {
 func (*StepRecord) ProtoMessage() {}
 
 func (x *StepRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6697,7 +6741,7 @@ func (x *StepRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StepRecord.ProtoReflect.Descriptor instead.
 func (*StepRecord) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{64}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *StepRecord) GetStep() StepKind {
@@ -6732,7 +6776,7 @@ var File_tolo_flow_v1_flow_proto protoreflect.FileDescriptor
 
 const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\n" +
-	"\x17tolo/flow/v1/flow.proto\x12\ftolo.flow.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa7\x06\n" +
+	"\x17tolo/flow/v1/flow.proto\x12\ftolo.flow.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe8\x06\n" +
 	"\x0fOptimizeRequest\x12\"\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tH\x00R\trequestId\x88\x01\x01\x12*\n" +
@@ -6751,7 +6795,8 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x06events\x18\v \x03(\v2\x13.tolo.flow.v1.EventR\x06events\x124\n" +
 	"\x06config\x18\f \x01(\v2\x1c.tolo.flow.v1.ResolvedConfigR\x06config\x12;\n" +
 	"\vserver_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"serverTimeB\r\n" +
+	"serverTime\x12?\n" +
+	"\revent_context\x18\x0e \x01(\v2\x1a.tolo.flow.v1.EventContextR\feventContextB\r\n" +
 	"\v_request_idB\x11\n" +
 	"\x0f_schema_versionB\v\n" +
 	"\t_event_idB\x12\n" +
@@ -6769,14 +6814,15 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\v_request_idB\n" +
 	"\n" +
 	"\b_verdictB\x16\n" +
-	"\x14_optimization_result\"\xf8\x01\n" +
+	"\x14_optimization_result\"u\n" +
 	"\rTenantContext\x12 \n" +
-	"\ttenant_id\x18\x01 \x01(\tH\x00R\btenantId\x88\x01\x01\x12J\n" +
-	"\x0ftenant_category\x18\x02 \x01(\x0e2\x1c.tolo.flow.v1.TenantCategoryH\x01R\x0etenantCategory\x88\x01\x01\x12;\n" +
-	"\x17available_history_hours\x18\x03 \x01(\x01H\x02R\x15availableHistoryHours\x88\x01\x01B\f\n" +
+	"\ttenant_id\x18\x01 \x01(\tH\x00R\btenantId\x88\x01\x01B\f\n" +
 	"\n" +
-	"_tenant_idB\x12\n" +
-	"\x10_tenant_categoryB\x1a\n" +
+	"_tenant_idJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\x0ftenant_categoryR\x17available_history_hours\"\xa2\x01\n" +
+	"\fEventContext\x120\n" +
+	"\x04term\x18\x01 \x01(\x0e2\x17.tolo.flow.v1.EventTermH\x00R\x04term\x88\x01\x01\x12;\n" +
+	"\x17available_history_hours\x18\x02 \x01(\x01H\x01R\x15availableHistoryHours\x88\x01\x01B\a\n" +
+	"\x05_termB\x1a\n" +
 	"\x18_available_history_hours\"[\n" +
 	"\x05Graph\x12(\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x12.tolo.flow.v1.NodeR\x05nodes\x12(\n" +
@@ -7408,11 +7454,11 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x14StagnationDerivation\x12%\n" +
 	"!STAGNATION_DERIVATION_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSTAGNATION_DERIVATION_BASIC\x10\x01\x12!\n" +
-	"\x1dSTAGNATION_DERIVATION_REFINED\x10\x02*p\n" +
-	"\x0eTenantCategory\x12\x1f\n" +
-	"\x1bTENANT_CATEGORY_UNSPECIFIED\x10\x00\x12\x1e\n" +
-	"\x1aTENANT_CATEGORY_SHORT_TERM\x10\x01\x12\x1d\n" +
-	"\x19TENANT_CATEGORY_LONG_TERM\x10\x02*v\n" +
+	"\x1dSTAGNATION_DERIVATION_REFINED\x10\x02*R\n" +
+	"\tEventTerm\x12\x1a\n" +
+	"\x16EVENT_TERM_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10EVENT_TERM_SHORT\x10\x01\x12\x13\n" +
+	"\x0fEVENT_TERM_LONG\x10\x02*v\n" +
 	"\x10OptimizationMode\x12!\n" +
 	"\x1dOPTIMIZATION_MODE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dOPTIMIZATION_MODE_LIGHTWEIGHT\x10\x01\x12\x1c\n" +
@@ -7575,7 +7621,7 @@ func file_tolo_flow_v1_flow_proto_rawDescGZIP() []byte {
 }
 
 var file_tolo_flow_v1_flow_proto_enumTypes = make([]protoimpl.EnumInfo, 28)
-var file_tolo_flow_v1_flow_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
+var file_tolo_flow_v1_flow_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
 var file_tolo_flow_v1_flow_proto_goTypes = []any{
 	(NodeKind)(0),                       // 0: tolo.flow.v1.NodeKind
 	(BoundaryDirection)(0),              // 1: tolo.flow.v1.BoundaryDirection
@@ -7585,7 +7631,7 @@ var file_tolo_flow_v1_flow_proto_goTypes = []any{
 	(FlowDirection)(0),                  // 5: tolo.flow.v1.FlowDirection
 	(ConfidenceFlag)(0),                 // 6: tolo.flow.v1.ConfidenceFlag
 	(StagnationDerivation)(0),           // 7: tolo.flow.v1.StagnationDerivation
-	(TenantCategory)(0),                 // 8: tolo.flow.v1.TenantCategory
+	(EventTerm)(0),                      // 8: tolo.flow.v1.EventTerm
 	(OptimizationMode)(0),               // 9: tolo.flow.v1.OptimizationMode
 	(Verdict)(0),                        // 10: tolo.flow.v1.Verdict
 	(QueuedTriggerKind)(0),              // 11: tolo.flow.v1.QueuedTriggerKind
@@ -7608,199 +7654,201 @@ var file_tolo_flow_v1_flow_proto_goTypes = []any{
 	(*OptimizeRequest)(nil),             // 28: tolo.flow.v1.OptimizeRequest
 	(*OptimizeResponse)(nil),            // 29: tolo.flow.v1.OptimizeResponse
 	(*TenantContext)(nil),               // 30: tolo.flow.v1.TenantContext
-	(*Graph)(nil),                       // 31: tolo.flow.v1.Graph
-	(*Node)(nil),                        // 32: tolo.flow.v1.Node
-	(*Boundary)(nil),                    // 33: tolo.flow.v1.Boundary
-	(*Edge)(nil),                        // 34: tolo.flow.v1.Edge
-	(*Observations)(nil),                // 35: tolo.flow.v1.Observations
-	(*ArcFlow)(nil),                     // 36: tolo.flow.v1.ArcFlow
-	(*ArcStagnation)(nil),               // 37: tolo.flow.v1.ArcStagnation
-	(*ArcScalarFlow)(nil),               // 38: tolo.flow.v1.ArcScalarFlow
-	(*NodeOccupancy)(nil),               // 39: tolo.flow.v1.NodeOccupancy
-	(*TurningObservation)(nil),          // 40: tolo.flow.v1.TurningObservation
-	(*HistoryDigest)(nil),               // 41: tolo.flow.v1.HistoryDigest
-	(*ArcHistoryStat)(nil),              // 42: tolo.flow.v1.ArcHistoryStat
-	(*ArcWindowSeries)(nil),             // 43: tolo.flow.v1.ArcWindowSeries
-	(*DirectionalFlowSamples)(nil),      // 44: tolo.flow.v1.DirectionalFlowSamples
-	(*DirectionalSeries)(nil),           // 45: tolo.flow.v1.DirectionalSeries
-	(*TimedValue)(nil),                  // 46: tolo.flow.v1.TimedValue
-	(*DetectionState)(nil),              // 47: tolo.flow.v1.DetectionState
-	(*ArcDemandDigest)(nil),             // 48: tolo.flow.v1.ArcDemandDigest
-	(*ArcDemandDigestEntry)(nil),        // 49: tolo.flow.v1.ArcDemandDigestEntry
-	(*QueuedTrigger)(nil),               // 50: tolo.flow.v1.QueuedTrigger
-	(*ArcWatchState)(nil),               // 51: tolo.flow.v1.ArcWatchState
-	(*WarmupState)(nil),                 // 52: tolo.flow.v1.WarmupState
-	(*RetriggerEntry)(nil),              // 53: tolo.flow.v1.RetriggerEntry
-	(*Event)(nil),                       // 54: tolo.flow.v1.Event
-	(*ParamList)(nil),                   // 55: tolo.flow.v1.ParamList
-	(*KeyValue)(nil),                    // 56: tolo.flow.v1.KeyValue
-	(*ScalarValue)(nil),                 // 57: tolo.flow.v1.ScalarValue
-	(*Reference)(nil),                   // 58: tolo.flow.v1.Reference
-	(*TagReference)(nil),                // 59: tolo.flow.v1.TagReference
-	(*ThresholdDefaults)(nil),           // 60: tolo.flow.v1.ThresholdDefaults
-	(*ThresholdSet)(nil),                // 61: tolo.flow.v1.ThresholdSet
-	(*ResolvedConfig)(nil),              // 62: tolo.flow.v1.ResolvedConfig
-	(*ThroughputWeights)(nil),           // 63: tolo.flow.v1.ThroughputWeights
-	(*EdgeFloat)(nil),                   // 64: tolo.flow.v1.EdgeFloat
-	(*OptimizationResult)(nil),          // 65: tolo.flow.v1.OptimizationResult
-	(*RouteImportance)(nil),             // 66: tolo.flow.v1.RouteImportance
-	(*DirectionProposal)(nil),           // 67: tolo.flow.v1.DirectionProposal
-	(*RestrictionProposal)(nil),         // 68: tolo.flow.v1.RestrictionProposal
-	(*DetourPathProposal)(nil),          // 69: tolo.flow.v1.DetourPathProposal
-	(*BoundaryControl)(nil),             // 70: tolo.flow.v1.BoundaryControl
-	(*OptimizationObjectiveValues)(nil), // 71: tolo.flow.v1.OptimizationObjectiveValues
-	(*FeedbackValues)(nil),              // 72: tolo.flow.v1.FeedbackValues
-	(*ComputeMeta)(nil),                 // 73: tolo.flow.v1.ComputeMeta
-	(*ReachabilityConstraints)(nil),     // 74: tolo.flow.v1.ReachabilityConstraints
-	(*FeedbackObjectiveValues)(nil),     // 75: tolo.flow.v1.FeedbackObjectiveValues
-	(*TagObservation)(nil),              // 76: tolo.flow.v1.TagObservation
-	(*PredictionActualDiff)(nil),        // 77: tolo.flow.v1.PredictionActualDiff
-	(*ReferenceUsageReport)(nil),        // 78: tolo.flow.v1.ReferenceUsageReport
-	(*QualityMetrics)(nil),              // 79: tolo.flow.v1.QualityMetrics
-	(*DetourMetrics)(nil),               // 80: tolo.flow.v1.DetourMetrics
-	(*RestrictionMetrics)(nil),          // 81: tolo.flow.v1.RestrictionMetrics
-	(*RestrictionCount)(nil),            // 82: tolo.flow.v1.RestrictionCount
-	(*DirectionChangeSummary)(nil),      // 83: tolo.flow.v1.DirectionChangeSummary
-	(*AbDiff)(nil),                      // 84: tolo.flow.v1.AbDiff
-	(*ForecastSummary)(nil),             // 85: tolo.flow.v1.ForecastSummary
-	(*NodeDemand)(nil),                  // 86: tolo.flow.v1.NodeDemand
-	(*NodeResolution)(nil),              // 87: tolo.flow.v1.NodeResolution
-	(*Warning)(nil),                     // 88: tolo.flow.v1.Warning
-	(*Diagnostics)(nil),                 // 89: tolo.flow.v1.Diagnostics
-	(*TriggerEvidence)(nil),             // 90: tolo.flow.v1.TriggerEvidence
-	(*FallbackRecord)(nil),              // 91: tolo.flow.v1.FallbackRecord
-	(*StepRecord)(nil),                  // 92: tolo.flow.v1.StepRecord
-	(*timestamppb.Timestamp)(nil),       // 93: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),               // 94: google.protobuf.Empty
+	(*EventContext)(nil),                // 31: tolo.flow.v1.EventContext
+	(*Graph)(nil),                       // 32: tolo.flow.v1.Graph
+	(*Node)(nil),                        // 33: tolo.flow.v1.Node
+	(*Boundary)(nil),                    // 34: tolo.flow.v1.Boundary
+	(*Edge)(nil),                        // 35: tolo.flow.v1.Edge
+	(*Observations)(nil),                // 36: tolo.flow.v1.Observations
+	(*ArcFlow)(nil),                     // 37: tolo.flow.v1.ArcFlow
+	(*ArcStagnation)(nil),               // 38: tolo.flow.v1.ArcStagnation
+	(*ArcScalarFlow)(nil),               // 39: tolo.flow.v1.ArcScalarFlow
+	(*NodeOccupancy)(nil),               // 40: tolo.flow.v1.NodeOccupancy
+	(*TurningObservation)(nil),          // 41: tolo.flow.v1.TurningObservation
+	(*HistoryDigest)(nil),               // 42: tolo.flow.v1.HistoryDigest
+	(*ArcHistoryStat)(nil),              // 43: tolo.flow.v1.ArcHistoryStat
+	(*ArcWindowSeries)(nil),             // 44: tolo.flow.v1.ArcWindowSeries
+	(*DirectionalFlowSamples)(nil),      // 45: tolo.flow.v1.DirectionalFlowSamples
+	(*DirectionalSeries)(nil),           // 46: tolo.flow.v1.DirectionalSeries
+	(*TimedValue)(nil),                  // 47: tolo.flow.v1.TimedValue
+	(*DetectionState)(nil),              // 48: tolo.flow.v1.DetectionState
+	(*ArcDemandDigest)(nil),             // 49: tolo.flow.v1.ArcDemandDigest
+	(*ArcDemandDigestEntry)(nil),        // 50: tolo.flow.v1.ArcDemandDigestEntry
+	(*QueuedTrigger)(nil),               // 51: tolo.flow.v1.QueuedTrigger
+	(*ArcWatchState)(nil),               // 52: tolo.flow.v1.ArcWatchState
+	(*WarmupState)(nil),                 // 53: tolo.flow.v1.WarmupState
+	(*RetriggerEntry)(nil),              // 54: tolo.flow.v1.RetriggerEntry
+	(*Event)(nil),                       // 55: tolo.flow.v1.Event
+	(*ParamList)(nil),                   // 56: tolo.flow.v1.ParamList
+	(*KeyValue)(nil),                    // 57: tolo.flow.v1.KeyValue
+	(*ScalarValue)(nil),                 // 58: tolo.flow.v1.ScalarValue
+	(*Reference)(nil),                   // 59: tolo.flow.v1.Reference
+	(*TagReference)(nil),                // 60: tolo.flow.v1.TagReference
+	(*ThresholdDefaults)(nil),           // 61: tolo.flow.v1.ThresholdDefaults
+	(*ThresholdSet)(nil),                // 62: tolo.flow.v1.ThresholdSet
+	(*ResolvedConfig)(nil),              // 63: tolo.flow.v1.ResolvedConfig
+	(*ThroughputWeights)(nil),           // 64: tolo.flow.v1.ThroughputWeights
+	(*EdgeFloat)(nil),                   // 65: tolo.flow.v1.EdgeFloat
+	(*OptimizationResult)(nil),          // 66: tolo.flow.v1.OptimizationResult
+	(*RouteImportance)(nil),             // 67: tolo.flow.v1.RouteImportance
+	(*DirectionProposal)(nil),           // 68: tolo.flow.v1.DirectionProposal
+	(*RestrictionProposal)(nil),         // 69: tolo.flow.v1.RestrictionProposal
+	(*DetourPathProposal)(nil),          // 70: tolo.flow.v1.DetourPathProposal
+	(*BoundaryControl)(nil),             // 71: tolo.flow.v1.BoundaryControl
+	(*OptimizationObjectiveValues)(nil), // 72: tolo.flow.v1.OptimizationObjectiveValues
+	(*FeedbackValues)(nil),              // 73: tolo.flow.v1.FeedbackValues
+	(*ComputeMeta)(nil),                 // 74: tolo.flow.v1.ComputeMeta
+	(*ReachabilityConstraints)(nil),     // 75: tolo.flow.v1.ReachabilityConstraints
+	(*FeedbackObjectiveValues)(nil),     // 76: tolo.flow.v1.FeedbackObjectiveValues
+	(*TagObservation)(nil),              // 77: tolo.flow.v1.TagObservation
+	(*PredictionActualDiff)(nil),        // 78: tolo.flow.v1.PredictionActualDiff
+	(*ReferenceUsageReport)(nil),        // 79: tolo.flow.v1.ReferenceUsageReport
+	(*QualityMetrics)(nil),              // 80: tolo.flow.v1.QualityMetrics
+	(*DetourMetrics)(nil),               // 81: tolo.flow.v1.DetourMetrics
+	(*RestrictionMetrics)(nil),          // 82: tolo.flow.v1.RestrictionMetrics
+	(*RestrictionCount)(nil),            // 83: tolo.flow.v1.RestrictionCount
+	(*DirectionChangeSummary)(nil),      // 84: tolo.flow.v1.DirectionChangeSummary
+	(*AbDiff)(nil),                      // 85: tolo.flow.v1.AbDiff
+	(*ForecastSummary)(nil),             // 86: tolo.flow.v1.ForecastSummary
+	(*NodeDemand)(nil),                  // 87: tolo.flow.v1.NodeDemand
+	(*NodeResolution)(nil),              // 88: tolo.flow.v1.NodeResolution
+	(*Warning)(nil),                     // 89: tolo.flow.v1.Warning
+	(*Diagnostics)(nil),                 // 90: tolo.flow.v1.Diagnostics
+	(*TriggerEvidence)(nil),             // 91: tolo.flow.v1.TriggerEvidence
+	(*FallbackRecord)(nil),              // 92: tolo.flow.v1.FallbackRecord
+	(*StepRecord)(nil),                  // 93: tolo.flow.v1.StepRecord
+	(*timestamppb.Timestamp)(nil),       // 94: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 95: google.protobuf.Empty
 }
 var file_tolo_flow_v1_flow_proto_depIdxs = []int32{
 	30,  // 0: tolo.flow.v1.OptimizeRequest.tenant_context:type_name -> tolo.flow.v1.TenantContext
-	31,  // 1: tolo.flow.v1.OptimizeRequest.graph:type_name -> tolo.flow.v1.Graph
-	35,  // 2: tolo.flow.v1.OptimizeRequest.observations:type_name -> tolo.flow.v1.Observations
-	41,  // 3: tolo.flow.v1.OptimizeRequest.history_digest:type_name -> tolo.flow.v1.HistoryDigest
-	47,  // 4: tolo.flow.v1.OptimizeRequest.detection_state:type_name -> tolo.flow.v1.DetectionState
-	58,  // 5: tolo.flow.v1.OptimizeRequest.references:type_name -> tolo.flow.v1.Reference
-	65,  // 6: tolo.flow.v1.OptimizeRequest.previous_result:type_name -> tolo.flow.v1.OptimizationResult
-	54,  // 7: tolo.flow.v1.OptimizeRequest.events:type_name -> tolo.flow.v1.Event
-	62,  // 8: tolo.flow.v1.OptimizeRequest.config:type_name -> tolo.flow.v1.ResolvedConfig
-	93,  // 9: tolo.flow.v1.OptimizeRequest.server_time:type_name -> google.protobuf.Timestamp
-	10,  // 10: tolo.flow.v1.OptimizeResponse.verdict:type_name -> tolo.flow.v1.Verdict
-	47,  // 11: tolo.flow.v1.OptimizeResponse.updated_detection_state:type_name -> tolo.flow.v1.DetectionState
-	72,  // 12: tolo.flow.v1.OptimizeResponse.feedback_values:type_name -> tolo.flow.v1.FeedbackValues
-	89,  // 13: tolo.flow.v1.OptimizeResponse.diagnostics:type_name -> tolo.flow.v1.Diagnostics
-	65,  // 14: tolo.flow.v1.OptimizeResponse.optimization_result:type_name -> tolo.flow.v1.OptimizationResult
-	8,   // 15: tolo.flow.v1.TenantContext.tenant_category:type_name -> tolo.flow.v1.TenantCategory
-	32,  // 16: tolo.flow.v1.Graph.nodes:type_name -> tolo.flow.v1.Node
-	34,  // 17: tolo.flow.v1.Graph.edges:type_name -> tolo.flow.v1.Edge
-	0,   // 18: tolo.flow.v1.Node.kind:type_name -> tolo.flow.v1.NodeKind
-	33,  // 19: tolo.flow.v1.Node.boundary:type_name -> tolo.flow.v1.Boundary
-	1,   // 20: tolo.flow.v1.Boundary.direction:type_name -> tolo.flow.v1.BoundaryDirection
-	2,   // 21: tolo.flow.v1.Edge.direction_constraint:type_name -> tolo.flow.v1.DirectionConstraint
-	3,   // 22: tolo.flow.v1.Edge.current_direction:type_name -> tolo.flow.v1.CurrentDirection
-	4,   // 23: tolo.flow.v1.Edge.observation_type:type_name -> tolo.flow.v1.ObservationType
-	93,  // 24: tolo.flow.v1.Observations.observed_at:type_name -> google.protobuf.Timestamp
-	36,  // 25: tolo.flow.v1.Observations.arc_flows:type_name -> tolo.flow.v1.ArcFlow
-	37,  // 26: tolo.flow.v1.Observations.arc_stagnations:type_name -> tolo.flow.v1.ArcStagnation
-	38,  // 27: tolo.flow.v1.Observations.arc_scalar_flows:type_name -> tolo.flow.v1.ArcScalarFlow
-	39,  // 28: tolo.flow.v1.Observations.node_occupancies:type_name -> tolo.flow.v1.NodeOccupancy
-	40,  // 29: tolo.flow.v1.Observations.node_turning:type_name -> tolo.flow.v1.TurningObservation
-	5,   // 30: tolo.flow.v1.ArcFlow.direction:type_name -> tolo.flow.v1.FlowDirection
-	6,   // 31: tolo.flow.v1.ArcFlow.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
-	7,   // 32: tolo.flow.v1.ArcStagnation.derivation:type_name -> tolo.flow.v1.StagnationDerivation
-	6,   // 33: tolo.flow.v1.ArcStagnation.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
-	6,   // 34: tolo.flow.v1.ArcScalarFlow.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
-	6,   // 35: tolo.flow.v1.NodeOccupancy.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
-	6,   // 36: tolo.flow.v1.TurningObservation.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
-	42,  // 37: tolo.flow.v1.HistoryDigest.arc_stats:type_name -> tolo.flow.v1.ArcHistoryStat
-	43,  // 38: tolo.flow.v1.HistoryDigest.window_series:type_name -> tolo.flow.v1.ArcWindowSeries
-	46,  // 39: tolo.flow.v1.ArcWindowSeries.flow_samples:type_name -> tolo.flow.v1.TimedValue
-	46,  // 40: tolo.flow.v1.ArcWindowSeries.stagnation_samples:type_name -> tolo.flow.v1.TimedValue
-	44,  // 41: tolo.flow.v1.ArcWindowSeries.directional_flow_samples:type_name -> tolo.flow.v1.DirectionalFlowSamples
-	45,  // 42: tolo.flow.v1.DirectionalFlowSamples.series:type_name -> tolo.flow.v1.DirectionalSeries
-	5,   // 43: tolo.flow.v1.DirectionalSeries.direction:type_name -> tolo.flow.v1.FlowDirection
-	46,  // 44: tolo.flow.v1.DirectionalSeries.samples:type_name -> tolo.flow.v1.TimedValue
-	93,  // 45: tolo.flow.v1.TimedValue.at:type_name -> google.protobuf.Timestamp
-	93,  // 46: tolo.flow.v1.DetectionState.cooldown_until:type_name -> google.protobuf.Timestamp
-	50,  // 47: tolo.flow.v1.DetectionState.trigger_queue:type_name -> tolo.flow.v1.QueuedTrigger
-	51,  // 48: tolo.flow.v1.DetectionState.arc_watch_states:type_name -> tolo.flow.v1.ArcWatchState
-	48,  // 49: tolo.flow.v1.DetectionState.arc_demand_digest:type_name -> tolo.flow.v1.ArcDemandDigest
-	52,  // 50: tolo.flow.v1.DetectionState.warmup_states:type_name -> tolo.flow.v1.WarmupState
-	53,  // 51: tolo.flow.v1.DetectionState.arc_retrigger_counts:type_name -> tolo.flow.v1.RetriggerEntry
-	49,  // 52: tolo.flow.v1.ArcDemandDigest.entries:type_name -> tolo.flow.v1.ArcDemandDigestEntry
-	11,  // 53: tolo.flow.v1.QueuedTrigger.kind:type_name -> tolo.flow.v1.QueuedTriggerKind
-	93,  // 54: tolo.flow.v1.QueuedTrigger.first_fired_at:type_name -> google.protobuf.Timestamp
-	93,  // 55: tolo.flow.v1.QueuedTrigger.last_fired_at:type_name -> google.protobuf.Timestamp
-	93,  // 56: tolo.flow.v1.ArcWatchState.stagnation_watch_since:type_name -> google.protobuf.Timestamp
-	93,  // 57: tolo.flow.v1.ArcWatchState.demand_watch_since:type_name -> google.protobuf.Timestamp
-	93,  // 58: tolo.flow.v1.WarmupState.until:type_name -> google.protobuf.Timestamp
-	93,  // 59: tolo.flow.v1.RetriggerEntry.last_fired_at:type_name -> google.protobuf.Timestamp
-	12,  // 60: tolo.flow.v1.Event.kind:type_name -> tolo.flow.v1.EventKind
-	93,  // 61: tolo.flow.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	55,  // 62: tolo.flow.v1.Event.params:type_name -> tolo.flow.v1.ParamList
-	56,  // 63: tolo.flow.v1.ParamList.values:type_name -> tolo.flow.v1.KeyValue
-	57,  // 64: tolo.flow.v1.KeyValue.value:type_name -> tolo.flow.v1.ScalarValue
-	94,  // 65: tolo.flow.v1.ScalarValue.null_value:type_name -> google.protobuf.Empty
-	59,  // 66: tolo.flow.v1.Reference.by_attribute_tag:type_name -> tolo.flow.v1.TagReference
-	60,  // 67: tolo.flow.v1.Reference.default_thresholds:type_name -> tolo.flow.v1.ThresholdDefaults
-	61,  // 68: tolo.flow.v1.ThresholdDefaults.short_term:type_name -> tolo.flow.v1.ThresholdSet
-	61,  // 69: tolo.flow.v1.ThresholdDefaults.long_term:type_name -> tolo.flow.v1.ThresholdSet
-	9,   // 70: tolo.flow.v1.ResolvedConfig.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
-	63,  // 71: tolo.flow.v1.ResolvedConfig.throughput_weights:type_name -> tolo.flow.v1.ThroughputWeights
-	64,  // 72: tolo.flow.v1.ResolvedConfig.throughput_max_per_edge:type_name -> tolo.flow.v1.EdgeFloat
-	66,  // 73: tolo.flow.v1.OptimizationResult.route_importance:type_name -> tolo.flow.v1.RouteImportance
-	67,  // 74: tolo.flow.v1.OptimizationResult.direction_proposal:type_name -> tolo.flow.v1.DirectionProposal
-	68,  // 75: tolo.flow.v1.OptimizationResult.restriction_proposal:type_name -> tolo.flow.v1.RestrictionProposal
-	69,  // 76: tolo.flow.v1.OptimizationResult.detour_paths:type_name -> tolo.flow.v1.DetourPathProposal
-	70,  // 77: tolo.flow.v1.OptimizationResult.boundary_control:type_name -> tolo.flow.v1.BoundaryControl
-	71,  // 78: tolo.flow.v1.OptimizationResult.objective_values:type_name -> tolo.flow.v1.OptimizationObjectiveValues
-	15,  // 79: tolo.flow.v1.OptimizationResult.solver_status:type_name -> tolo.flow.v1.SolverStatus
-	93,  // 80: tolo.flow.v1.OptimizationResult.solved_at:type_name -> google.protobuf.Timestamp
-	16,  // 81: tolo.flow.v1.RouteImportance.direction:type_name -> tolo.flow.v1.ImportanceDirection
-	17,  // 82: tolo.flow.v1.DirectionProposal.proposed_direction:type_name -> tolo.flow.v1.ProposedDirection
-	18,  // 83: tolo.flow.v1.DirectionProposal.change_type:type_name -> tolo.flow.v1.DirectionChangeType
-	19,  // 84: tolo.flow.v1.RestrictionProposal.action:type_name -> tolo.flow.v1.RestrictionAction
-	14,  // 85: tolo.flow.v1.RestrictionProposal.reason:type_name -> tolo.flow.v1.RestrictionReason
-	20,  // 86: tolo.flow.v1.BoundaryControl.action:type_name -> tolo.flow.v1.BoundaryAction
-	73,  // 87: tolo.flow.v1.FeedbackValues.compute_meta:type_name -> tolo.flow.v1.ComputeMeta
-	75,  // 88: tolo.flow.v1.FeedbackValues.objective_values:type_name -> tolo.flow.v1.FeedbackObjectiveValues
-	76,  // 89: tolo.flow.v1.FeedbackValues.per_tag_observations:type_name -> tolo.flow.v1.TagObservation
-	77,  // 90: tolo.flow.v1.FeedbackValues.prediction_actual_diff:type_name -> tolo.flow.v1.PredictionActualDiff
-	78,  // 91: tolo.flow.v1.FeedbackValues.reference_usage:type_name -> tolo.flow.v1.ReferenceUsageReport
-	79,  // 92: tolo.flow.v1.FeedbackValues.quality_metrics:type_name -> tolo.flow.v1.QualityMetrics
-	80,  // 93: tolo.flow.v1.FeedbackValues.detour_metrics:type_name -> tolo.flow.v1.DetourMetrics
-	81,  // 94: tolo.flow.v1.FeedbackValues.restriction_metrics:type_name -> tolo.flow.v1.RestrictionMetrics
-	83,  // 95: tolo.flow.v1.FeedbackValues.direction_change_summary:type_name -> tolo.flow.v1.DirectionChangeSummary
-	84,  // 96: tolo.flow.v1.FeedbackValues.ab_diff:type_name -> tolo.flow.v1.AbDiff
-	85,  // 97: tolo.flow.v1.FeedbackValues.forecast_summary:type_name -> tolo.flow.v1.ForecastSummary
-	88,  // 98: tolo.flow.v1.FeedbackValues.warnings:type_name -> tolo.flow.v1.Warning
-	13,  // 99: tolo.flow.v1.ComputeMeta.mode:type_name -> tolo.flow.v1.Mode
-	9,   // 100: tolo.flow.v1.ComputeMeta.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
-	74,  // 101: tolo.flow.v1.ComputeMeta.reachability_constraints:type_name -> tolo.flow.v1.ReachabilityConstraints
-	82,  // 102: tolo.flow.v1.RestrictionMetrics.by_reason:type_name -> tolo.flow.v1.RestrictionCount
-	14,  // 103: tolo.flow.v1.RestrictionCount.reason:type_name -> tolo.flow.v1.RestrictionReason
-	86,  // 104: tolo.flow.v1.ForecastSummary.node_demand:type_name -> tolo.flow.v1.NodeDemand
-	87,  // 105: tolo.flow.v1.ForecastSummary.estimation_resolution:type_name -> tolo.flow.v1.NodeResolution
-	26,  // 106: tolo.flow.v1.NodeResolution.mode:type_name -> tolo.flow.v1.ODResolutionMode
-	27,  // 107: tolo.flow.v1.NodeResolution.reason:type_name -> tolo.flow.v1.ODResolutionReason
-	21,  // 108: tolo.flow.v1.Warning.code:type_name -> tolo.flow.v1.WarningCode
-	56,  // 109: tolo.flow.v1.Warning.context:type_name -> tolo.flow.v1.KeyValue
-	13,  // 110: tolo.flow.v1.Diagnostics.mode:type_name -> tolo.flow.v1.Mode
-	88,  // 111: tolo.flow.v1.Diagnostics.warnings:type_name -> tolo.flow.v1.Warning
-	90,  // 112: tolo.flow.v1.Diagnostics.trigger_evidences:type_name -> tolo.flow.v1.TriggerEvidence
-	91,  // 113: tolo.flow.v1.Diagnostics.fallbacks_applied:type_name -> tolo.flow.v1.FallbackRecord
-	92,  // 114: tolo.flow.v1.Diagnostics.steps_executed:type_name -> tolo.flow.v1.StepRecord
-	22,  // 115: tolo.flow.v1.TriggerEvidence.source:type_name -> tolo.flow.v1.TriggerEvidenceSource
-	93,  // 116: tolo.flow.v1.TriggerEvidence.occurred_at:type_name -> google.protobuf.Timestamp
-	23,  // 117: tolo.flow.v1.FallbackRecord.kind:type_name -> tolo.flow.v1.FallbackKind
-	24,  // 118: tolo.flow.v1.StepRecord.step:type_name -> tolo.flow.v1.StepKind
-	25,  // 119: tolo.flow.v1.StepRecord.status:type_name -> tolo.flow.v1.StepStatus
-	28,  // 120: tolo.flow.v1.FlowControlService.Optimize:input_type -> tolo.flow.v1.OptimizeRequest
-	29,  // 121: tolo.flow.v1.FlowControlService.Optimize:output_type -> tolo.flow.v1.OptimizeResponse
-	121, // [121:122] is the sub-list for method output_type
-	120, // [120:121] is the sub-list for method input_type
-	120, // [120:120] is the sub-list for extension type_name
-	120, // [120:120] is the sub-list for extension extendee
-	0,   // [0:120] is the sub-list for field type_name
+	32,  // 1: tolo.flow.v1.OptimizeRequest.graph:type_name -> tolo.flow.v1.Graph
+	36,  // 2: tolo.flow.v1.OptimizeRequest.observations:type_name -> tolo.flow.v1.Observations
+	42,  // 3: tolo.flow.v1.OptimizeRequest.history_digest:type_name -> tolo.flow.v1.HistoryDigest
+	48,  // 4: tolo.flow.v1.OptimizeRequest.detection_state:type_name -> tolo.flow.v1.DetectionState
+	59,  // 5: tolo.flow.v1.OptimizeRequest.references:type_name -> tolo.flow.v1.Reference
+	66,  // 6: tolo.flow.v1.OptimizeRequest.previous_result:type_name -> tolo.flow.v1.OptimizationResult
+	55,  // 7: tolo.flow.v1.OptimizeRequest.events:type_name -> tolo.flow.v1.Event
+	63,  // 8: tolo.flow.v1.OptimizeRequest.config:type_name -> tolo.flow.v1.ResolvedConfig
+	94,  // 9: tolo.flow.v1.OptimizeRequest.server_time:type_name -> google.protobuf.Timestamp
+	31,  // 10: tolo.flow.v1.OptimizeRequest.event_context:type_name -> tolo.flow.v1.EventContext
+	10,  // 11: tolo.flow.v1.OptimizeResponse.verdict:type_name -> tolo.flow.v1.Verdict
+	48,  // 12: tolo.flow.v1.OptimizeResponse.updated_detection_state:type_name -> tolo.flow.v1.DetectionState
+	73,  // 13: tolo.flow.v1.OptimizeResponse.feedback_values:type_name -> tolo.flow.v1.FeedbackValues
+	90,  // 14: tolo.flow.v1.OptimizeResponse.diagnostics:type_name -> tolo.flow.v1.Diagnostics
+	66,  // 15: tolo.flow.v1.OptimizeResponse.optimization_result:type_name -> tolo.flow.v1.OptimizationResult
+	8,   // 16: tolo.flow.v1.EventContext.term:type_name -> tolo.flow.v1.EventTerm
+	33,  // 17: tolo.flow.v1.Graph.nodes:type_name -> tolo.flow.v1.Node
+	35,  // 18: tolo.flow.v1.Graph.edges:type_name -> tolo.flow.v1.Edge
+	0,   // 19: tolo.flow.v1.Node.kind:type_name -> tolo.flow.v1.NodeKind
+	34,  // 20: tolo.flow.v1.Node.boundary:type_name -> tolo.flow.v1.Boundary
+	1,   // 21: tolo.flow.v1.Boundary.direction:type_name -> tolo.flow.v1.BoundaryDirection
+	2,   // 22: tolo.flow.v1.Edge.direction_constraint:type_name -> tolo.flow.v1.DirectionConstraint
+	3,   // 23: tolo.flow.v1.Edge.current_direction:type_name -> tolo.flow.v1.CurrentDirection
+	4,   // 24: tolo.flow.v1.Edge.observation_type:type_name -> tolo.flow.v1.ObservationType
+	94,  // 25: tolo.flow.v1.Observations.observed_at:type_name -> google.protobuf.Timestamp
+	37,  // 26: tolo.flow.v1.Observations.arc_flows:type_name -> tolo.flow.v1.ArcFlow
+	38,  // 27: tolo.flow.v1.Observations.arc_stagnations:type_name -> tolo.flow.v1.ArcStagnation
+	39,  // 28: tolo.flow.v1.Observations.arc_scalar_flows:type_name -> tolo.flow.v1.ArcScalarFlow
+	40,  // 29: tolo.flow.v1.Observations.node_occupancies:type_name -> tolo.flow.v1.NodeOccupancy
+	41,  // 30: tolo.flow.v1.Observations.node_turning:type_name -> tolo.flow.v1.TurningObservation
+	5,   // 31: tolo.flow.v1.ArcFlow.direction:type_name -> tolo.flow.v1.FlowDirection
+	6,   // 32: tolo.flow.v1.ArcFlow.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
+	7,   // 33: tolo.flow.v1.ArcStagnation.derivation:type_name -> tolo.flow.v1.StagnationDerivation
+	6,   // 34: tolo.flow.v1.ArcStagnation.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
+	6,   // 35: tolo.flow.v1.ArcScalarFlow.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
+	6,   // 36: tolo.flow.v1.NodeOccupancy.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
+	6,   // 37: tolo.flow.v1.TurningObservation.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
+	43,  // 38: tolo.flow.v1.HistoryDigest.arc_stats:type_name -> tolo.flow.v1.ArcHistoryStat
+	44,  // 39: tolo.flow.v1.HistoryDigest.window_series:type_name -> tolo.flow.v1.ArcWindowSeries
+	47,  // 40: tolo.flow.v1.ArcWindowSeries.flow_samples:type_name -> tolo.flow.v1.TimedValue
+	47,  // 41: tolo.flow.v1.ArcWindowSeries.stagnation_samples:type_name -> tolo.flow.v1.TimedValue
+	45,  // 42: tolo.flow.v1.ArcWindowSeries.directional_flow_samples:type_name -> tolo.flow.v1.DirectionalFlowSamples
+	46,  // 43: tolo.flow.v1.DirectionalFlowSamples.series:type_name -> tolo.flow.v1.DirectionalSeries
+	5,   // 44: tolo.flow.v1.DirectionalSeries.direction:type_name -> tolo.flow.v1.FlowDirection
+	47,  // 45: tolo.flow.v1.DirectionalSeries.samples:type_name -> tolo.flow.v1.TimedValue
+	94,  // 46: tolo.flow.v1.TimedValue.at:type_name -> google.protobuf.Timestamp
+	94,  // 47: tolo.flow.v1.DetectionState.cooldown_until:type_name -> google.protobuf.Timestamp
+	51,  // 48: tolo.flow.v1.DetectionState.trigger_queue:type_name -> tolo.flow.v1.QueuedTrigger
+	52,  // 49: tolo.flow.v1.DetectionState.arc_watch_states:type_name -> tolo.flow.v1.ArcWatchState
+	49,  // 50: tolo.flow.v1.DetectionState.arc_demand_digest:type_name -> tolo.flow.v1.ArcDemandDigest
+	53,  // 51: tolo.flow.v1.DetectionState.warmup_states:type_name -> tolo.flow.v1.WarmupState
+	54,  // 52: tolo.flow.v1.DetectionState.arc_retrigger_counts:type_name -> tolo.flow.v1.RetriggerEntry
+	50,  // 53: tolo.flow.v1.ArcDemandDigest.entries:type_name -> tolo.flow.v1.ArcDemandDigestEntry
+	11,  // 54: tolo.flow.v1.QueuedTrigger.kind:type_name -> tolo.flow.v1.QueuedTriggerKind
+	94,  // 55: tolo.flow.v1.QueuedTrigger.first_fired_at:type_name -> google.protobuf.Timestamp
+	94,  // 56: tolo.flow.v1.QueuedTrigger.last_fired_at:type_name -> google.protobuf.Timestamp
+	94,  // 57: tolo.flow.v1.ArcWatchState.stagnation_watch_since:type_name -> google.protobuf.Timestamp
+	94,  // 58: tolo.flow.v1.ArcWatchState.demand_watch_since:type_name -> google.protobuf.Timestamp
+	94,  // 59: tolo.flow.v1.WarmupState.until:type_name -> google.protobuf.Timestamp
+	94,  // 60: tolo.flow.v1.RetriggerEntry.last_fired_at:type_name -> google.protobuf.Timestamp
+	12,  // 61: tolo.flow.v1.Event.kind:type_name -> tolo.flow.v1.EventKind
+	94,  // 62: tolo.flow.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	56,  // 63: tolo.flow.v1.Event.params:type_name -> tolo.flow.v1.ParamList
+	57,  // 64: tolo.flow.v1.ParamList.values:type_name -> tolo.flow.v1.KeyValue
+	58,  // 65: tolo.flow.v1.KeyValue.value:type_name -> tolo.flow.v1.ScalarValue
+	95,  // 66: tolo.flow.v1.ScalarValue.null_value:type_name -> google.protobuf.Empty
+	60,  // 67: tolo.flow.v1.Reference.by_attribute_tag:type_name -> tolo.flow.v1.TagReference
+	61,  // 68: tolo.flow.v1.Reference.default_thresholds:type_name -> tolo.flow.v1.ThresholdDefaults
+	62,  // 69: tolo.flow.v1.ThresholdDefaults.short_term:type_name -> tolo.flow.v1.ThresholdSet
+	62,  // 70: tolo.flow.v1.ThresholdDefaults.long_term:type_name -> tolo.flow.v1.ThresholdSet
+	9,   // 71: tolo.flow.v1.ResolvedConfig.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
+	64,  // 72: tolo.flow.v1.ResolvedConfig.throughput_weights:type_name -> tolo.flow.v1.ThroughputWeights
+	65,  // 73: tolo.flow.v1.ResolvedConfig.throughput_max_per_edge:type_name -> tolo.flow.v1.EdgeFloat
+	67,  // 74: tolo.flow.v1.OptimizationResult.route_importance:type_name -> tolo.flow.v1.RouteImportance
+	68,  // 75: tolo.flow.v1.OptimizationResult.direction_proposal:type_name -> tolo.flow.v1.DirectionProposal
+	69,  // 76: tolo.flow.v1.OptimizationResult.restriction_proposal:type_name -> tolo.flow.v1.RestrictionProposal
+	70,  // 77: tolo.flow.v1.OptimizationResult.detour_paths:type_name -> tolo.flow.v1.DetourPathProposal
+	71,  // 78: tolo.flow.v1.OptimizationResult.boundary_control:type_name -> tolo.flow.v1.BoundaryControl
+	72,  // 79: tolo.flow.v1.OptimizationResult.objective_values:type_name -> tolo.flow.v1.OptimizationObjectiveValues
+	15,  // 80: tolo.flow.v1.OptimizationResult.solver_status:type_name -> tolo.flow.v1.SolverStatus
+	94,  // 81: tolo.flow.v1.OptimizationResult.solved_at:type_name -> google.protobuf.Timestamp
+	16,  // 82: tolo.flow.v1.RouteImportance.direction:type_name -> tolo.flow.v1.ImportanceDirection
+	17,  // 83: tolo.flow.v1.DirectionProposal.proposed_direction:type_name -> tolo.flow.v1.ProposedDirection
+	18,  // 84: tolo.flow.v1.DirectionProposal.change_type:type_name -> tolo.flow.v1.DirectionChangeType
+	19,  // 85: tolo.flow.v1.RestrictionProposal.action:type_name -> tolo.flow.v1.RestrictionAction
+	14,  // 86: tolo.flow.v1.RestrictionProposal.reason:type_name -> tolo.flow.v1.RestrictionReason
+	20,  // 87: tolo.flow.v1.BoundaryControl.action:type_name -> tolo.flow.v1.BoundaryAction
+	74,  // 88: tolo.flow.v1.FeedbackValues.compute_meta:type_name -> tolo.flow.v1.ComputeMeta
+	76,  // 89: tolo.flow.v1.FeedbackValues.objective_values:type_name -> tolo.flow.v1.FeedbackObjectiveValues
+	77,  // 90: tolo.flow.v1.FeedbackValues.per_tag_observations:type_name -> tolo.flow.v1.TagObservation
+	78,  // 91: tolo.flow.v1.FeedbackValues.prediction_actual_diff:type_name -> tolo.flow.v1.PredictionActualDiff
+	79,  // 92: tolo.flow.v1.FeedbackValues.reference_usage:type_name -> tolo.flow.v1.ReferenceUsageReport
+	80,  // 93: tolo.flow.v1.FeedbackValues.quality_metrics:type_name -> tolo.flow.v1.QualityMetrics
+	81,  // 94: tolo.flow.v1.FeedbackValues.detour_metrics:type_name -> tolo.flow.v1.DetourMetrics
+	82,  // 95: tolo.flow.v1.FeedbackValues.restriction_metrics:type_name -> tolo.flow.v1.RestrictionMetrics
+	84,  // 96: tolo.flow.v1.FeedbackValues.direction_change_summary:type_name -> tolo.flow.v1.DirectionChangeSummary
+	85,  // 97: tolo.flow.v1.FeedbackValues.ab_diff:type_name -> tolo.flow.v1.AbDiff
+	86,  // 98: tolo.flow.v1.FeedbackValues.forecast_summary:type_name -> tolo.flow.v1.ForecastSummary
+	89,  // 99: tolo.flow.v1.FeedbackValues.warnings:type_name -> tolo.flow.v1.Warning
+	13,  // 100: tolo.flow.v1.ComputeMeta.mode:type_name -> tolo.flow.v1.Mode
+	9,   // 101: tolo.flow.v1.ComputeMeta.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
+	75,  // 102: tolo.flow.v1.ComputeMeta.reachability_constraints:type_name -> tolo.flow.v1.ReachabilityConstraints
+	83,  // 103: tolo.flow.v1.RestrictionMetrics.by_reason:type_name -> tolo.flow.v1.RestrictionCount
+	14,  // 104: tolo.flow.v1.RestrictionCount.reason:type_name -> tolo.flow.v1.RestrictionReason
+	87,  // 105: tolo.flow.v1.ForecastSummary.node_demand:type_name -> tolo.flow.v1.NodeDemand
+	88,  // 106: tolo.flow.v1.ForecastSummary.estimation_resolution:type_name -> tolo.flow.v1.NodeResolution
+	26,  // 107: tolo.flow.v1.NodeResolution.mode:type_name -> tolo.flow.v1.ODResolutionMode
+	27,  // 108: tolo.flow.v1.NodeResolution.reason:type_name -> tolo.flow.v1.ODResolutionReason
+	21,  // 109: tolo.flow.v1.Warning.code:type_name -> tolo.flow.v1.WarningCode
+	57,  // 110: tolo.flow.v1.Warning.context:type_name -> tolo.flow.v1.KeyValue
+	13,  // 111: tolo.flow.v1.Diagnostics.mode:type_name -> tolo.flow.v1.Mode
+	89,  // 112: tolo.flow.v1.Diagnostics.warnings:type_name -> tolo.flow.v1.Warning
+	91,  // 113: tolo.flow.v1.Diagnostics.trigger_evidences:type_name -> tolo.flow.v1.TriggerEvidence
+	92,  // 114: tolo.flow.v1.Diagnostics.fallbacks_applied:type_name -> tolo.flow.v1.FallbackRecord
+	93,  // 115: tolo.flow.v1.Diagnostics.steps_executed:type_name -> tolo.flow.v1.StepRecord
+	22,  // 116: tolo.flow.v1.TriggerEvidence.source:type_name -> tolo.flow.v1.TriggerEvidenceSource
+	94,  // 117: tolo.flow.v1.TriggerEvidence.occurred_at:type_name -> google.protobuf.Timestamp
+	23,  // 118: tolo.flow.v1.FallbackRecord.kind:type_name -> tolo.flow.v1.FallbackKind
+	24,  // 119: tolo.flow.v1.StepRecord.step:type_name -> tolo.flow.v1.StepKind
+	25,  // 120: tolo.flow.v1.StepRecord.status:type_name -> tolo.flow.v1.StepStatus
+	28,  // 121: tolo.flow.v1.FlowControlService.Optimize:input_type -> tolo.flow.v1.OptimizeRequest
+	29,  // 122: tolo.flow.v1.FlowControlService.Optimize:output_type -> tolo.flow.v1.OptimizeResponse
+	122, // [122:123] is the sub-list for method output_type
+	121, // [121:122] is the sub-list for method input_type
+	121, // [121:121] is the sub-list for extension type_name
+	121, // [121:121] is the sub-list for extension extendee
+	0,   // [0:121] is the sub-list for field type_name
 }
 
 func init() { file_tolo_flow_v1_flow_proto_init() }
@@ -7811,7 +7859,7 @@ func file_tolo_flow_v1_flow_proto_init() {
 	file_tolo_flow_v1_flow_proto_msgTypes[0].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[1].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[2].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[4].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[3].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[5].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[6].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[7].OneofWrappers = []any{}
@@ -7820,38 +7868,39 @@ func file_tolo_flow_v1_flow_proto_init() {
 	file_tolo_flow_v1_flow_proto_msgTypes[10].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[11].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[12].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[14].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[13].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[15].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[19].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[22].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[16].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[20].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[23].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[25].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[24].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[26].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[29].OneofWrappers = []any{
+	file_tolo_flow_v1_flow_proto_msgTypes[27].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[30].OneofWrappers = []any{
 		(*ScalarValue_StringValue)(nil),
 		(*ScalarValue_DoubleValue)(nil),
 		(*ScalarValue_IntValue)(nil),
 		(*ScalarValue_BoolValue)(nil),
 		(*ScalarValue_NullValue)(nil),
 	}
-	file_tolo_flow_v1_flow_proto_msgTypes[30].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[31].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[33].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[32].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[34].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[37].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[40].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[43].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[35].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[38].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[41].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[44].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[47].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[62].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[64].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[45].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[48].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[63].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[65].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tolo_flow_v1_flow_proto_rawDesc), len(file_tolo_flow_v1_flow_proto_rawDesc)),
 			NumEnums:      28,
-			NumMessages:   65,
+			NumMessages:   66,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
