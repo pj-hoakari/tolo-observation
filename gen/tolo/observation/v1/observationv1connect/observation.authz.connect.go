@@ -33,3 +33,9 @@ var ManualInterventionServicePolicies = authz.Policies{
 var StatusQueryServicePolicies = authz.Policies{
 	StatusQueryServiceGetEventOverviewProcedure: {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.read"}, TokenUses: []string{"event_access"}},
 }
+
+// ObservationSettingsServicePolicies is the effective policy of every procedure of tolo.observation.v1.ObservationSettingsService.
+var ObservationSettingsServicePolicies = authz.Policies{
+	ObservationSettingsServiceGetObservationSettingsProcedure:    {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.read"}, TokenUses: []string{"event_access"}},
+	ObservationSettingsServiceUpdateObservationSettingsProcedure: {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.manage"}, TokenUses: []string{"event_access"}},
+}

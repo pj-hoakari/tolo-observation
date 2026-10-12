@@ -271,6 +271,8 @@ func observationError(ctx context.Context, err error) error {
 		errors.Is(err, domain.ErrInvalidMeasurementWindow),
 		errors.Is(err, domain.ErrNegativeCount),
 		errors.Is(err, domain.ErrInvalidDetectedPeople),
+		errors.Is(err, domain.ErrInvalidHistoryWindow),
+		errors.Is(err, domain.ErrEventTypeRequired),
 		errors.Is(err, application.ErrEdgeDeviceRequired):
 		return connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
 	case errors.Is(err, repository.ErrEdgeDeviceNotFound),
@@ -365,5 +367,83 @@ func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
 		WindowEnd:   timestamppb.New(snapshot.WindowEnd),
 		PointScores: points,
 		RouteScores: routes,
+	}
+}
+
+type ObservationSettingsService struct {
+	observationv1connect.UnimplementedObservationSettingsServiceHandler
+
+	useCases application.ObservationSettingsUseCases
+}
+
+func NewObservationSettingsService(useCases application.ObservationSettingsUseCases) *ObservationSettingsService {
+	return &ObservationSettingsService{
+		UnimplementedObservationSettingsServiceHandler: observationv1connect.UnimplementedObservationSettingsServiceHandler{},
+		useCases: useCases,
+	}
+}
+
+func (s *ObservationSettingsService) GetObservationSettings(
+	ctx context.Context,
+	req *connectrpc.Request[observationv1.GetObservationSettingsRequest],
+) (*connectrpc.Response[observationv1.GetObservationSettingsResponse], error) {
+	settings, err := s.useCases.GetObservationSettings(ctx, req.Msg.GetEventId())
+	if err != nil {
+		return nil, observationError(ctx, err)
+	}
+
+	return connectrpc.NewResponse(&observationv1.GetObservationSettingsResponse{
+		Settings: newProtoObservationSettings(settings),
+	}), nil
+}
+
+func (s *ObservationSettingsService) UpdateObservationSettings(
+	ctx context.Context,
+	req *connectrpc.Request[observationv1.UpdateObservationSettingsRequest],
+) (*connectrpc.Response[observationv1.UpdateObservationSettingsResponse], error) {
+	settings, err := s.useCases.UpdateObservationSettings(ctx, application.UpdateObservationSettingsInput{
+		EventID:           req.Msg.GetEventId(),
+		HistoryWindowDays: req.Msg.GetSettings().GetHistoryWindowDays(),
+		EventType:         domainEventType(req.Msg.GetSettings().GetEventType()),
+	})
+	if err != nil {
+		return nil, observationError(ctx, err)
+	}
+
+	return connectrpc.NewResponse(&observationv1.UpdateObservationSettingsResponse{
+		Settings: newProtoObservationSettings(settings),
+	}), nil
+}
+
+func newProtoObservationSettings(settings domain.ObservationSettings) *observationv1.ObservationSettings {
+	return &observationv1.ObservationSettings{
+		HistoryWindowDays: settings.HistoryWindowDays,
+		EventType:         protoEventType(settings.EventType),
+	}
+}
+
+func domainEventType(eventType observationv1.EventType) domain.EventType {
+	switch eventType {
+	case observationv1.EventType_EVENT_TYPE_SHORT_TERM:
+		return domain.EventTypeShortTerm
+	case observationv1.EventType_EVENT_TYPE_LONG_TERM:
+		return domain.EventTypeLongTerm
+	case observationv1.EventType_EVENT_TYPE_UNSPECIFIED:
+		return domain.EventTypeUnspecified
+	default:
+		return domain.EventTypeUnspecified
+	}
+}
+
+func protoEventType(eventType domain.EventType) observationv1.EventType {
+	switch eventType {
+	case domain.EventTypeShortTerm:
+		return observationv1.EventType_EVENT_TYPE_SHORT_TERM
+	case domain.EventTypeLongTerm:
+		return observationv1.EventType_EVENT_TYPE_LONG_TERM
+	case domain.EventTypeUnspecified:
+		return observationv1.EventType_EVENT_TYPE_UNSPECIFIED
+	default:
+		return observationv1.EventType_EVENT_TYPE_UNSPECIFIED
 	}
 }

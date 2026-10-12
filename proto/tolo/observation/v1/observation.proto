@@ -103,6 +103,23 @@ service StatusQueryService {
   }
 }
 
+service ObservationSettingsService {
+  rpc GetObservationSettings(GetObservationSettingsRequest) returns (GetObservationSettingsResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.read"
+      token_uses: "event_access"
+    };
+  }
+  rpc UpdateObservationSettings(UpdateObservationSettingsRequest) returns (UpdateObservationSettingsResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.manage"
+      token_uses: "event_access"
+    };
+  }
+}
+
 message Measurement {
   string observation_point_id = 1;
   google.protobuf.Timestamp window_start = 2;
@@ -265,4 +282,32 @@ message EventOverview {
   tolo.kernel.v1.ObservationSnapshot snapshot = 1;
   repeated tolo.kernel.v1.RiskLocation risks = 2;
   repeated tolo.kernel.v1.DangerFlag danger_flags = 3;
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_SHORT_TERM = 1;
+  EVENT_TYPE_LONG_TERM = 2;
+}
+
+message ObservationSettings {
+  int32 history_window_days = 1;
+  EventType event_type = 2;
+}
+
+message GetObservationSettingsRequest {
+  string event_id = 1;
+}
+
+message GetObservationSettingsResponse {
+  ObservationSettings settings = 1;
+}
+
+message UpdateObservationSettingsRequest {
+  string event_id = 1;
+  ObservationSettings settings = 2;
+}
+
+message UpdateObservationSettingsResponse {
+  ObservationSettings settings = 1;
 }

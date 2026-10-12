@@ -100,6 +100,7 @@ type observationFlow struct {
 	edgeDevices   observationv1connect.EdgeDeviceServiceClient
 	measurements  observationv1connect.MeasurementIngestServiceClient
 	statusQueries observationv1connect.StatusQueryServiceClient
+	settings      observationv1connect.ObservationSettingsServiceClient
 	graph         *graphStub
 	flow          *flowStub
 	observedStart time.Time
@@ -147,6 +148,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 		}),
 		application.NewMeasurementIngestService(devices, measurements, cycle),
 		application.NewStatusQueryService(snapshots),
+		application.NewObservationSettingsService(dbinfra.NewPostgresObservationSettingsRepository(testDB)),
 	)
 	if err != nil {
 		t.Fatalf("RoutesWithVerifier() error = %v", err)
@@ -163,6 +165,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 		edgeDevices:   observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL),
 		measurements:  observationv1connect.NewMeasurementIngestServiceClient(httpServer.Client(), httpServer.URL),
 		statusQueries: observationv1connect.NewStatusQueryServiceClient(httpServer.Client(), httpServer.URL),
+		settings:      observationv1connect.NewObservationSettingsServiceClient(httpServer.Client(), httpServer.URL),
 		graph:         graph,
 		flow:          flow,
 		observedStart: time.Now().Add(-time.Minute),

@@ -148,7 +148,11 @@ func run() error {
 	)
 
 	serviceRoutes, err := connectinfra.RoutesWithJWTSettings(
-		jwtSettings, edgeDevices, measurements, application.NewStatusQueryService(snapshots),
+		jwtSettings,
+		edgeDevices,
+		measurements,
+		application.NewStatusQueryService(snapshots),
+		application.NewObservationSettingsService(dbinfra.NewPostgresObservationSettingsRepository(db)),
 	)
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)

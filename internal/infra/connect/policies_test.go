@@ -75,6 +75,16 @@ func TestGeneratedPoliciesMatchTheSpecification(t *testing.T) {
 			TokenUses:      []string{"event_access"},
 			RequiredScopes: []string{"events.read"},
 		},
+		observationv1connect.ObservationSettingsServiceGetObservationSettingsProcedure: {
+			Level:          authz.LevelAuthenticated,
+			TokenUses:      []string{"event_access"},
+			RequiredScopes: []string{"events.read"},
+		},
+		observationv1connect.ObservationSettingsServiceUpdateObservationSettingsProcedure: {
+			Level:          authz.LevelAuthenticated,
+			TokenUses:      []string{"event_access"},
+			RequiredScopes: []string{"events.manage"},
+		},
 	}
 
 	got, err := authz.Merge(
@@ -82,6 +92,7 @@ func TestGeneratedPoliciesMatchTheSpecification(t *testing.T) {
 		observationv1connect.EdgeDeviceServicePolicies,
 		observationv1connect.ManualInterventionServicePolicies,
 		observationv1connect.StatusQueryServicePolicies,
+		observationv1connect.ObservationSettingsServicePolicies,
 	)
 	if err != nil {
 		t.Fatalf("Merge() error = %v", err)
