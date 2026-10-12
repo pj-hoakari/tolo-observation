@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -13,9 +14,15 @@ import (
 
 const historyWindow = 30 * time.Minute
 
+var defaultObservationSettings = domain.ObservationSettings{HistoryWindow: 30 * 24 * time.Hour}
+
 type GraphSupply interface {
 	CurrentGraph(ctx context.Context, eventID string) (domain.Graph, error)
 	ObservationPointMappings(ctx context.Context, eventID string) ([]domain.ObservationPointMapping, error)
+}
+
+type ObservationSettingsSupply interface {
+	ObservationSettings(ctx context.Context, eventID string) (domain.ObservationSettings, error)
 }
 
 type OptimizeInput struct {
@@ -23,6 +30,7 @@ type OptimizeInput struct {
 	Graph          domain.Graph
 	Snapshot       domain.Snapshot
 	History        []domain.Snapshot
+	HistoryWindow  time.Duration
 	Previous       *domain.OptimizationOutcome
 	ServerTime     time.Time
 }
@@ -44,6 +52,7 @@ type ObservationCycleConfig struct {
 
 type ObservationCycle struct {
 	graphs       GraphSupply
+	settings     ObservationSettingsSupply
 	flow         FlowControl
 	devices      repository.EdgeDeviceRepository
 	measurements repository.MeasurementRepository
@@ -53,6 +62,7 @@ type ObservationCycle struct {
 
 func NewObservationCycle(
 	graphs GraphSupply,
+	settings ObservationSettingsSupply,
 	flow FlowControl,
 	devices repository.EdgeDeviceRepository,
 	measurements repository.MeasurementRepository,
@@ -65,6 +75,7 @@ func NewObservationCycle(
 
 	return &ObservationCycle{
 		graphs:       graphs,
+		settings:     settings,
 		flow:         flow,
 		devices:      devices,
 		measurements: measurements,
@@ -82,6 +93,13 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	mappings, err := c.graphs.ObservationPointMappings(ctx, eventID)
 	if err != nil {
 		return fmt.Errorf("get observation point mappings: %w", err)
+	}
+
+	settings, err := c.settings.ObservationSettings(ctx, eventID)
+	if err != nil {
+		slog.WarnContext(ctx, "get observation settings failed", "event_id", eventID, "error", err)
+
+		settings = defaultObservationSettings
 	}
 
 	windowEnd := c.config.Now().Truncate(time.Microsecond)
@@ -134,6 +152,7 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		Graph:          graph,
 		Snapshot:       snapshot,
 		History:        history,
+		HistoryWindow:  settings.HistoryWindow,
 		Previous:       previous,
 		ServerTime:     windowEnd,
 	})

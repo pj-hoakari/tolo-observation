@@ -101,6 +101,7 @@ type observationFlow struct {
 	measurements  observationv1connect.MeasurementIngestServiceClient
 	statusQueries observationv1connect.StatusQueryServiceClient
 	graph         *graphStub
+	tenant        *tenantStub
 	flow          *flowStub
 	observedStart time.Time
 }
@@ -122,10 +123,12 @@ func newObservationFlow(t *testing.T) observationFlow {
 	measurements := dbinfra.NewPostgresMeasurementRepository(testDB)
 	snapshots := dbinfra.NewPostgresSnapshotRepository(testDB)
 	graph, graphURL := startGraphStub(t)
+	tenant, tenantURL := startTenantStub(t)
 	flow, flowURL := startFlowStub(t)
 
 	cycle := application.NewObservationCycle(
 		NewGraphSupplyClient(http.DefaultClient, graphURL),
+		NewTenantClient(http.DefaultClient, tenantURL),
 		NewFlowControlClient(flowURL),
 		devices,
 		measurements,
@@ -164,6 +167,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 		measurements:  observationv1connect.NewMeasurementIngestServiceClient(httpServer.Client(), httpServer.URL),
 		statusQueries: observationv1connect.NewStatusQueryServiceClient(httpServer.Client(), httpServer.URL),
 		graph:         graph,
+		tenant:        tenant,
 		flow:          flow,
 		observedStart: time.Now().Add(-time.Minute),
 	}

@@ -78,6 +78,11 @@ func run() error {
 		return errors.New("GRAPH_AUTHORING_URL is required")
 	}
 
+	tenantManagementURL := os.Getenv("TENANT_MANAGEMENT_URL")
+	if tenantManagementURL == "" {
+		return errors.New("TENANT_MANAGEMENT_URL is required")
+	}
+
 	flowControlURL := os.Getenv("FLOW_CONTROL_URL")
 	if flowControlURL == "" {
 		return errors.New("FLOW_CONTROL_URL is required")
@@ -129,6 +134,7 @@ func run() error {
 
 	cycle := application.NewObservationCycle(
 		connectinfra.NewGraphSupplyClient(http.DefaultClient, graphAuthoringURL),
+		connectinfra.NewTenantClient(http.DefaultClient, tenantManagementURL),
 		connectinfra.NewFlowControlClient(flowControlURL),
 		edgeDeviceRepository,
 		measurementRepository,

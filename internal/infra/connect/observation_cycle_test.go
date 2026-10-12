@@ -18,6 +18,8 @@ import (
 	"github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1/graphv1connect"
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
+	tenantv1 "github.com/pj-hoakari/tolo-tenant-management/gen/tolo/tenant/v1"
+	"github.com/pj-hoakari/tolo-tenant-management/gen/tolo/tenant/v1/tenantv1connect"
 )
 
 const cycleEventPublicID = "1234abcd5678ef90"
@@ -82,6 +84,61 @@ func (s *graphStub) GetObservationPointMappings(
 	defer s.mu.Unlock()
 
 	return connectrpc.NewResponse(&graphv1.GetMappingsResponse{RevisionId: "rev-1", Mappings: s.mappings}), nil
+}
+
+type tenantStub struct {
+	tenantv1connect.UnimplementedTenantServiceHandler
+
+	mu             sync.Mutex
+	eventIDs       []string
+	authorizations []string
+	unavailable    bool
+}
+
+func startTenantStub(t *testing.T) (*tenantStub, string) {
+	t.Helper()
+
+	stub := &tenantStub{}
+	mux := http.NewServeMux()
+	mux.Handle(tenantv1connect.NewTenantServiceHandler(stub))
+
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	return stub, server.URL
+}
+
+func (s *tenantStub) GetObservationSettings(
+	_ context.Context,
+	req *connectrpc.Request[tenantv1.GetObservationSettingsRequest],
+) (*connectrpc.Response[tenantv1.GetObservationSettingsResponse], error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.unavailable {
+		return nil, connectrpc.NewError(connectrpc.CodeUnavailable, errors.New("tenant management is down"))
+	}
+
+	s.eventIDs = append(s.eventIDs, req.Msg.GetEventId())
+	s.authorizations = append(s.authorizations, req.Header().Get("Authorization"))
+
+	return connectrpc.NewResponse(&tenantv1.GetObservationSettingsResponse{
+		Settings: &tenantv1.ObservationSettings{HistoryWindowDays: 30},
+	}), nil
+}
+
+func (s *tenantStub) setUnavailable(unavailable bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.unavailable = unavailable
+}
+
+func (s *tenantStub) received() ([]string, []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return append([]string(nil), s.eventIDs...), append([]string(nil), s.authorizations...)
 }
 
 type flowStub struct {
@@ -284,6 +341,15 @@ func TestObservationCycle(t *testing.T) {
 		t.Errorf("GetCurrentRevision carried Authorization %q, want the received token", graphAuthorization)
 	}
 
+	settingsEventIDs, settingsAuthorizations := flow.tenant.received()
+	if len(settingsEventIDs) != 1 || settingsEventIDs[0] != cycleEventPublicID {
+		t.Errorf("GetObservationSettings event ids = %v, want [%s]", settingsEventIDs, cycleEventPublicID)
+	}
+
+	if len(settingsAuthorizations) != 1 || settingsAuthorizations[0] != reportToken {
+		t.Errorf("GetObservationSettings carried Authorization %v, want the received token", settingsAuthorizations)
+	}
+
 	overview, err := flow.statusQueries.GetEventOverview(ctx, authorized(
 		flow.token(t, cycleEventPublicID, "events.read"),
 		&observationv1.GetEventOverviewRequest{EventId: cycleEventPublicID},
@@ -332,6 +398,20 @@ func TestObservationCycle(t *testing.T) {
 		if !flows[0].GetAt().AsTime().Equal(optimize.GetObservations().GetObservedAt().AsTime()) {
 			t.Errorf("window series sample at %v, want the first cycle's %v",
 				flows[0].GetAt().AsTime(), optimize.GetObservations().GetObservedAt().AsTime())
+		}
+	})
+
+	t.Run("optimizes while Tenant Management is down", func(t *testing.T) {
+		flow.tenant.setUnavailable(true)
+		t.Cleanup(func() { flow.tenant.setUnavailable(false) })
+
+		before, _ := flow.flow.received()
+
+		report(t)
+
+		after, _ := flow.flow.received()
+		if len(after) != len(before)+1 {
+			t.Errorf("Optimize received %d requests, want %d", len(after), len(before)+1)
 		}
 	})
 
