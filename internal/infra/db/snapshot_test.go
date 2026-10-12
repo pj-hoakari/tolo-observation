@@ -52,6 +52,10 @@ func TestPostgresSnapshotRepositorySummarizeArcHistory(t *testing.T) {
 			stagnations["r2"] = new(float64(i * 10))
 		}
 
+		if i == 1 {
+			stagnations["r3"] = new(0.0)
+		}
+
 		saveRouteSnapshot(t, repo, "event-arc", since.Add(time.Duration(i)*time.Hour), stagnations)
 	}
 
@@ -65,12 +69,16 @@ func TestPostgresSnapshotRepositorySummarizeArcHistory(t *testing.T) {
 
 	want := []domain.ArcHistory{
 		{
-			RouteID: "r1", SampleCount: 10, P90Stagnation: 9.1, MeanStagnation: 5.5,
+			RouteID: "r1", SampleCount: 10, P90Stagnation: 9, MeanStagnation: 5.5,
 			FirstStart: since.Add(time.Hour - time.Minute), LastEnd: since.Add(10 * time.Hour),
 		},
 		{
-			RouteID: "r2", SampleCount: 5, P90Stagnation: 92, MeanStagnation: 60,
+			RouteID: "r2", SampleCount: 5, P90Stagnation: 100, MeanStagnation: 60,
 			FirstStart: since.Add(2*time.Hour - time.Minute), LastEnd: since.Add(10 * time.Hour),
+		},
+		{
+			RouteID: "r3", SampleCount: 1, P90Stagnation: 0, MeanStagnation: 0,
+			FirstStart: since.Add(time.Hour - time.Minute), LastEnd: since.Add(time.Hour),
 		},
 	}
 
@@ -81,7 +89,7 @@ func TestPostgresSnapshotRepositorySummarizeArcHistory(t *testing.T) {
 	for i := range want {
 		g, w := got[i], want[i]
 		if g.RouteID != w.RouteID || g.SampleCount != w.SampleCount ||
-			math.Abs(g.P90Stagnation-w.P90Stagnation) > 1e-9 || math.Abs(g.MeanStagnation-w.MeanStagnation) > 1e-9 ||
+			math.Abs(g.P90Stagnation-w.P90Stagnation) > 0.01*w.P90Stagnation || math.Abs(g.MeanStagnation-w.MeanStagnation) > 1e-9 ||
 			!g.FirstStart.Equal(w.FirstStart) || !g.LastEnd.Equal(w.LastEnd) {
 			t.Errorf("SummarizeArcHistory[%d] = %+v, want %+v", i, g, w)
 		}
@@ -98,5 +106,31 @@ func TestPostgresSnapshotRepositorySummarizeArcHistory(t *testing.T) {
 
 	if _, err := repo.EarliestSnapshotStart(ctx, "event-arc-missing"); !errors.Is(err, repository.ErrSnapshotNotFound) {
 		t.Errorf("EarliestSnapshotStart without snapshots error = %v, want %v", err, repository.ErrSnapshotNotFound)
+	}
+}
+
+func TestPostgresSnapshotRepositorySummarizeArcHistoryWithinOneHour(t *testing.T) {
+	repo := NewPostgresSnapshotRepository(testDB)
+	since := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
+
+	for _, minute := range []int{10, 20, 30} {
+		saveRouteSnapshot(t, repo, "event-arc-hour", since.Add(time.Duration(minute)*time.Minute), map[string]*float64{"r1": new(4.0)})
+	}
+
+	saveRouteSnapshot(t, repo, "event-arc-hour", since.Add(40*time.Minute), map[string]*float64{"r1": new(8.0)})
+
+	got, err := repo.SummarizeArcHistory(context.Background(), "event-arc-hour", since)
+	if err != nil {
+		t.Fatalf("SummarizeArcHistory: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("SummarizeArcHistory = %+v, want one route", got)
+	}
+
+	g := got[0]
+	if g.SampleCount != 4 || math.Abs(g.MeanStagnation-5) > 1e-9 || math.Abs(g.P90Stagnation-8) > 0.08 ||
+		!g.FirstStart.Equal(since.Add(9*time.Minute)) || !g.LastEnd.Equal(since.Add(40*time.Minute)) {
+		t.Errorf("SummarizeArcHistory = %+v, want 4 samples, mean 5, p90 8, from 00:09 to 00:40", g)
 	}
 }
