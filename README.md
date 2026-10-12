@@ -53,6 +53,7 @@ RPC を呼び出すには Service Gateway 発行の内部 JWT が必要なので
 | `OBSERVATION_PAGE_URL_TEMPLATE` | なし（必須） | 端末登録時に返す観測ページ URL のテンプレート。`{tenant_id}`、`{event_id}`、`{edge_device_id}` をすべて含め、登録した端末の公開 ID で置き換えて返す |
 | `HEARTBEAT_TIMEOUT` | `30s` | エッジ端末の `online`、切断、観測点の実効的な `enabled` を判定する Heartbeat の鮮度。`time.ParseDuration` が解釈する形式を取る |
 | `GRAPH_AUTHORING_URL` | なし（必須） | GraphSupplyService の呼び出し先。Service Gateway の internal listener（compose では `http://gateway:8090`）を指す。public listener は GraphSupplyService を拒否する。受領した内部 JWT をそのまま `Authorization` に載せて呼ぶ |
+| `TENANT_MANAGEMENT_URL` | なし（必須） | TenantService の呼び出し先。Service Gateway の internal listener（compose では `http://gateway:8090`）を指す。受領した内部 JWT をそのまま `Authorization` に載せて GetObservationSettings を呼ぶ。失敗したら履歴期間の既定値 30 日で観測サイクルを続ける |
 | `FLOW_CONTROL_URL` | なし（必須） | FlowControlService の呼び出し先。gRPC で、認証情報を付けずに呼ぶ |
 | `OBSERVATION_WINDOW` | `1m` | スナップショットに含める計測値の期間（`window_end` がこの期間内のもの） |
 | `OPTIMIZE_TIMEOUT` | `30s` | Optimize 呼び出しのタイムアウト。超過や失敗はログに残し、計測値の受け入れは成功させる |
@@ -117,11 +118,12 @@ go tool jwtgen -audience tolo-observation -token-use event_access -tenant-public
 出力は `token` / `claims` / `jwks` を持つ JSON である  
 `jwks` を任意の HTTP エンドポイント（例: ローカルのファイルサーバ）で配信し、`INTERNAL_JWKS_URL` にその URL を設定すると、`Authorization: Bearer <token>` で呼び出せる
 
-### tolo-kernel-proto と tolo-graph-authoring の proto
+### tolo-kernel-proto、tolo-graph-authoring、tolo-tenant-management の proto
 
 `tolo/kernel/v1/kernel.proto` の Go コードは自前で生成せず、`github.com/pj-hoakari/tolo-kernel-proto` の生成コードを使う  
 `task proto:write-kernel` が、go.mod が参照する版の `kernel.proto` を `proto/`（git 管理外）に書き出す  
 GraphSupply のクライアントには `github.com/pj-hoakari/tolo-graph-authoring` の生成コードを使う  
+TenantService のクライアントには `github.com/pj-hoakari/tolo-tenant-management` の生成コードを使う  
 同じ proto ファイルを 2 つの Go パッケージが登録すると、両方を読み込むプロセス（Gateway など）が起動時に panic する
 
 ### tolo-flow-control の proto
