@@ -77,10 +77,14 @@ func (s *graphStub) GetCurrentRevision(
 
 func (s *graphStub) GetObservationPointMappings(
 	_ context.Context,
-	_ *connectrpc.Request[graphv1.GetMappingsRequest],
+	req *connectrpc.Request[graphv1.GetMappingsRequest],
 ) (*connectrpc.Response[graphv1.GetMappingsResponse], error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if req.Msg.GetRevisionId() != "rev-1" {
+		return nil, connectrpc.NewError(connectrpc.CodeNotFound, errors.New("revision not found"))
+	}
 
 	return connectrpc.NewResponse(&graphv1.GetMappingsResponse{RevisionId: "rev-1", Mappings: s.mappings}), nil
 }
