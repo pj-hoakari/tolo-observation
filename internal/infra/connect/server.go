@@ -54,6 +54,7 @@ func RoutesWithJWTSettings(
 	edgeDevices application.EdgeDeviceUseCases,
 	measurements application.MeasurementIngestUseCases,
 	statusQueries application.StatusQueryUseCases,
+	observationSettings application.ObservationSettingsUseCases,
 ) (func(mux *http.ServeMux), error) {
 	cache, err := jwks.New(jwks.Config{
 		URL:             settings.JWKSURL,
@@ -74,7 +75,7 @@ func RoutesWithJWTSettings(
 		return nil, fmt.Errorf("create internal JWT verifier: %w", err)
 	}
 
-	return RoutesWithVerifier(tokenVerifier, edgeDevices, measurements, statusQueries)
+	return RoutesWithVerifier(tokenVerifier, edgeDevices, measurements, statusQueries, observationSettings)
 }
 
 // RoutesWithVerifier builds the service routes around a verifier of the
@@ -85,6 +86,7 @@ func RoutesWithVerifier(
 	edgeDevices application.EdgeDeviceUseCases,
 	measurements application.MeasurementIngestUseCases,
 	statusQueries application.StatusQueryUseCases,
+	observationSettings application.ObservationSettingsUseCases,
 ) (func(mux *http.ServeMux), error) {
 	// The caller sits behind the Service Gateway, so an incoming trace context is
 	// trusted and continued instead of being demoted to a span link.
@@ -98,6 +100,7 @@ func RoutesWithVerifier(
 		observationv1connect.EdgeDeviceServicePolicies,
 		observationv1connect.ManualInterventionServicePolicies,
 		observationv1connect.StatusQueryServicePolicies,
+		observationv1connect.ObservationSettingsServicePolicies,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("merge observation policies: %w", err)
@@ -122,6 +125,7 @@ func RoutesWithVerifier(
 		mux.Handle(observationv1connect.NewEdgeDeviceServiceHandler(NewEdgeDeviceService(edgeDevices), options))
 		mux.Handle(observationv1connect.NewManualInterventionServiceHandler(NewManualInterventionService(), options))
 		mux.Handle(observationv1connect.NewStatusQueryServiceHandler(NewStatusQueryService(statusQueries), options))
+		mux.Handle(observationv1connect.NewObservationSettingsServiceHandler(NewObservationSettingsService(observationSettings), options))
 	}, nil
 }
 

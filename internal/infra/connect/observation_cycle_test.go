@@ -215,6 +215,10 @@ func TestObservationCycle(t *testing.T) {
 		t.Errorf("Optimize event/tenant = %q/%q", optimize.GetEventId(), optimize.GetTenantContext().GetTenantId())
 	}
 
+	if got := optimize.GetEventContext().GetTerm(); got != flowv1.EventTerm_EVENT_TERM_SHORT {
+		t.Errorf("Optimize event_context.term = %v, want short for an event without settings", got)
+	}
+
 	if got := len(optimize.GetGraph().GetNodes()) + len(optimize.GetGraph().GetEdges()); got != 6 {
 		t.Errorf("Optimize graph has %d elements, want 6", got)
 	}
@@ -353,6 +357,25 @@ func TestObservationCycle(t *testing.T) {
 
 		if overview.Msg.GetOverview().GetSnapshot() != nil {
 			t.Errorf("snapshot = %v, want none", overview.Msg.GetOverview().GetSnapshot())
+		}
+	})
+
+	t.Run("sends the long-term category once the event is set to long-term", func(t *testing.T) {
+		if _, err := flow.settings.UpdateObservationSettings(ctx, authorized(
+			flow.token(t, cycleEventPublicID, "events.manage"),
+			&observationv1.UpdateObservationSettingsRequest{
+				EventId:  cycleEventPublicID,
+				Settings: &observationv1.ObservationSettings{HistoryWindowDays: 30, EventType: observationv1.EventType_EVENT_TYPE_LONG_TERM},
+			},
+		)); err != nil {
+			t.Fatalf("UpdateObservationSettings() error = %v", err)
+		}
+
+		report(t)
+
+		requests, _ := flow.flow.received()
+		if got := requests[len(requests)-1].GetEventContext().GetTerm(); got != flowv1.EventTerm_EVENT_TERM_LONG {
+			t.Errorf("Optimize event_context.term = %v, want long", got)
 		}
 	})
 }

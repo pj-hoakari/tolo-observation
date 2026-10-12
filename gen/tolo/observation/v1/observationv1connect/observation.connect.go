@@ -30,6 +30,9 @@ const (
 	ManualInterventionServiceName = "tolo.observation.v1.ManualInterventionService"
 	// StatusQueryServiceName is the fully-qualified name of the StatusQueryService service.
 	StatusQueryServiceName = "tolo.observation.v1.StatusQueryService"
+	// ObservationSettingsServiceName is the fully-qualified name of the ObservationSettingsService
+	// service.
+	ObservationSettingsServiceName = "tolo.observation.v1.ObservationSettingsService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -76,6 +79,12 @@ const (
 	// StatusQueryServiceGetEventOverviewProcedure is the fully-qualified name of the
 	// StatusQueryService's GetEventOverview RPC.
 	StatusQueryServiceGetEventOverviewProcedure = "/tolo.observation.v1.StatusQueryService/GetEventOverview"
+	// ObservationSettingsServiceGetObservationSettingsProcedure is the fully-qualified name of the
+	// ObservationSettingsService's GetObservationSettings RPC.
+	ObservationSettingsServiceGetObservationSettingsProcedure = "/tolo.observation.v1.ObservationSettingsService/GetObservationSettings"
+	// ObservationSettingsServiceUpdateObservationSettingsProcedure is the fully-qualified name of the
+	// ObservationSettingsService's UpdateObservationSettings RPC.
+	ObservationSettingsServiceUpdateObservationSettingsProcedure = "/tolo.observation.v1.ObservationSettingsService/UpdateObservationSettings"
 )
 
 // MeasurementIngestServiceClient is a client for the tolo.observation.v1.MeasurementIngestService
@@ -573,4 +582,105 @@ type UnimplementedStatusQueryServiceHandler struct{}
 
 func (UnimplementedStatusQueryServiceHandler) GetEventOverview(context.Context, *connect.Request[v1.GetEventOverviewRequest]) (*connect.Response[v1.GetEventOverviewResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.StatusQueryService.GetEventOverview is not implemented"))
+}
+
+// ObservationSettingsServiceClient is a client for the
+// tolo.observation.v1.ObservationSettingsService service.
+type ObservationSettingsServiceClient interface {
+	GetObservationSettings(context.Context, *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error)
+	UpdateObservationSettings(context.Context, *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error)
+}
+
+// NewObservationSettingsServiceClient constructs a client for the
+// tolo.observation.v1.ObservationSettingsService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewObservationSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ObservationSettingsServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	observationSettingsServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("ObservationSettingsService").Methods()
+	return &observationSettingsServiceClient{
+		getObservationSettings: connect.NewClient[v1.GetObservationSettingsRequest, v1.GetObservationSettingsResponse](
+			httpClient,
+			baseURL+ObservationSettingsServiceGetObservationSettingsProcedure,
+			connect.WithSchema(observationSettingsServiceMethods.ByName("GetObservationSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateObservationSettings: connect.NewClient[v1.UpdateObservationSettingsRequest, v1.UpdateObservationSettingsResponse](
+			httpClient,
+			baseURL+ObservationSettingsServiceUpdateObservationSettingsProcedure,
+			connect.WithSchema(observationSettingsServiceMethods.ByName("UpdateObservationSettings")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// observationSettingsServiceClient implements ObservationSettingsServiceClient.
+type observationSettingsServiceClient struct {
+	getObservationSettings    *connect.Client[v1.GetObservationSettingsRequest, v1.GetObservationSettingsResponse]
+	updateObservationSettings *connect.Client[v1.UpdateObservationSettingsRequest, v1.UpdateObservationSettingsResponse]
+}
+
+// GetObservationSettings calls
+// tolo.observation.v1.ObservationSettingsService.GetObservationSettings.
+func (c *observationSettingsServiceClient) GetObservationSettings(ctx context.Context, req *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error) {
+	return c.getObservationSettings.CallUnary(ctx, req)
+}
+
+// UpdateObservationSettings calls
+// tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings.
+func (c *observationSettingsServiceClient) UpdateObservationSettings(ctx context.Context, req *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error) {
+	return c.updateObservationSettings.CallUnary(ctx, req)
+}
+
+// ObservationSettingsServiceHandler is an implementation of the
+// tolo.observation.v1.ObservationSettingsService service.
+type ObservationSettingsServiceHandler interface {
+	GetObservationSettings(context.Context, *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error)
+	UpdateObservationSettings(context.Context, *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error)
+}
+
+// NewObservationSettingsServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewObservationSettingsServiceHandler(svc ObservationSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	observationSettingsServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("ObservationSettingsService").Methods()
+	observationSettingsServiceGetObservationSettingsHandler := connect.NewUnaryHandler(
+		ObservationSettingsServiceGetObservationSettingsProcedure,
+		svc.GetObservationSettings,
+		connect.WithSchema(observationSettingsServiceMethods.ByName("GetObservationSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	observationSettingsServiceUpdateObservationSettingsHandler := connect.NewUnaryHandler(
+		ObservationSettingsServiceUpdateObservationSettingsProcedure,
+		svc.UpdateObservationSettings,
+		connect.WithSchema(observationSettingsServiceMethods.ByName("UpdateObservationSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tolo.observation.v1.ObservationSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ObservationSettingsServiceGetObservationSettingsProcedure:
+			observationSettingsServiceGetObservationSettingsHandler.ServeHTTP(w, r)
+		case ObservationSettingsServiceUpdateObservationSettingsProcedure:
+			observationSettingsServiceUpdateObservationSettingsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedObservationSettingsServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedObservationSettingsServiceHandler struct{}
+
+func (UnimplementedObservationSettingsServiceHandler) GetObservationSettings(context.Context, *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ObservationSettingsService.GetObservationSettings is not implemented"))
+}
+
+func (UnimplementedObservationSettingsServiceHandler) UpdateObservationSettings(context.Context, *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings is not implemented"))
 }
