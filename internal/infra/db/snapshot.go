@@ -151,17 +151,24 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 	var rows []arcHistoryRow
 
 	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
-		SELECT route->>'route_id' AS route_id,
+		WITH samples AS MATERIALIZED (
+			SELECT route->>'route_id' AS route_id,
+				(route->>'stagnation_score')::float8 AS stagnation,
+				s.window_start,
+				s.window_end
+			FROM snapshots s
+			CROSS JOIN LATERAL jsonb_array_elements(s.scores->'routes') AS route
+			WHERE s.event_id = $1 AND s.window_end > $2 AND jsonb_typeof(route->'stagnation_score') = 'number'
+		)
+		SELECT route_id,
 			count(*) AS sample_count,
-			percentile_cont(0.9) WITHIN GROUP (ORDER BY (route->>'stagnation_score')::float8) AS p90_stagnation,
-			avg((route->>'stagnation_score')::float8) AS mean_stagnation,
-			min(s.window_start) AS first_start,
-			max(s.window_end) AS last_end
-		FROM snapshots s
-		CROSS JOIN LATERAL jsonb_array_elements(s.scores->'routes') AS route
-		WHERE s.event_id = $1 AND s.window_end > $2 AND jsonb_typeof(route->'stagnation_score') = 'number'
-		GROUP BY route->>'route_id'
-		ORDER BY route->>'route_id'`, eventID, since)
+			percentile_cont(0.9) WITHIN GROUP (ORDER BY stagnation) AS p90_stagnation,
+			avg(stagnation) AS mean_stagnation,
+			min(window_start) AS first_start,
+			max(window_end) AS last_end
+		FROM samples
+		GROUP BY route_id
+		ORDER BY route_id`, eventID, since)
 	if err != nil {
 		return nil, fmt.Errorf("summarize arc history: %w", err)
 	}
