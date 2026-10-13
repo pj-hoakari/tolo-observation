@@ -357,8 +357,8 @@ message UpdateObservationSettingsResponse {
 - 検知状態（Flow 所有）と行列状態（Line 所有）は本サービスが解釈せず永続化し、次回要求で返送する
   行列状態は Operation への配信のため `tolo.operation.v1.QueueSummary` へ機械的に写すが、本サービスの判断には用いない
   ゲスト向けの行列数値は Line の案内ダイジェスト（`GuideQueuesResponse.guest_digest`）をそのまま `tolo.guest.v1.QueueStatus` へ写して publish し、QueueState の中身には依存しない
-- エッジ端末の認証・認可は IdP 発行トークン（`event_access`）による。観測ページはブラウザで動き、OIDC で認証してトークンを自動更新する
-- 観測ページは、`event_access` と DPoP proof を付けて Service Gateway をブラウザから直接呼ぶ。Web サーバを中継させない（ADR-0086）
+- エッジ端末の認証・認可は IdP 発行トークン（`event_access`）による。観測ページはブラウザで動くが、BFF の背後の confidential client であり、OIDC の認証、Token Exchange、トークンの更新は BFF が行う
+- 観測ページは BFF を経由して Service Gateway を呼ぶ。外部トークンはブラウザへ渡さない（ADR-0087）
 - どの端末からの計測かは、観測ページの発行 URL に含まれる `edge_device_id` で示す
   RegisterEdgeDevice 応答で端末ごとの固定 URL を返し、現場ではこれをキオスクの起動 URL やブックマークに設定する
   端末側のストレージに識別子を保持しない。ブラウザデータの消去・ITP によるストレージ削除・キオスクのクリーン起動で識別子を失わないための規約である
