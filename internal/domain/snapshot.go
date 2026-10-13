@@ -154,7 +154,7 @@ func NewSnapshot(
 			}
 
 			score.PeopleScore += mean(detected[mapping.ObservationPointID])
-			score.OccupancyDelta += float64(measurement.CountIn - measurement.CountOut)
+			score.OccupancyDelta += measurement.RateIn() - measurement.RateOut()
 		}
 	}
 
