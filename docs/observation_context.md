@@ -21,7 +21,7 @@ Edge Bridge Service は WebRTC のシグナリングのみを担い、Service Ga
 | OptimizationRequested | 内部→ Flow.Optimize／Line.GuideQueues の呼び出し |
 | OptimizationResultPersisted | 内部（最適化応答の永続化） |
 | ObservationSettingsChanged／EventTypeAssigned | ObservationSettingsService.UpdateObservationSettings |
-| AccessRequested | Edge Bridge Service のシグナリング（Edge Bridge Service。接続要求を受け付けてセッション文書を作った時点。RPC は策定中） |
+| AccessRequested | Edge Bridge Service のシグナリング（Edge Bridge Service。接続要求（RequestConnection）を受け付けてセッション文書を作った時点） |
 
 ## 手動介入・運用状態変更の受け口（誘導ドメインの現場誘導接点）
 
