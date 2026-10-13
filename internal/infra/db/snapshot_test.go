@@ -134,3 +134,49 @@ func TestPostgresSnapshotRepositorySummarizeArcHistoryWithinOneHour(t *testing.T
 		t.Errorf("SummarizeArcHistory = %+v, want 4 samples, mean 5, p90 8, from 00:09 to 00:40", g)
 	}
 }
+
+func TestPostgresSnapshotRepositorySummarizeArcHistoryFlowSums(t *testing.T) {
+	repo := NewPostgresSnapshotRepository(testDB)
+	since := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
+
+	samples := []struct {
+		windowEnd         time.Time
+		forward, backward float64
+		stagnation        float64
+	}{
+		{since.Add(10 * time.Minute), 3, 1, 5},
+		{since.Add(20 * time.Minute), 2, 4, 5},
+		{since.Add(90 * time.Minute), 0.5, 0, 2},
+	}
+
+	for _, sample := range samples {
+		err := repo.SaveSnapshot(context.Background(), "tenant-arc", domain.Snapshot{
+			ID:          fmt.Sprintf("event-arc-flow-%d", sample.windowEnd.UnixMicro()),
+			EventID:     "event-arc-flow",
+			WindowStart: sample.windowEnd.Add(-time.Minute),
+			WindowEnd:   sample.windowEnd,
+			RouteScores: []domain.RouteScore{{
+				RouteID: "r1", Forward: sample.forward, Backward: sample.backward,
+				StagnationScore: new(sample.stagnation), Exhaustive: true,
+			}},
+		})
+		if err != nil {
+			t.Fatalf("SaveSnapshot: %v", err)
+		}
+	}
+
+	got, err := repo.SummarizeArcHistory(context.Background(), "event-arc-flow", since)
+	if err != nil {
+		t.Fatalf("SummarizeArcHistory: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("SummarizeArcHistory = %+v, want one route", got)
+	}
+
+	g := got[0]
+	if g.SampleCount != 3 || math.Abs(g.FlowSum-10.5) > 1e-9 || math.Abs(g.FlowSquareSum-52.25) > 1e-9 ||
+		math.Abs(g.FlowStagnationSum-51) > 1e-9 {
+		t.Errorf("SummarizeArcHistory = %+v, want 3 samples, flow sum 10.5, flow square sum 52.25, flow stagnation sum 51", g)
+	}
+}

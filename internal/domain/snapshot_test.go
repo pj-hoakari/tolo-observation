@@ -3,6 +3,7 @@ package domain_test
 import (
 	"fmt"
 	"maps"
+	"math"
 	"testing"
 	"time"
 
@@ -132,4 +133,88 @@ func deref(value *float64) any {
 	}
 
 	return *value
+}
+
+func arcHistoryFromSamples(samples [][2]float64) domain.ArcHistory {
+	history := domain.ArcHistory{SampleCount: len(samples)}
+
+	var stagnationSum float64
+
+	for _, sample := range samples {
+		flow, stagnation := sample[0], sample[1]
+		history.FlowSum += flow
+		history.FlowSquareSum += flow * flow
+		history.FlowStagnationSum += flow * stagnation
+		stagnationSum += stagnation
+	}
+
+	if len(samples) > 0 {
+		history.MeanStagnation = stagnationSum / float64(len(samples))
+	}
+
+	return history
+}
+
+func linearSamples(count int, flowAt func(int) float64, stagnationAt func(float64) float64) [][2]float64 {
+	samples := make([][2]float64, 0, count)
+	for i := range count {
+		flow := flowAt(i)
+		samples = append(samples, [2]float64{flow, stagnationAt(flow)})
+	}
+
+	return samples
+}
+
+func TestArcHistoryFlowSensitivityEta(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		samples [][2]float64
+		wantEta float64
+		wantOK  bool
+	}{
+		{
+			name:    "negative linear relation recovers eta",
+			samples: linearSamples(12, func(i int) float64 { return float64(i * 3) }, func(v float64) float64 { return 20 - 0.25*v }),
+			wantEta: 0.25,
+			wantOK:  true,
+		},
+		{
+			name:    "positive slope",
+			samples: linearSamples(12, func(i int) float64 { return float64(i) }, func(v float64) float64 { return 2 + 0.5*v }),
+			wantOK:  false,
+		},
+		{
+			name:    "flat stagnation",
+			samples: linearSamples(12, func(i int) float64 { return float64(i) }, func(float64) float64 { return 5 }),
+			wantOK:  false,
+		},
+		{
+			name:    "constant flow",
+			samples: linearSamples(12, func(int) float64 { return 7 }, func(float64) float64 { return 3 }),
+			wantOK:  false,
+		},
+		{
+			name:    "zero flow",
+			samples: linearSamples(20, func(int) float64 { return 0 }, func(float64) float64 { return 3 }),
+			wantOK:  false,
+		},
+		{
+			name:    "too few samples",
+			samples: linearSamples(11, func(i int) float64 { return float64(i) }, func(v float64) float64 { return 20 - v }),
+			wantOK:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			eta, ok := arcHistoryFromSamples(tt.samples).FlowSensitivityEta()
+			if ok != tt.wantOK || (ok && math.Abs(eta-tt.wantEta) > 1e-9) {
+				t.Errorf("FlowSensitivityEta() = %v, %v, want %v, %v", eta, ok, tt.wantEta, tt.wantOK)
+			}
+		})
+	}
 }

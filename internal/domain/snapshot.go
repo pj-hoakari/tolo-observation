@@ -85,12 +85,39 @@ type Snapshot struct {
 }
 
 type ArcHistory struct {
-	RouteID        string
-	SampleCount    int
-	P90Stagnation  float64
-	MeanStagnation float64
-	FirstStart     time.Time
-	LastEnd        time.Time
+	RouteID           string
+	SampleCount       int
+	P90Stagnation     float64
+	MeanStagnation    float64
+	FirstStart        time.Time
+	LastEnd           time.Time
+	FlowSum           float64
+	FlowSquareSum     float64
+	FlowStagnationSum float64
+}
+
+const minFlowSensitivitySamples = 12
+
+func (h ArcHistory) FlowSensitivityEta() (float64, bool) {
+	if h.SampleCount < minFlowSensitivitySamples {
+		return 0, false
+	}
+
+	n := float64(h.SampleCount)
+	flowVariance := n*h.FlowSquareSum - h.FlowSum*h.FlowSum
+
+	if flowVariance <= 1e-9*n*h.FlowSquareSum {
+		return 0, false
+	}
+
+	covariance := n*h.FlowStagnationSum - h.FlowSum*n*h.MeanStagnation
+	eta := -covariance / flowVariance
+
+	if eta <= 0 {
+		return 0, false
+	}
+
+	return eta, true
 }
 
 func NewSnapshot(

@@ -22,7 +22,7 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 	snapshots := dbinfra.NewPostgresSnapshotRepository(testDB)
 	now := time.Now().UTC().Truncate(time.Microsecond)
 
-	seed := func(windowEnd time.Time, routeID string, stagnation float64) {
+	seed := func(windowEnd time.Time, routeID string, stagnation, forward, backward float64) {
 		t.Helper()
 
 		err := snapshots.SaveSnapshot(ctx, testTenantPublicID, domain.Snapshot{
@@ -31,7 +31,9 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 			WindowStart: windowEnd.Add(-time.Minute),
 			WindowEnd:   windowEnd,
 			PointScores: nil,
-			RouteScores: []domain.RouteScore{{RouteID: routeID, StagnationScore: &stagnation, Exhaustive: true}},
+			RouteScores: []domain.RouteScore{{
+				RouteID: routeID, Forward: forward, Backward: backward, StagnationScore: &stagnation, Exhaustive: true,
+			}},
 		})
 		if err != nil {
 			t.Fatalf("SaveSnapshot: %v", err)
@@ -39,15 +41,18 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 	}
 
 	earliest := now.Add(-72*time.Hour - time.Minute)
-	seed(now.Add(-72*time.Hour), "r1", 1000)
+	seed(now.Add(-72*time.Hour), "r1", 1000, 0, 0)
 
 	for hour := 1; hour <= 6; hour++ {
-		seed(now.Add(-time.Duration(7-hour)*time.Hour), "r1", float64(hour))
+		stagnation := float64(hour)
+		flow := (10 - stagnation) / 0.4
+		seed(now.Add(-time.Duration(7-hour)*time.Hour), "r1", stagnation, 0.75*flow, 0.25*flow)
+		seed(now.Add(-time.Duration(7-hour)*time.Hour-30*time.Minute), "r1", stagnation, 0.5*flow, 0.5*flow)
 	}
 
-	seed(now.Add(-3*time.Hour), "r2", 4)
-	seed(now.Add(-2*time.Hour), "r2", 8)
-	seed(now.Add(-2*time.Hour+time.Second), "r9", 7)
+	seed(now.Add(-3*time.Hour), "r2", 4, 9, 1)
+	seed(now.Add(-2*time.Hour), "r2", 8, 1, 1)
+	seed(now.Add(-2*time.Hour+time.Second), "r9", 7, 0, 0)
 
 	if _, err := flow.settings.UpdateObservationSettings(ctx, authorized(
 		flow.token(t, arcHistoryEventPublicID, "events.manage"),
@@ -119,13 +124,14 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 	r1 := stats["r1"]
 	if r1.P90Stagnation == nil || math.Abs(r1.GetP90Stagnation()-6) > 0.06 ||
 		r1.BaselineStagnation == nil || math.Abs(r1.GetBaselineStagnation()-3.5) > 1e-9 ||
-		math.Abs(r1.GetAvailableSpanHours()-(5*time.Hour+time.Minute).Hours()) > 1e-9 || r1.FlowSensitivityEta != nil {
-		t.Errorf("r1 arc stat = %v, want p90 6 and baseline 3.5 over the last day only, spanning 5h1m", r1)
+		math.Abs(r1.GetAvailableSpanHours()-(5*time.Hour+31*time.Minute).Hours()) > 1e-9 ||
+		r1.FlowSensitivityEta == nil || math.Abs(r1.GetFlowSensitivityEta()-0.4) > 1e-9 {
+		t.Errorf("r1 arc stat = %v, want p90 6, baseline 3.5 and eta 0.4 over the last day only, spanning 5h31m", r1)
 	}
 
 	r2 := stats["r2"]
-	if r2.P90Stagnation != nil || r2.BaselineStagnation != nil ||
+	if r2.P90Stagnation != nil || r2.BaselineStagnation != nil || r2.FlowSensitivityEta != nil ||
 		math.Abs(r2.GetAvailableSpanHours()-(time.Hour+time.Minute).Hours()) > 1e-9 {
-		t.Errorf("r2 arc stat = %v, want no p90 or baseline for a 1h1m span", r2)
+		t.Errorf("r2 arc stat = %v, want no p90, baseline or eta for a 1h1m span", r2)
 	}
 }
