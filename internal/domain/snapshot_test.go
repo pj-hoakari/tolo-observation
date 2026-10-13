@@ -81,6 +81,51 @@ func TestNewSnapshot(t *testing.T) {
 	}
 }
 
+func TestNewSnapshotOccupancyDeltaPerMinute(t *testing.T) {
+	t.Parallel()
+
+	end := time.Date(2026, time.October, 3, 10, 5, 0, 0, time.UTC)
+
+	measurement := func(pointID string, window time.Duration, countIn, countOut int32) domain.Measurement {
+		m, err := domain.NewMeasurement(pointID, end.Add(-window), end, countIn, countOut, nil)
+		if err != nil {
+			t.Fatalf("NewMeasurement: %v", err)
+		}
+
+		return m
+	}
+
+	const (
+		shortWindow = "00000000000000a1"
+		longWindow  = "00000000000000a2"
+	)
+
+	measurements := []domain.Measurement{
+		measurement(shortWindow, 10*time.Second, 3, 1),
+		measurement(longWindow, 5*time.Minute, 20, 5),
+	}
+
+	mappings := []domain.ObservationPointMapping{
+		{ObservationPointID: shortWindow, Anchor: domain.GraphAnchor{PointID: "p1"}},
+		{ObservationPointID: longWindow, Anchor: domain.GraphAnchor{PointID: "p2"}},
+	}
+
+	snapshot, err := domain.NewSnapshot("event", end.Add(-5*time.Minute), end, measurements, mappings)
+	if err != nil {
+		t.Fatalf("NewSnapshot: %v", err)
+	}
+
+	got := map[string]float64{}
+	for _, score := range snapshot.PointScores {
+		got[score.PointID] = score.OccupancyDelta
+	}
+
+	want := map[string]float64{"p1": 12, "p2": 3}
+	if !maps.Equal(got, want) {
+		t.Errorf("occupancy delta per minute = %v, want %v", got, want)
+	}
+}
+
 func deref(value *float64) any {
 	if value == nil {
 		return nil
