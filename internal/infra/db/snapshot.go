@@ -91,14 +91,20 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 
 			_, err := executor.ExecContext(ctx, `
 				INSERT INTO arc_stagnation_hourly AS h (
-					event_id, hour_start, route_id, stagnation_bucket, sample_count, stagnation_sum, first_start, last_end)
-				VALUES ($1, date_trunc('hour', $2::timestamptz, 'UTC'), $3, arc_stagnation_bucket($4), 1, $4, $2, $5)
+					event_id, hour_start, route_id, stagnation_bucket, sample_count, stagnation_sum, first_start, last_end,
+					flow_sum, flow_square_sum, flow_stagnation_sum)
+				VALUES ($1, date_trunc('hour', $2::timestamptz, 'UTC'), $3, arc_stagnation_bucket($4), 1, $4, $2, $5,
+					$6::float8, $6::float8 * $6::float8, $6::float8 * $4)
 				ON CONFLICT (event_id, hour_start, route_id, stagnation_bucket) DO UPDATE
 				SET sample_count = h.sample_count + 1,
 					stagnation_sum = h.stagnation_sum + EXCLUDED.stagnation_sum,
 					first_start = LEAST(h.first_start, EXCLUDED.first_start),
-					last_end = GREATEST(h.last_end, EXCLUDED.last_end)`,
-				snapshot.EventID, snapshot.WindowStart, score.RouteID, *score.StagnationScore, snapshot.WindowEnd)
+					last_end = GREATEST(h.last_end, EXCLUDED.last_end),
+					flow_sum = h.flow_sum + EXCLUDED.flow_sum,
+					flow_square_sum = h.flow_square_sum + EXCLUDED.flow_square_sum,
+					flow_stagnation_sum = h.flow_stagnation_sum + EXCLUDED.flow_stagnation_sum`,
+				snapshot.EventID, snapshot.WindowStart, score.RouteID, *score.StagnationScore, snapshot.WindowEnd,
+				score.Forward+score.Backward)
 			if err != nil {
 				return fmt.Errorf("upsert arc stagnation: %w", err)
 			}
@@ -159,12 +165,15 @@ func (r *PostgresSnapshotRepository) ListSnapshotsEndingAfter(
 }
 
 type arcHistoryRow struct {
-	RouteID        string    `db:"route_id"`
-	SampleCount    int       `db:"sample_count"`
-	P90Stagnation  float64   `db:"p90_stagnation"`
-	MeanStagnation float64   `db:"mean_stagnation"`
-	FirstStart     time.Time `db:"first_start"`
-	LastEnd        time.Time `db:"last_end"`
+	RouteID           string    `db:"route_id"`
+	SampleCount       int       `db:"sample_count"`
+	P90Stagnation     float64   `db:"p90_stagnation"`
+	MeanStagnation    float64   `db:"mean_stagnation"`
+	FirstStart        time.Time `db:"first_start"`
+	LastEnd           time.Time `db:"last_end"`
+	FlowSum           float64   `db:"flow_sum"`
+	FlowSquareSum     float64   `db:"flow_square_sum"`
+	FlowStagnationSum float64   `db:"flow_stagnation_sum"`
 }
 
 func (r *PostgresSnapshotRepository) SummarizeArcHistory(
@@ -181,7 +190,10 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 				sum(sample_count) AS sample_count,
 				sum(stagnation_sum) AS stagnation_sum,
 				min(first_start) AS first_start,
-				max(last_end) AS last_end
+				max(last_end) AS last_end,
+				sum(flow_sum) AS flow_sum,
+				sum(flow_square_sum) AS flow_square_sum,
+				sum(flow_stagnation_sum) AS flow_stagnation_sum
 			FROM arc_stagnation_hourly
 			WHERE event_id = $1 AND hour_start >= $2
 			GROUP BY route_id, stagnation_bucket
@@ -196,7 +208,10 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 			min(stagnation_bucket) FILTER (WHERE cumulative >= 0.9 * total) AS p90_stagnation,
 			sum(stagnation_sum) / max(total) AS mean_stagnation,
 			min(first_start) AS first_start,
-			max(last_end) AS last_end
+			max(last_end) AS last_end,
+			sum(flow_sum) AS flow_sum,
+			sum(flow_square_sum) AS flow_square_sum,
+			sum(flow_stagnation_sum) AS flow_stagnation_sum
 		FROM ranked
 		GROUP BY route_id
 		ORDER BY route_id`, eventID, since)

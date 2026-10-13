@@ -308,6 +308,10 @@ func flowHistoryDigest(
 		if span >= minArcHistorySpan {
 			stat.P90Stagnation = proto.Float64(arc.P90Stagnation)
 			stat.BaselineStagnation = proto.Float64(arc.MeanStagnation)
+
+			if eta, ok := arc.FlowSensitivityEta(); ok {
+				stat.FlowSensitivityEta = proto.Float64(eta)
+			}
 		}
 
 		digest.ArcStats = append(digest.ArcStats, stat)
