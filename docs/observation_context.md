@@ -13,8 +13,8 @@ Edge Bridge Service は WebRTC のシグナリングのみを担い、Service Ga
 |---|---|
 | EdgeDeviceRegistered／ObservationPointRegistered | EdgeDeviceService.RegisterEdgeDevice |
 | EdgeDeviceUnregistered | EdgeDeviceService.UnregisterEdgeDevice |
-| EdgeDeviceStarted／EdgeDeviceDisconnected | EdgeDeviceService.Heartbeat（開始・途絶判定） |
-| ObservationPointDisabled／ObservationPointReEnabled | 内部（Heartbeat 途絶・回復から波及） |
+| EdgeDeviceStarted／EdgeDeviceDisconnected | EdgeDeviceService.Heartbeat（開始・途絶判定。同時途絶の間は保留） |
+| ObservationPointDisabled／ObservationPointReEnabled | 内部（Heartbeat 途絶・回復から波及。同時途絶の間は保留） |
 | ObservationPointReconfigured | EdgeDeviceService.UpdateObservationPointConfig（スタッフアプリから直接） |
 | MeasurementReceived | MeasurementIngestService.ReportMeasurements |
 | SnapshotTaken | 内部（観測ウィンドウ確定） |
