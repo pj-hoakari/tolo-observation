@@ -56,9 +56,17 @@ type GraphAnchor struct {
 	RouteID string
 }
 
+type MeasurementMethod int
+
+const (
+	MeasurementMethodCamera MeasurementMethod = iota
+	MeasurementMethodQR
+)
+
 type ObservationPointMapping struct {
 	ObservationPointID ObservationPointID
 	Anchor             GraphAnchor
+	Method             MeasurementMethod
 }
 
 type PointScore struct {
@@ -149,6 +157,8 @@ const (
 type reading struct {
 	latest   Measurement
 	detected []float64
+	countIn  int64
+	countOut int64
 }
 
 type anchorScore struct {
@@ -157,6 +167,7 @@ type anchorScore struct {
 	rateOut    float64
 	detected   *float64
 	sensors    []ObservationPointID
+	qr         bool
 }
 
 func NewSnapshot(
@@ -171,18 +182,32 @@ func NewSnapshot(
 		return Snapshot{}, Gaps{}, nil, err
 	}
 
+	qr := map[ObservationPointID]bool{}
+
+	for _, mapping := range mappings {
+		if mapping.Method == MeasurementMethodQR {
+			qr[mapping.ObservationPointID] = true
+		}
+	}
+
 	readings := map[ObservationPointID]*reading{}
 
 	for _, measurement := range measurements {
 		state, known := states[measurement.ObservationPointID]
-		if !known || state == ObservationPointDisabled || windowEnd.Sub(measurement.WindowEnd) > MaxHold {
+		if (!known || state == ObservationPointDisabled) && !qr[measurement.ObservationPointID] ||
+			windowEnd.Sub(measurement.WindowEnd) > MaxHold {
 			continue
 		}
 
 		current, ok := readings[measurement.ObservationPointID]
 		if !ok {
-			current = &reading{latest: measurement, detected: nil}
+			current = &reading{latest: measurement, detected: nil, countIn: 0, countOut: 0}
 			readings[measurement.ObservationPointID] = current
+		}
+
+		if measurement.WindowEnd.After(windowStart) {
+			current.countIn += int64(measurement.CountIn)
+			current.countOut += int64(measurement.CountOut)
 		}
 
 		if measurement.WindowEnd.After(current.latest.WindowEnd) {
@@ -196,21 +221,35 @@ func NewSnapshot(
 
 	anchors := map[GraphAnchor]*anchorScore{}
 
+	windowMinutes := windowEnd.Sub(windowStart).Minutes()
+
 	for _, mapping := range mappings {
 		_, known := states[mapping.ObservationPointID]
-		if !known {
+		if !known && mapping.Method != MeasurementMethodQR {
 			continue
 		}
 
 		score, ok := anchors[mapping.Anchor]
 		if !ok {
-			score = &anchorScore{confidence: confidenceOK, rateIn: 0, rateOut: 0, detected: nil, sensors: nil}
+			score = &anchorScore{confidence: confidenceOK, rateIn: 0, rateOut: 0, detected: nil, sensors: nil, qr: false}
 			anchors[mapping.Anchor] = score
 		}
 
 		score.sensors = append(score.sensors, mapping.ObservationPointID)
 
 		current, ok := readings[mapping.ObservationPointID]
+
+		if mapping.Method == MeasurementMethodQR {
+			score.qr = true
+
+			if ok {
+				score.rateIn += float64(current.countIn) / windowMinutes
+				score.rateOut += float64(current.countOut) / windowMinutes
+			}
+
+			continue
+		}
+
 		if !ok {
 			score.confidence = confidenceInvalid
 
@@ -275,7 +314,7 @@ func compareAnchors(a, b GraphAnchor) int {
 }
 
 func (s anchorScore) route(routeID string) RouteScore {
-	return RouteScore{RouteID: routeID, Forward: s.rateIn, Backward: s.rateOut, StagnationScore: s.detected, Exhaustive: true}
+	return RouteScore{RouteID: routeID, Forward: s.rateIn, Backward: s.rateOut, StagnationScore: s.detected, Exhaustive: !s.qr}
 }
 
 func (s anchorScore) sensorSet(anchor GraphAnchor) SensorSet {
@@ -283,7 +322,7 @@ func (s anchorScore) sensorSet(anchor GraphAnchor) SensorSet {
 }
 
 func (s anchorScore) point(pointID string) PointScore {
-	return PointScore{PointID: pointID, PeopleScore: s.detected, OccupancyDelta: s.rateIn - s.rateOut, Exhaustive: true}
+	return PointScore{PointID: pointID, PeopleScore: s.detected, OccupancyDelta: s.rateIn - s.rateOut, Exhaustive: !s.qr}
 }
 
 func addMean(total *float64, values []float64) *float64 {

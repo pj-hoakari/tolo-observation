@@ -358,3 +358,87 @@ func TestArcHistoryFlowSensitivityEta(t *testing.T) {
 		})
 	}
 }
+
+func TestNewSnapshotQRObservationPoints(t *testing.T) {
+	t.Parallel()
+
+	end := time.Date(2026, time.October, 3, 10, 30, 0, 0, time.UTC)
+	start := end.Add(-5 * time.Minute)
+
+	measurement := func(pointID string, windowEnd time.Time, countIn, countOut int32) domain.Measurement {
+		m, err := domain.NewMeasurement(pointID, windowEnd.Add(-time.Minute), windowEnd, countIn, countOut, nil)
+		if err != nil {
+			t.Fatalf("NewMeasurement: %v", err)
+		}
+
+		return m
+	}
+
+	const (
+		camera  = "00000000000000a1"
+		batched = "00000000000000b1"
+		silent  = "00000000000000b2"
+		stale   = "00000000000000b3"
+	)
+
+	measurements := []domain.Measurement{
+		measurement(camera, end, 6, 2),
+		measurement(batched, end.Add(-4*time.Minute), 4, 0),
+		measurement(batched, end.Add(-time.Minute), 6, 5),
+		measurement(batched, start, 100, 100),
+		measurement(stale, end.Add(-10*time.Minute), 9, 9),
+	}
+
+	mappings := []domain.ObservationPointMapping{
+		{ObservationPointID: camera, Anchor: domain.GraphAnchor{RouteID: "r-camera"}, Method: domain.MeasurementMethodCamera},
+		{ObservationPointID: batched, Anchor: domain.GraphAnchor{RouteID: "r-qr"}, Method: domain.MeasurementMethodQR},
+		{ObservationPointID: silent, Anchor: domain.GraphAnchor{PointID: "p-qr-silent"}, Method: domain.MeasurementMethodQR},
+		{ObservationPointID: stale, Anchor: domain.GraphAnchor{PointID: "p-qr-stale"}, Method: domain.MeasurementMethodQR},
+	}
+
+	states := map[domain.ObservationPointID]domain.ObservationPointState{camera: domain.ObservationPointActive}
+
+	snapshot, gaps, sensors, err := domain.NewSnapshot("event", start, end, measurements, mappings, states)
+	if err != nil {
+		t.Fatalf("NewSnapshot: %v", err)
+	}
+
+	routes := map[string]string{}
+	for _, score := range snapshot.RouteScores {
+		routes[score.RouteID] = fmt.Sprintf("%v/%v/%v/%v", score.Forward, score.Backward, deref(score.StagnationScore), score.Exhaustive)
+	}
+
+	wantRoutes := map[string]string{"r-camera": "6/2/<nil>/true", "r-qr": "2/1/<nil>/false"}
+	if !maps.Equal(routes, wantRoutes) {
+		t.Errorf("route scores (forward/backward/stagnation/exhaustive) = %v, want %v", routes, wantRoutes)
+	}
+
+	points := map[string]string{}
+	for _, score := range snapshot.PointScores {
+		points[score.PointID] = fmt.Sprintf("%v/%v/%v", deref(score.PeopleScore), score.OccupancyDelta, score.Exhaustive)
+	}
+
+	wantPoints := map[string]string{"p-qr-silent": "<nil>/0/false", "p-qr-stale": "<nil>/0/false"}
+	if !maps.Equal(points, wantPoints) {
+		t.Errorf("point scores (people/occupancy delta/exhaustive) = %v, want %v", points, wantPoints)
+	}
+
+	if len(gaps.HeldRouteScores)+len(gaps.HeldPointScores)+len(gaps.InvalidRouteIDs)+len(gaps.InvalidPointIDs) != 0 {
+		t.Errorf("gaps = %+v, want none for QR observation points", gaps)
+	}
+
+	var sensed []string
+	for _, set := range sensors {
+		sensed = append(sensed, fmt.Sprintf("%v%v:%v", set.Anchor.PointID, set.Anchor.RouteID, set.ObservationPointIDs))
+	}
+
+	wantSensed := []string{
+		"p-qr-silent:[" + silent + "]",
+		"p-qr-stale:[" + stale + "]",
+		"r-camera:[" + camera + "]",
+		"r-qr:[" + batched + "]",
+	}
+	if !slices.Equal(sensed, wantSensed) {
+		t.Errorf("sensor sets = %v, want %v", sensed, wantSensed)
+	}
+}

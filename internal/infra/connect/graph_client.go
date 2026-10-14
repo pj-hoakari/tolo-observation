@@ -83,6 +83,7 @@ func (c *GraphSupplyClient) ObservationPointMappings(
 				PointID: mapping.GetAnchor().GetPointId(),
 				RouteID: mapping.GetAnchor().GetRouteId(),
 			},
+			Method: domain.MeasurementMethodCamera,
 		})
 	}
 
