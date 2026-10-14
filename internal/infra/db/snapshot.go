@@ -23,8 +23,14 @@ func NewPostgresSnapshotRepository(db *sqlx.DB) *PostgresSnapshotRepository {
 }
 
 type snapshotScores struct {
-	Points []pointScoreJSON `json:"points"`
-	Routes []routeScoreJSON `json:"routes"`
+	Points  []pointScoreJSON   `json:"points"`
+	Routes  []routeScoreJSON   `json:"routes"`
+	Missing missingAnchorsJSON `json:"missing,omitzero"`
+}
+
+type missingAnchorsJSON struct {
+	PointIDs []string `json:"points,omitempty"`
+	RouteIDs []string `json:"routes,omitempty"`
 }
 
 type pointScoreJSON struct {
@@ -57,8 +63,9 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 	snapshot domain.Snapshot,
 ) error {
 	scores := snapshotScores{
-		Points: make([]pointScoreJSON, 0, len(snapshot.PointScores)),
-		Routes: make([]routeScoreJSON, 0, len(snapshot.RouteScores)),
+		Points:  make([]pointScoreJSON, 0, len(snapshot.PointScores)),
+		Routes:  make([]routeScoreJSON, 0, len(snapshot.RouteScores)),
+		Missing: missingAnchorsJSON(snapshot.Missing),
 	}
 
 	for _, score := range snapshot.PointScores {
@@ -258,6 +265,7 @@ func (row snapshotRow) snapshot() (domain.Snapshot, error) {
 		WindowEnd:   row.WindowEnd,
 		PointScores: make([]domain.PointScore, 0, len(scores.Points)),
 		RouteScores: make([]domain.RouteScore, 0, len(scores.Routes)),
+		Missing:     domain.MissingAnchors(scores.Missing),
 	}
 
 	for _, score := range scores.Points {

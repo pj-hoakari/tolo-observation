@@ -1001,6 +1001,89 @@ func TestObservationCycleOfflineObservationPoints(t *testing.T) {
 	}
 }
 
+func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
+	const eventID = "c0ffee00c0ffee02"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{
+			EventId: eventID, Name: "gate-gaps", ObservationPointNames: []string{"door", "window", "hall", "lobby"},
+		},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
+	points := registered.Msg.GetDevice().GetObservationPoints()
+	door := points[0].GetObservationPointId()
+	window := points[1].GetObservationPointId()
+	hall := points[2].GetObservationPointId()
+	lobby := points[3].GetObservationPointId()
+
+	flow.graph.mapTo(door, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
+	flow.graph.mapTo(window, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
+	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p1"}})
+	flow.graph.mapTo(lobby, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
+
+	reportToken := flow.token(t, eventID, "events.report")
+
+	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+		EventId: eventID, EdgeDeviceId: deviceID, ActiveObservationPointIds: []string{door, window, hall, lobby},
+	})); err != nil {
+		t.Fatalf("Heartbeat() error = %v", err)
+	}
+
+	if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+		EventId:      eventID,
+		EdgeDeviceId: deviceID,
+		Measurements: []*observationv1.Measurement{
+			edgeMeasurement(door, time.Now().Add(-time.Minute)),
+			edgeMeasurement(window, time.Now().Add(-5*time.Minute)),
+			edgeMeasurement(hall, time.Now().Add(-time.Minute)),
+			edgeMeasurement(lobby, time.Now().Add(-domain.MaxHold-2*time.Minute)),
+		},
+	})); err != nil {
+		t.Fatalf("ReportMeasurements() error = %v", err)
+	}
+
+	overview, err := flow.statusQueries.GetEventOverview(ctx, authorized(
+		flow.token(t, eventID, "events.read"),
+		&observationv1.GetEventOverviewRequest{EventId: eventID},
+	))
+	if err != nil {
+		t.Fatalf("GetEventOverview() error = %v", err)
+	}
+
+	snapshot := overview.Msg.GetOverview().GetSnapshot()
+
+	routes := map[string]*kernelv1.RouteScore{}
+	for _, route := range snapshot.GetRouteScores() {
+		routes[route.GetRouteId()] = route
+	}
+
+	pointScores := map[string]*kernelv1.PointScore{}
+	for _, point := range snapshot.GetPointScores() {
+		pointScores[point.GetPointId()] = point
+	}
+
+	if got, want := routes["r1"], (&kernelv1.RouteScore{RouteId: "r1"}); len(routes) != 1 || !proto.Equal(got, want) {
+		t.Errorf("route scores = %v, want only r1 (door fresh, window held) as missing %v", routes, want)
+	}
+
+	if got, want := pointScores["p2"], (&kernelv1.PointScore{PointId: "p2"}); !proto.Equal(got, want) {
+		t.Errorf("p2 (lobby silent past the hold) = %v, want missing %v", got, want)
+	}
+
+	want := &kernelv1.PointScore{PointId: "p1", PeopleScore: proto.Float64(2.5), OccupancyDelta: proto.Float64(4), Exhaustive: true}
+	if got := pointScores["p1"]; len(pointScores) != 2 || !proto.Equal(got, want) {
+		t.Errorf("point scores = %v, want p1 %v next to the missing p2", pointScores, want)
+	}
+}
+
 func TestReportQRMeasurements(t *testing.T) {
 	const (
 		eventID     = "6f5616f8d5b5af12"
@@ -1067,13 +1150,13 @@ func TestReportQRMeasurements(t *testing.T) {
 		}
 
 		for _, point := range snapshot.GetPointScores() {
-			got = append(got, fmt.Sprintf("%s people=%v delta=%v exhaustive=%v",
-				point.GetPointId(), point.GetPeopleScore(), point.GetOccupancyDelta(), point.GetExhaustive()))
+			got = append(got, fmt.Sprintf("%s people_set=%v delta=%v exhaustive=%v",
+				point.GetPointId(), point.PeopleScore != nil, point.GetOccupancyDelta(), point.GetExhaustive()))
 		}
 
 		want := []string{
 			fmt.Sprintf("r2 %v exhaustive=false", &kernelv1.RouteScore_ScalarFlow{ScalarFlow: 7}),
-			"p3 people=0 delta=7 exhaustive=false",
+			"p3 people_set=false delta=7 exhaustive=false",
 		}
 		if !slices.Equal(got, want) {
 			t.Errorf("overview scores = %v, want %v", got, want)
