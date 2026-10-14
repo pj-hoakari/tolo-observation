@@ -241,7 +241,7 @@ func TestNewSnapshotConfidence(t *testing.T) {
 		return got
 	}
 
-	if got, want := routes(snapshot.RouteScores), map[string]string{"r-ok": "6/2/3"}; !maps.Equal(got, want) {
+	if got, want := routes(snapshot.RouteScores), map[string]string{"r-offline-fresh": "4/0/7", "r-ok": "6/2/3"}; !maps.Equal(got, want) {
 		t.Errorf("OK route scores (forward/backward/stagnation) = %v, want %v", got, want)
 	}
 
@@ -249,7 +249,7 @@ func TestNewSnapshotConfidence(t *testing.T) {
 		t.Errorf("OK point scores (people/occupancy delta) = %v, want %v", got, want)
 	}
 
-	wantHeldRoutes := map[string]string{"r-held": "4/2/5", "r-composite": "8/3/4", "r-offline-fresh": "4/0/7"}
+	wantHeldRoutes := map[string]string{"r-held": "4/2/5", "r-composite": "8/3/4"}
 	if got := routes(gaps.HeldRouteScores); !maps.Equal(got, wantHeldRoutes) {
 		t.Errorf("held route scores (forward/backward/stagnation) = %v, want %v", got, wantHeldRoutes)
 	}

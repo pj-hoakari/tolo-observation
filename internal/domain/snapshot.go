@@ -196,7 +196,7 @@ func NewSnapshot(
 	anchors := map[GraphAnchor]*anchorScore{}
 
 	for _, mapping := range mappings {
-		state, known := states[mapping.ObservationPointID]
+		_, known := states[mapping.ObservationPointID]
 		if !known {
 			continue
 		}
@@ -215,7 +215,7 @@ func NewSnapshot(
 		}
 
 		detected := current.detected
-		if state == ObservationPointOffline || !current.latest.WindowEnd.After(windowStart) {
+		if !current.latest.WindowEnd.After(windowStart) {
 			score.confidence = max(score.confidence, confidenceHold)
 
 			detected = nil
