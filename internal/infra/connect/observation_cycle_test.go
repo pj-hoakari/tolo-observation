@@ -32,6 +32,7 @@ type graphStub struct {
 
 	mu             sync.Mutex
 	mappings       []*graphv1.ObservationPointMapping
+	qrLocations    []*graphv1.QrLocation
 	authorizations []string
 }
 
@@ -101,6 +102,27 @@ func (s *graphStub) GetObservationPointMappings(
 	}
 
 	return connectrpc.NewResponse(&graphv1.GetMappingsResponse{RevisionId: "rev-1", Mappings: s.mappings}), nil
+}
+
+func (s *graphStub) placeQr(qrLocationID string, anchor *kernelv1.GraphAnchor) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.qrLocations = append(s.qrLocations, &graphv1.QrLocation{QrLocationId: qrLocationID, Name: qrLocationID, Kind: "guide", Anchor: anchor})
+}
+
+func (s *graphStub) GetQrLocations(
+	_ context.Context,
+	req *connectrpc.Request[graphv1.GetQrLocationsRequest],
+) (*connectrpc.Response[graphv1.GetQrLocationsResponse], error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if req.Msg.GetRevisionId() != "rev-1" {
+		return nil, connectrpc.NewError(connectrpc.CodeNotFound, errors.New("revision not found"))
+	}
+
+	return connectrpc.NewResponse(&graphv1.GetQrLocationsResponse{RevisionId: "rev-1", QrLocations: s.qrLocations}), nil
 }
 
 type flowStub struct {
@@ -804,6 +826,90 @@ func TestObservationCycleSensorSetChanges(t *testing.T) {
 
 		if got := events(cycle(t)); len(got) != 0 {
 			t.Errorf("events = %v, want none", got)
+		}
+	})
+}
+
+func TestObservationCycleQRObservationPoints(t *testing.T) {
+	const eventID = "6f5616f8d5b5af11"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-1", ObservationPointNames: []string{"corridor"}},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
+	corridor := registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	r2 := &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r2"}}
+
+	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
+	flow.graph.placeQr("qr-stairs", r2)
+
+	reportToken := flow.token(t, eventID, "events.report")
+
+	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+		EventId: eventID, EdgeDeviceId: deviceID, ActiveObservationPointIds: []string{corridor},
+	})); err != nil {
+		t.Fatalf("Heartbeat() error = %v", err)
+	}
+
+	cycle := func(t *testing.T) *flowv1.OptimizeRequest {
+		t.Helper()
+
+		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+			EventId:      eventID,
+			EdgeDeviceId: deviceID,
+			Measurements: []*observationv1.Measurement{edgeMeasurement(corridor, time.Now().Add(-time.Minute))},
+		})); err != nil {
+			t.Fatalf("ReportMeasurements() error = %v", err)
+		}
+
+		requests, _ := flow.flow.received()
+		if len(requests) == 0 {
+			t.Fatalf("Optimize was not called")
+		}
+
+		return requests[len(requests)-1]
+	}
+
+	observedEdges := func(request *flowv1.OptimizeRequest) []string {
+		var got []string
+		for _, arc := range request.GetObservations().GetArcFlows() {
+			got = append(got, fmt.Sprintf("%s/%v", arc.GetEdgeId(), arc.GetConfidenceFlag()))
+		}
+
+		return got
+	}
+
+	t.Run("runs the cycle with a silent QR observation point and sends Flow Control only the camera route", func(t *testing.T) {
+		request := cycle(t)
+
+		want := []string{"r1/CONFIDENCE_FLAG_OK", "r1/CONFIDENCE_FLAG_OK"}
+		if got := observedEdges(request); !slices.Equal(got, want) {
+			t.Errorf("arc flows = %v, want %v", got, want)
+		}
+
+		if events := request.GetEvents(); len(events) != 0 {
+			t.Errorf("events = %v, want none", events)
+		}
+	})
+
+	t.Run("sends SENSOR_SET_CHANGED when a QR location joins a route", func(t *testing.T) {
+		flow.graph.placeQr("qr-landing", r2)
+
+		var got []string
+		for _, event := range cycle(t).GetEvents() {
+			got = append(got, fmt.Sprintf("%v %s", event.GetKind(), event.GetTargetId()))
+		}
+
+		if want := []string{"EVENT_KIND_SENSOR_SET_CHANGED edge:r2"}; !slices.Equal(got, want) {
+			t.Errorf("events = %v, want %v", got, want)
 		}
 	})
 }

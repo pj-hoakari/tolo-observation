@@ -15,6 +15,7 @@ const historyWindow = 30 * time.Minute
 type GraphSupply interface {
 	CurrentGraph(ctx context.Context, eventID string) (domain.Graph, error)
 	ObservationPointMappings(ctx context.Context, eventID, revisionID string) ([]domain.ObservationPointMapping, error)
+	QrLocations(ctx context.Context, eventID, revisionID string) ([]domain.ObservationPointMapping, error)
 }
 
 type OptimizeInput struct {
@@ -90,6 +91,13 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	if err != nil {
 		return fmt.Errorf("get observation point mappings: %w", err)
 	}
+
+	qrLocations, err := c.graphs.QrLocations(ctx, eventID, graph.RevisionID)
+	if err != nil {
+		return fmt.Errorf("get qr locations: %w", err)
+	}
+
+	mappings = append(mappings, qrLocations...)
 
 	windowEnd := c.config.Now().Truncate(time.Microsecond)
 	windowStart := windowEnd.Add(-c.config.Window)
