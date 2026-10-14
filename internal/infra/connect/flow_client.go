@@ -265,7 +265,7 @@ func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeI
 	}
 
 	for _, routeID := range gaps.InvalidRouteIDs {
-		addRoute(domain.RouteScore{RouteID: routeID, Forward: 0, Backward: 0, StagnationScore: nil, Exhaustive: true},
+		addRoute(domain.RouteScore{RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: nil, StagnationScore: nil, Exhaustive: true},
 			flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID)
 	}
 

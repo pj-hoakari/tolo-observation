@@ -38,6 +38,7 @@ type routeScoreJSON struct {
 	RouteID         string   `json:"route_id"`
 	Forward         float64  `json:"forward"`
 	Backward        float64  `json:"backward"`
+	ScalarFlow      *float64 `json:"scalar_flow,omitempty"`
 	StagnationScore *float64 `json:"stagnation_score"`
 	Exhaustive      bool     `json:"exhaustive"`
 }

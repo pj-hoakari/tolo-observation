@@ -80,6 +80,7 @@ type RouteScore struct {
 	RouteID         string
 	Forward         float64
 	Backward        float64
+	ScalarFlow      *float64
 	StagnationScore *float64
 	Exhaustive      bool
 }
@@ -158,7 +159,6 @@ type reading struct {
 	latest   Measurement
 	detected []float64
 	countIn  int64
-	countOut int64
 }
 
 type anchorScore struct {
@@ -201,13 +201,12 @@ func NewSnapshot(
 
 		current, ok := readings[measurement.ObservationPointID]
 		if !ok {
-			current = &reading{latest: measurement, detected: nil, countIn: 0, countOut: 0}
+			current = &reading{latest: measurement, detected: nil, countIn: 0}
 			readings[measurement.ObservationPointID] = current
 		}
 
 		if measurement.WindowEnd.After(windowStart) {
 			current.countIn += int64(measurement.CountIn)
-			current.countOut += int64(measurement.CountOut)
 		}
 
 		if measurement.WindowEnd.After(current.latest.WindowEnd) {
@@ -244,7 +243,6 @@ func NewSnapshot(
 
 			if ok {
 				score.rateIn += float64(current.countIn) / windowMinutes
-				score.rateOut += float64(current.countOut) / windowMinutes
 			}
 
 			continue
@@ -314,7 +312,15 @@ func compareAnchors(a, b GraphAnchor) int {
 }
 
 func (s anchorScore) route(routeID string) RouteScore {
-	return RouteScore{RouteID: routeID, Forward: s.rateIn, Backward: s.rateOut, StagnationScore: s.detected, Exhaustive: !s.qr}
+	if s.qr {
+		scalar := s.rateIn + s.rateOut
+
+		return RouteScore{RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: &scalar, StagnationScore: s.detected, Exhaustive: false}
+	}
+
+	return RouteScore{
+		RouteID: routeID, Forward: s.rateIn, Backward: s.rateOut, ScalarFlow: nil, StagnationScore: s.detected, Exhaustive: true,
+	}
 }
 
 func (s anchorScore) sensorSet(anchor GraphAnchor) SensorSet {

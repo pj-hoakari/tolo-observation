@@ -379,6 +379,7 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 		batched = "00000000000000b1"
 		silent  = "00000000000000b2"
 		stale   = "00000000000000b3"
+		queue   = "00000000000000b4"
 	)
 
 	measurements := []domain.Measurement{
@@ -387,6 +388,7 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 		measurement(batched, end.Add(-time.Minute), 6, 5),
 		measurement(batched, start, 100, 100),
 		measurement(stale, end.Add(-10*time.Minute), 9, 9),
+		measurement(queue, end, 3, 2),
 	}
 
 	mappings := []domain.ObservationPointMapping{
@@ -394,6 +396,7 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 		{ObservationPointID: batched, Anchor: domain.GraphAnchor{RouteID: "r-qr"}, Method: domain.MeasurementMethodQR},
 		{ObservationPointID: silent, Anchor: domain.GraphAnchor{PointID: "p-qr-silent"}, Method: domain.MeasurementMethodQR},
 		{ObservationPointID: stale, Anchor: domain.GraphAnchor{PointID: "p-qr-stale"}, Method: domain.MeasurementMethodQR},
+		{ObservationPointID: queue, Anchor: domain.GraphAnchor{PointID: "p-qr-queue"}, Method: domain.MeasurementMethodQR},
 	}
 
 	states := map[domain.ObservationPointID]domain.ObservationPointState{camera: domain.ObservationPointActive}
@@ -405,12 +408,13 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 
 	routes := map[string]string{}
 	for _, score := range snapshot.RouteScores {
-		routes[score.RouteID] = fmt.Sprintf("%v/%v/%v/%v", score.Forward, score.Backward, deref(score.StagnationScore), score.Exhaustive)
+		routes[score.RouteID] = fmt.Sprintf("%v/%v/%v/%v/%v",
+			score.Forward, score.Backward, deref(score.ScalarFlow), deref(score.StagnationScore), score.Exhaustive)
 	}
 
-	wantRoutes := map[string]string{"r-camera": "6/2/<nil>/true", "r-qr": "2/1/<nil>/false"}
+	wantRoutes := map[string]string{"r-camera": "6/2/<nil>/<nil>/true", "r-qr": "0/0/2/<nil>/false"}
 	if !maps.Equal(routes, wantRoutes) {
-		t.Errorf("route scores (forward/backward/stagnation/exhaustive) = %v, want %v", routes, wantRoutes)
+		t.Errorf("route scores (forward/backward/scalar/stagnation/exhaustive) = %v, want %v", routes, wantRoutes)
 	}
 
 	points := map[string]string{}
@@ -418,7 +422,7 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 		points[score.PointID] = fmt.Sprintf("%v/%v/%v", deref(score.PeopleScore), score.OccupancyDelta, score.Exhaustive)
 	}
 
-	wantPoints := map[string]string{"p-qr-silent": "<nil>/0/false", "p-qr-stale": "<nil>/0/false"}
+	wantPoints := map[string]string{"p-qr-silent": "<nil>/0/false", "p-qr-stale": "<nil>/0/false", "p-qr-queue": "<nil>/0.6/false"}
 	if !maps.Equal(points, wantPoints) {
 		t.Errorf("point scores (people/occupancy delta/exhaustive) = %v, want %v", points, wantPoints)
 	}
@@ -433,6 +437,7 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 	}
 
 	wantSensed := []string{
+		"p-qr-queue:[" + queue + "]",
 		"p-qr-silent:[" + silent + "]",
 		"p-qr-stale:[" + stale + "]",
 		"r-camera:[" + camera + "]",
