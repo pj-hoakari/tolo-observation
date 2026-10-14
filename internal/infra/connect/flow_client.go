@@ -390,7 +390,7 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		DwellTimePriorSec:               nil,
 		MinReferenceSampleCount:         proto.Int32(5),
 		KShortestPaths:                  proto.Int32(3),
-		FallbackEta:                     proto.Float64(1),
+		FallbackEta:                     proto.Float64(0.25),
 		FallbackBaselineStagnation:      proto.Float64(1),
 		ScalarDirectionEnabled:          proto.Bool(false),
 		KShortestPathsAuto:              proto.Bool(false),

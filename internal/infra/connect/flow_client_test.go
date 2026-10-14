@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pj-hoakari/tolo-observation/internal/application"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
@@ -39,5 +40,16 @@ func TestFlowObservationsLeavesOccupancyUnsetWithoutDetectedPeople(t *testing.T)
 	want := map[string]string{"p1": "0/2", "p2": "unset/3"}
 	if !maps.Equal(got, want) {
 		t.Errorf("node occupancies (occupancy/delta) = %v, want %v", got, want)
+	}
+}
+
+func TestNewOptimizeRequestSendsShortFallbackEta(t *testing.T) {
+	request, err := newOptimizeRequest(application.OptimizeInput{})
+	if err != nil {
+		t.Fatalf("newOptimizeRequest() error = %v", err)
+	}
+
+	if got := request.GetConfig().GetFallbackEta(); got != 0.25 {
+		t.Errorf("config fallback_eta = %v, want 0.25", got)
 	}
 }
