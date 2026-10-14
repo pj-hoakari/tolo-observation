@@ -9,6 +9,7 @@ import (
 	graphv1 "github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1"
 	"github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1/graphv1connect"
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
+	"github.com/pj-hoakari/tolo-observation/internal/application"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
@@ -90,8 +91,17 @@ func (c *GraphSupplyClient) ObservationPointMappings(
 	return mappings, nil
 }
 
-func (c *GraphSupplyClient) QrLocations(ctx context.Context, eventID, revisionID string) ([]domain.ObservationPointMapping, error) {
-	res, err := c.client.GetQrLocations(ctx, connectrpc.NewRequest(&graphv1.GetQrLocationsRequest{EventId: eventID, RevisionId: revisionID}))
+func (c *GraphSupplyClient) QrLocations(
+	ctx context.Context,
+	tenantPublicID, eventID, revisionID string,
+) ([]domain.ObservationPointMapping, error) {
+	res, err := c.client.GetQrLocations(ctx, connectrpc.NewRequest(&graphv1.GetQrLocationsRequest{
+		EventId: eventID, RevisionId: revisionID, TenantId: tenantPublicID,
+	}))
+	if connectrpc.CodeOf(err) == connectrpc.CodePermissionDenied {
+		return nil, fmt.Errorf("call GetQrLocations: %w: %w", application.ErrForeignEvent, err)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("call GetQrLocations: %w", err)
 	}

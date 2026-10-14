@@ -33,6 +33,7 @@ type graphStub struct {
 	mu             sync.Mutex
 	mappings       []*graphv1.ObservationPointMapping
 	qrLocations    []*graphv1.QrLocation
+	qrTenantIDs    []string
 	authorizations []string
 }
 
@@ -118,11 +119,24 @@ func (s *graphStub) GetQrLocations(
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.qrTenantIDs = append(s.qrTenantIDs, req.Msg.GetTenantId())
+
+	if tenantID := req.Msg.GetTenantId(); tenantID != "" && tenantID != testTenantPublicID {
+		return nil, connectrpc.NewError(connectrpc.CodePermissionDenied, errors.New("revision belongs to another tenant"))
+	}
+
 	if req.Msg.GetRevisionId() != "rev-1" {
 		return nil, connectrpc.NewError(connectrpc.CodeNotFound, errors.New("revision not found"))
 	}
 
 	return connectrpc.NewResponse(&graphv1.GetQrLocationsResponse{RevisionId: "rev-1", QrLocations: s.qrLocations}), nil
+}
+
+func (s *graphStub) receivedQrTenantIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return slices.Clone(s.qrTenantIDs)
 }
 
 type flowStub struct {
@@ -900,6 +914,15 @@ func TestObservationCycleQRObservationPoints(t *testing.T) {
 		}
 	})
 
+	t.Run("asks Graph Authoring for the QR locations of the event's tenant", func(t *testing.T) {
+		cycle(t)
+
+		got := flow.graph.receivedQrTenantIDs()
+		if len(got) == 0 || got[len(got)-1] != testTenantPublicID {
+			t.Errorf("GetQrLocations tenant_ids = %v, want the last one %q", got, testTenantPublicID)
+		}
+	})
+
 	t.Run("sends SENSOR_SET_CHANGED when a QR location joins a route", func(t *testing.T) {
 		flow.graph.placeQr("qr-landing", r2)
 
@@ -1009,12 +1032,18 @@ func TestReportQRMeasurements(t *testing.T) {
 	}
 
 	t.Run("accepts QR counts from the Guest Service and scores them without a direction", func(t *testing.T) {
+		before := len(flow.graph.receivedQrTenantIDs())
+
 		if err := report(flow.serviceToken(t, "", ""), &observationv1.ReportMeasurementsRequest{
 			TenantId:     testTenantPublicID,
 			EventId:      eventID,
 			Measurements: []*observationv1.Measurement{qrMeasurement(stairs), qrMeasurement(landing)},
 		}); err != nil {
 			t.Fatalf("ReportMeasurements() error = %v", err)
+		}
+
+		if got := flow.graph.receivedQrTenantIDs()[before:]; len(got) == 0 || got[0] != testTenantPublicID {
+			t.Errorf("GetQrLocations tenant_ids = %v, want the request's tenant %q first", got, testTenantPublicID)
 		}
 
 		requests, _ := flow.flow.received()
@@ -1062,6 +1091,14 @@ func TestReportQRMeasurements(t *testing.T) {
 			authorization: func(t *testing.T) string { return flow.serviceToken(t, "", "") },
 			request: &observationv1.ReportMeasurementsRequest{
 				TenantId: testTenantPublicID, EventId: eventID, Measurements: []*observationv1.Measurement{qrMeasurement(unplaced)},
+			},
+			want: connectrpc.CodePermissionDenied,
+		},
+		{
+			name:          "refuses a tenant Graph Authoring does not place the event under",
+			authorization: func(t *testing.T) string { return flow.serviceToken(t, "", "") },
+			request: &observationv1.ReportMeasurementsRequest{
+				TenantId: otherTenant, EventId: eventID, Measurements: []*observationv1.Measurement{qrMeasurement(stairs)},
 			},
 			want: connectrpc.CodePermissionDenied,
 		},

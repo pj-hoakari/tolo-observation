@@ -161,7 +161,7 @@ func (s *MeasurementIngestService) resolveQRTenant(
 		return "", fmt.Errorf("get current graph: %w", err)
 	}
 
-	locations, err := s.graphs.QrLocations(ctx, eventID, graph.RevisionID)
+	locations, err := s.graphs.QrLocations(ctx, tenantID, eventID, graph.RevisionID)
 	if err != nil {
 		return "", fmt.Errorf("get qr locations: %w", err)
 	}
