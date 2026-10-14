@@ -94,8 +94,8 @@ message ObservationSnapshot {
 // 人数スコア（ポイントの占有レベル）と占有量変化（ΔOcc）
 message PointScore {
   string point_id = 1;
-  double people_score = 2;
-  double occupancy_delta = 3;
+  optional double people_score = 2;
+  optional double occupancy_delta = 3;
   bool exhaustive = 4;  // 悉皆計測か。false のスコアは容量比較・ポイント間比較に使えない
 }
 
@@ -106,7 +106,7 @@ message RouteScore {
     DirectionalFlow directional_flow = 2;
     double scalar_flow = 3;
   }
-  double stagnation_score = 4;    // 全体−流量（高停滞の主情報源）
+  optional double stagnation_score = 4;  // 全体−流量（高停滞の主情報源）
   optional double turn_ratio = 5; // 方向転換率（原則内部導出。観測は任意）
   bool exhaustive = 6;            // 悉皆計測か。false のスコアは容量比較・ポイント間比較に使えない
 }
@@ -169,5 +169,6 @@ message DangerFlag {
 - 流量と占有量変化は正準単位（人/分）に正規化し、人数スコアと停滞量スコアは人数（人）のまま受け渡す → 正規化は観測の責務（計測値受信時）
 - スコアの悉皆性は計測方式で決まる → カメラ方式の観測点は `exhaustive = true`、QR 方式は `false`（observation_spec.md）
   `exhaustive = false` のスコアは採取率が未知のため絶対量として比較できない。消費側は時系列比較にのみ用いる
+- スコアの欠測は欄の未設定で表す → `people_score`・`occupancy_delta`・`stagnation_score` は未設定なら欠測、0 なら計測した値の 0 とする
 - グラフは Flow が保持せず外部が毎回渡す → `OptimizeRequest.graph` に、観測が変換したグラフを必ず同梱
 - 共有カーネル自体は固有のドメインイベントを持たない → 本ファイルにイベント対応表はない
