@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -23,6 +22,7 @@ type OptimizeInput struct {
 	EventType        domain.EventType
 	Graph            domain.Graph
 	Snapshot         domain.Snapshot
+	Gaps             domain.Gaps
 	History          []domain.Snapshot
 	ArcHistory       []domain.ArcHistory
 	AvailableHistory time.Duration
@@ -93,21 +93,17 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	windowEnd := c.config.Now().Truncate(time.Microsecond)
 	windowStart := windowEnd.Add(-c.config.Window)
 
-	measurements, err := c.measurements.ListWindowEndingAfter(ctx, eventID, windowStart)
+	measurements, err := c.measurements.ListWindowEndingSince(ctx, eventID, windowEnd.Add(-domain.MaxHold))
 	if err != nil {
 		return fmt.Errorf("list window measurements: %w", err)
 	}
 
-	enabled, err := c.enabledObservationPoints(ctx, eventID, windowEnd)
+	observable, err := c.observableObservationPoints(ctx, eventID, windowEnd)
 	if err != nil {
 		return err
 	}
 
-	measurements = slices.DeleteFunc(measurements, func(measurement domain.Measurement) bool {
-		return !enabled[measurement.ObservationPointID]
-	})
-
-	snapshot, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings)
+	snapshot, gaps, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings, observable)
 	if err != nil {
 		return err
 	}
@@ -157,6 +153,7 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		EventType:        settings.EventType,
 		Graph:            graph,
 		Snapshot:         snapshot,
+		Gaps:             gaps,
 		History:          history,
 		ArcHistory:       arcHistory,
 		AvailableHistory: availableHistory,
@@ -189,29 +186,25 @@ func (c *ObservationCycle) availableHistory(ctx context.Context, eventID string,
 	return now.Sub(earliest), nil
 }
 
-func (c *ObservationCycle) enabledObservationPoints(
+func (c *ObservationCycle) observableObservationPoints(
 	ctx context.Context,
 	eventID string,
 	now time.Time,
 ) (map[domain.ObservationPointID]bool, error) {
-	devices, err := c.devices.ListByEvent(ctx, eventID, false)
+	devices, err := c.devices.ListByEvent(ctx, eventID, true)
 	if err != nil {
 		return nil, fmt.Errorf("list edge devices: %w", err)
 	}
 
-	enabled := map[domain.ObservationPointID]bool{}
+	observable := map[domain.ObservationPointID]bool{}
 
 	for _, device := range devices {
-		if !device.Online(now, c.config.HeartbeatTimeout) {
-			continue
-		}
+		online := device.Online(now, c.config.HeartbeatTimeout)
 
 		for _, point := range device.ObservationPoints {
-			if point.Enabled {
-				enabled[point.ID] = true
-			}
+			observable[point.ID] = online && point.Enabled
 		}
 	}
 
-	return enabled, nil
+	return observable, nil
 }

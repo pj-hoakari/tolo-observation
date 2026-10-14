@@ -3,11 +3,15 @@ package connect
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	connectrpc "connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
@@ -18,6 +22,7 @@ import (
 	"github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1/graphv1connect"
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
+	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
 const cycleEventPublicID = "1234abcd5678ef90"
@@ -381,6 +386,210 @@ func TestObservationCycle(t *testing.T) {
 		requests, _ := flow.flow.received()
 		if got := requests[len(requests)-1].GetEventContext().GetTerm(); got != flowv1.EventTerm_EVENT_TERM_LONG {
 			t.Errorf("Optimize event_context.term = %v, want long", got)
+		}
+	})
+}
+
+func TestObservationCycleConfidenceFlags(t *testing.T) {
+	const eventID = "c0ffee00c0ffee00"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{
+			EventId:               eventID,
+			Name:                  "gate-1",
+			ObservationPointNames: []string{"corridor", "hall"},
+		},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
+	corridor := registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	hall := registered.Msg.GetDevice().GetObservationPoints()[1].GetObservationPointId()
+
+	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
+	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
+
+	reportToken := flow.token(t, eventID, "events.report")
+
+	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+		EventId:                   eventID,
+		EdgeDeviceId:              deviceID,
+		ActiveObservationPointIds: []string{corridor, hall},
+	})); err != nil {
+		t.Fatalf("Heartbeat() error = %v", err)
+	}
+
+	cycle := func(t *testing.T, corridorEnd *time.Time) *flowv1.OptimizeRequest {
+		t.Helper()
+
+		measurements := []*observationv1.Measurement{edgeMeasurement(hall, time.Now().Add(-time.Minute))}
+
+		if corridorEnd != nil {
+			corridorMeasurement := edgeMeasurement(corridor, corridorEnd.Add(-time.Minute))
+			corridorMeasurement.CountIn = 12
+			corridorMeasurement.CountOut = 4
+			corridorMeasurement.MeanDetectedPeople = proto.Float64(6)
+			measurements = append(measurements, corridorMeasurement)
+		}
+
+		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+			EventId:      eventID,
+			EdgeDeviceId: deviceID,
+			Measurements: measurements,
+		})); err != nil {
+			t.Fatalf("ReportMeasurements() error = %v", err)
+		}
+
+		requests, _ := flow.flow.received()
+
+		return requests[len(requests)-1]
+	}
+
+	arc := func(request *flowv1.OptimizeRequest) string {
+		got := ""
+
+		for _, flow := range request.GetObservations().GetArcFlows() {
+			if flow.GetEdgeId() == "r1" {
+				got += fmt.Sprintf("%v:%v/%v ", flow.GetDirection(), flow.GetFlowRate(), flow.GetConfidenceFlag())
+			}
+		}
+
+		for _, stagnation := range request.GetObservations().GetArcStagnations() {
+			if stagnation.GetEdgeId() == "r1" {
+				got += fmt.Sprintf("stagnation:%v/%v", stagnation.GetStagnation(), stagnation.GetConfidenceFlag())
+			}
+		}
+
+		return got
+	}
+
+	r1Series := func(request *flowv1.OptimizeRequest) []*flowv1.ArcWindowSeries {
+		return slices.DeleteFunc(request.GetHistoryDigest().GetWindowSeries(), func(series *flowv1.ArcWindowSeries) bool {
+			return series.GetEdgeId() != "r1"
+		})
+	}
+
+	hallOK := func(t *testing.T, request *flowv1.OptimizeRequest) {
+		t.Helper()
+
+		occupancies := request.GetObservations().GetNodeOccupancies()
+		if len(occupancies) != 1 || occupancies[0].GetNodeId() != "p2" ||
+			occupancies[0].GetConfidenceFlag() != flowv1.ConfidenceFlag_CONFIDENCE_FLAG_OK {
+			t.Errorf("node occupancies = %v, want p2 observed with OK", occupancies)
+		}
+	}
+
+	t.Run("marks a route without a measurement for more than 15 minutes INVALID", func(t *testing.T) {
+		expired := time.Now().Add(-domain.MaxHold - time.Minute)
+		request := cycle(t, &expired)
+
+		want := "FLOW_DIRECTION_A_TO_B:0/CONFIDENCE_FLAG_INVALID FLOW_DIRECTION_B_TO_A:0/CONFIDENCE_FLAG_INVALID "
+		if got := arc(request); got != want {
+			t.Errorf("r1 observations = %q, want %q", got, want)
+		}
+
+		hallOK(t, request)
+	})
+
+	t.Run("holds the last valid value of a route silent for up to 15 minutes", func(t *testing.T) {
+		recent := time.Now().Add(-5 * time.Minute)
+		request := cycle(t, &recent)
+
+		want := "FLOW_DIRECTION_A_TO_B:12/CONFIDENCE_FLAG_HOLD FLOW_DIRECTION_B_TO_A:4/CONFIDENCE_FLAG_HOLD " +
+			"stagnation:6/CONFIDENCE_FLAG_HOLD"
+		if got := arc(request); got != want {
+			t.Errorf("r1 observations = %q, want %q", got, want)
+		}
+
+		hallOK(t, request)
+	})
+
+	t.Run("keeps held values out of the window series", func(t *testing.T) {
+		request := cycle(t, nil)
+
+		if got := arc(request); !strings.Contains(got, "CONFIDENCE_FLAG_HOLD") {
+			t.Errorf("r1 observations = %q, want it still held", got)
+		}
+
+		if series := r1Series(request); len(series) != 0 {
+			t.Errorf("r1 window series = %v, want no samples from held cycles", series)
+		}
+	})
+
+	t.Run("sends a fresh route as OK and samples it from then on", func(t *testing.T) {
+		now := time.Now()
+
+		want := "FLOW_DIRECTION_A_TO_B:12/CONFIDENCE_FLAG_OK FLOW_DIRECTION_B_TO_A:4/CONFIDENCE_FLAG_OK " +
+			"stagnation:6/CONFIDENCE_FLAG_OK"
+		if got := arc(cycle(t, &now)); got != want {
+			t.Errorf("r1 observations = %q, want %q", got, want)
+		}
+
+		series := r1Series(cycle(t, nil))
+		if len(series) != 1 || len(series[0].GetFlowSamples()) != 1 || series[0].GetFlowSamples()[0].GetValue() != 16 {
+			t.Errorf("r1 window series = %v, want the single OK sample 16", series)
+		}
+	})
+
+	t.Run("marks the anchors of an unregistered device INVALID", func(t *testing.T) {
+		other, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+			flow.token(t, eventID, "events.manage"),
+			&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-2", ObservationPointNames: []string{"lobby"}},
+		))
+		if err != nil {
+			t.Fatalf("RegisterEdgeDevice() error = %v", err)
+		}
+
+		otherID := other.Msg.GetDevice().GetEdgeDeviceId()
+		lobby := other.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+		flow.graph.mapTo(lobby, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p1"}})
+
+		if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+			EventId: eventID, EdgeDeviceId: otherID, ActiveObservationPointIds: []string{lobby},
+		})); err != nil {
+			t.Fatalf("Heartbeat() error = %v", err)
+		}
+
+		if _, err := flow.edgeDevices.UnregisterEdgeDevice(ctx, authorized(
+			flow.token(t, eventID, "events.manage"),
+			&observationv1.UnregisterEdgeDeviceRequest{EventId: eventID, EdgeDeviceId: deviceID},
+		)); err != nil {
+			t.Fatalf("UnregisterEdgeDevice() error = %v", err)
+		}
+
+		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+			EventId:      eventID,
+			EdgeDeviceId: otherID,
+			Measurements: []*observationv1.Measurement{edgeMeasurement(lobby, time.Now().Add(-time.Minute))},
+		})); err != nil {
+			t.Fatalf("ReportMeasurements() error = %v", err)
+		}
+
+		requests, _ := flow.flow.received()
+		request := requests[len(requests)-1]
+
+		got := map[string]flowv1.ConfidenceFlag{}
+		for _, occupancy := range request.GetObservations().GetNodeOccupancies() {
+			got[occupancy.GetNodeId()] = occupancy.GetConfidenceFlag()
+		}
+
+		want := map[string]flowv1.ConfidenceFlag{
+			"p1": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_OK,
+			"p2": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID,
+		}
+		if !maps.Equal(got, want) {
+			t.Errorf("node occupancy flags = %v, want %v", got, want)
+		}
+
+		wantArc := "FLOW_DIRECTION_A_TO_B:0/CONFIDENCE_FLAG_INVALID FLOW_DIRECTION_B_TO_A:0/CONFIDENCE_FLAG_INVALID "
+		if got := arc(request); got != wantArc {
+			t.Errorf("r1 observations = %q, want %q", got, wantArc)
 		}
 	})
 }

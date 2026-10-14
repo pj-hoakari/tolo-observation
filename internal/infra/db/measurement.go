@@ -54,18 +54,18 @@ type measurementWindowRow struct {
 	MeanDetectedPeople *float64  `db:"mean_detected_people"`
 }
 
-func (r *PostgresMeasurementRepository) ListWindowEndingAfter(
+func (r *PostgresMeasurementRepository) ListWindowEndingSince(
 	ctx context.Context,
 	eventID string,
-	after time.Time,
+	since time.Time,
 ) ([]domain.Measurement, error) {
 	var rows []measurementWindowRow
 
 	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
 		SELECT observation_point_id, window_start, window_end, count_in, count_out, mean_detected_people
 		FROM measurements
-		WHERE event_id = $1 AND window_end > $2
-		ORDER BY window_end, id`, eventID, after)
+		WHERE event_id = $1 AND window_end >= $2
+		ORDER BY window_end, id`, eventID, since)
 	if err != nil {
 		return nil, fmt.Errorf("select measurements: %w", err)
 	}

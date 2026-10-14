@@ -110,3 +110,34 @@ func TestPostgresMeasurementRepositoryRecordAllEmpty(t *testing.T) {
 		t.Errorf("got %d measurement rows, want 0", len(rows))
 	}
 }
+
+func TestPostgresMeasurementRepositoryListWindowEndingSinceIncludesTheBoundary(t *testing.T) {
+	repo := NewPostgresMeasurementRepository(testDB)
+	ctx := context.Background()
+	device := newDevice(t, "tenant-since", "event-since", "corridor")
+	since := time.Now().UTC().Truncate(time.Microsecond)
+
+	var measurements []domain.Measurement
+
+	for _, end := range []time.Time{since.Add(-time.Microsecond), since, since.Add(time.Microsecond)} {
+		measurement, err := domain.NewMeasurement(string(device.ObservationPoints[0].ID), end.Add(-time.Minute), end, 1, 0, nil)
+		if err != nil {
+			t.Fatalf("NewMeasurement: %v", err)
+		}
+
+		measurements = append(measurements, measurement)
+	}
+
+	if err := repo.RecordAll(ctx, "tenant-since", "event-since", measurements); err != nil {
+		t.Fatalf("RecordAll: %v", err)
+	}
+
+	listed, err := repo.ListWindowEndingSince(ctx, "event-since", since)
+	if err != nil {
+		t.Fatalf("ListWindowEndingSince: %v", err)
+	}
+
+	if len(listed) != 2 || !listed[0].WindowEnd.Equal(since) || !listed[1].WindowEnd.Equal(since.Add(time.Microsecond)) {
+		t.Errorf("listed windows = %+v, want the ones ending at and after %v", listed, since)
+	}
+}
