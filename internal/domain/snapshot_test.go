@@ -51,6 +51,8 @@ func TestNewSnapshot(t *testing.T) {
 		{ObservationPointID: "00000000000000d1", Anchor: domain.GraphAnchor{RouteID: "r2"}},
 		{ObservationPointID: silentPoint, Anchor: domain.GraphAnchor{RouteID: "r3"}},
 		{ObservationPointID: emptyPoint, Anchor: domain.GraphAnchor{RouteID: "r4"}},
+		{ObservationPointID: silentPoint, Anchor: domain.GraphAnchor{PointID: "p3"}},
+		{ObservationPointID: emptyPoint, Anchor: domain.GraphAnchor{PointID: "p4"}},
 	}
 
 	snapshot, err := domain.NewSnapshot("event", start, start.Add(2*time.Minute), measurements, mappings)
@@ -76,9 +78,18 @@ func TestNewSnapshot(t *testing.T) {
 		t.Errorf("route scores (forward/backward/stagnation/exhaustive) = %v, want %v", gotRoutes, wantRoutes)
 	}
 
-	wantPoints := []domain.PointScore{{PointID: "p1", PeopleScore: 3, OccupancyDelta: 5, Exhaustive: true}}
-	if len(snapshot.PointScores) != 1 || snapshot.PointScores[0] != wantPoints[0] {
-		t.Errorf("point scores = %+v, want %+v", snapshot.PointScores, wantPoints)
+	gotPoints := map[string]string{}
+	for _, score := range snapshot.PointScores {
+		gotPoints[score.PointID] = fmt.Sprintf("%v/%v/%v", deref(score.PeopleScore), score.OccupancyDelta, score.Exhaustive)
+	}
+
+	wantPoints := map[string]string{
+		"p1": "3/5/true",
+		"p3": "<nil>/1/true",
+		"p4": "0/3/true",
+	}
+	if !maps.Equal(gotPoints, wantPoints) {
+		t.Errorf("point scores (people/occupancy delta/exhaustive) = %v, want %v", gotPoints, wantPoints)
 	}
 }
 

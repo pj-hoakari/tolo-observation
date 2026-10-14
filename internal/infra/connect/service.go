@@ -339,9 +339,14 @@ func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
 
 	points := make([]*kernelv1.PointScore, 0, len(snapshot.PointScores))
 	for _, score := range snapshot.PointScores {
+		var people float64
+		if score.PeopleScore != nil {
+			people = *score.PeopleScore
+		}
+
 		points = append(points, &kernelv1.PointScore{
 			PointId:        score.PointID,
-			PeopleScore:    score.PeopleScore,
+			PeopleScore:    people,
 			OccupancyDelta: score.OccupancyDelta,
 			Exhaustive:     score.Exhaustive,
 		})
