@@ -126,8 +126,10 @@ func newObservationFlow(t *testing.T) observationFlow {
 	graph, graphURL := startGraphStub(t)
 	flow, flowURL := startFlowStub(t)
 
+	graphs := NewGraphSupplyClient(http.DefaultClient, graphURL)
+
 	cycle := application.NewObservationCycle(
-		NewGraphSupplyClient(http.DefaultClient, graphURL),
+		graphs,
 		NewFlowControlClient(flowURL),
 		devices,
 		measurements,
@@ -148,7 +150,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 			HeartbeatTimeout:           time.Hour,
 			Now:                        time.Now,
 		}),
-		application.NewMeasurementIngestService(devices, measurements, cycle),
+		application.NewMeasurementIngestService(devices, measurements, graphs, cycle),
 		application.NewStatusQueryService(snapshots),
 		application.NewObservationSettingsService(settings),
 	)
@@ -188,6 +190,25 @@ func (f observationFlow) token(t *testing.T, eventPublicID, scope string) string
 	})
 	if err != nil {
 		t.Fatalf("mint %s token: %v", scope, err)
+	}
+
+	return "Bearer " + output.Token
+}
+
+func (f observationFlow) serviceToken(t *testing.T, originSub, tenantPublicID string) string {
+	t.Helper()
+
+	output, err := f.generator.Generate(jwtgen.Config{
+		Issuer:         DefaultInternalJWTIssuer,
+		Audience:       DefaultInternalJWTAudience,
+		TokenUse:       internaljwt.TokenUseService,
+		OriginSub:      originSub,
+		TenantPublicID: tenantPublicID,
+		Scope:          "events.report",
+		TTL:            time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("mint service token: %v", err)
 	}
 
 	return "Bearer " + output.Token
@@ -331,7 +352,7 @@ func TestObservationFlow(t *testing.T) {
 		}
 	})
 
-	t.Run("refuses a QR measurement as unimplemented", func(t *testing.T) {
+	t.Run("refuses a QR measurement mixed into edge measurements", func(t *testing.T) {
 		qr := edgeMeasurement(pointIDs[0], flow.observedStart)
 		qr.Source = observationv1.MeasurementSource_MEASUREMENT_SOURCE_QR
 		qr.ObservationPointId = ""
@@ -348,7 +369,7 @@ func TestObservationFlow(t *testing.T) {
 				},
 			},
 		))
-		if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnimplemented; got != want {
+		if got, want := connectrpc.CodeOf(err), connectrpc.CodeInvalidArgument; got != want {
 			t.Fatalf("ReportMeasurements() error code = %v, want %v", got, want)
 		}
 	})

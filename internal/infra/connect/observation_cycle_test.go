@@ -977,3 +977,188 @@ func TestObservationCycleOfflineObservationPoints(t *testing.T) {
 			"(hall 10 min and lobby 16 min since last measurement, gate disabled with a fresh one) = %v, want %v", got, want)
 	}
 }
+
+func TestReportQRMeasurements(t *testing.T) {
+	const (
+		eventID     = "6f5616f8d5b5af12"
+		otherTenant = "ffffeeeeddddcccc"
+		stairs      = "0a0a0a0a0a0a0a01"
+		landing     = "0a0a0a0a0a0a0a02"
+		unplaced    = "0a0a0a0a0a0a0a03"
+	)
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	flow.graph.placeQr(stairs, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r2"}})
+	flow.graph.placeQr(landing, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p3"}})
+
+	qrMeasurement := func(qrLocationID string) *observationv1.Measurement {
+		measurement := edgeMeasurement("", time.Now().Add(-time.Minute))
+		measurement.Source = observationv1.MeasurementSource_MEASUREMENT_SOURCE_QR
+		measurement.QrLocationId = qrLocationID
+		measurement.MeanDetectedPeople = nil
+
+		return measurement
+	}
+
+	report := func(authorization string, request *observationv1.ReportMeasurementsRequest) error {
+		_, err := flow.measurements.ReportMeasurements(ctx, authorized(authorization, request))
+
+		return err
+	}
+
+	t.Run("accepts QR counts from the Guest Service and scores them without a direction", func(t *testing.T) {
+		if err := report(flow.serviceToken(t, "", ""), &observationv1.ReportMeasurementsRequest{
+			TenantId:     testTenantPublicID,
+			EventId:      eventID,
+			Measurements: []*observationv1.Measurement{qrMeasurement(stairs), qrMeasurement(landing)},
+		}); err != nil {
+			t.Fatalf("ReportMeasurements() error = %v", err)
+		}
+
+		requests, _ := flow.flow.received()
+		if observations := requests[len(requests)-1].GetObservations(); len(observations.GetArcFlows())+len(observations.GetNodeOccupancies()) != 0 {
+			t.Errorf("flow observations = %v, want QR scores kept out of Flow Control", observations)
+		}
+
+		overview, err := flow.statusQueries.GetEventOverview(ctx, authorized(
+			flow.token(t, eventID, "events.read"),
+			&observationv1.GetEventOverviewRequest{EventId: eventID},
+		))
+		if err != nil {
+			t.Fatalf("GetEventOverview() error = %v", err)
+		}
+
+		snapshot := overview.Msg.GetOverview().GetSnapshot()
+
+		var got []string
+		for _, route := range snapshot.GetRouteScores() {
+			got = append(got, fmt.Sprintf("%s %v exhaustive=%v", route.GetRouteId(), route.GetFlow(), route.GetExhaustive()))
+		}
+
+		for _, point := range snapshot.GetPointScores() {
+			got = append(got, fmt.Sprintf("%s people=%v delta=%v exhaustive=%v",
+				point.GetPointId(), point.GetPeopleScore(), point.GetOccupancyDelta(), point.GetExhaustive()))
+		}
+
+		want := []string{
+			fmt.Sprintf("r2 %v exhaustive=false", &kernelv1.RouteScore_ScalarFlow{ScalarFlow: 7}),
+			"p3 people=0 delta=7 exhaustive=false",
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("overview scores = %v, want %v", got, want)
+		}
+	})
+
+	tests := []struct {
+		name          string
+		authorization func(t *testing.T) string
+		request       *observationv1.ReportMeasurementsRequest
+		want          connectrpc.Code
+	}{
+		{
+			name:          "refuses a QR location outside the current revision",
+			authorization: func(t *testing.T) string { return flow.serviceToken(t, "", "") },
+			request: &observationv1.ReportMeasurementsRequest{
+				TenantId: testTenantPublicID, EventId: eventID, Measurements: []*observationv1.Measurement{qrMeasurement(unplaced)},
+			},
+			want: connectrpc.CodePermissionDenied,
+		},
+		{
+			name:          "requires the tenant",
+			authorization: func(t *testing.T) string { return flow.serviceToken(t, "", "") },
+			request: &observationv1.ReportMeasurementsRequest{
+				EventId: eventID, Measurements: []*observationv1.Measurement{qrMeasurement(stairs)},
+			},
+			want: connectrpc.CodeInvalidArgument,
+		},
+		{
+			name:          "refuses a tenant other than the token's",
+			authorization: func(t *testing.T) string { return flow.serviceToken(t, "organizer", testTenantPublicID) },
+			request: &observationv1.ReportMeasurementsRequest{
+				TenantId: otherTenant, EventId: eventID, Measurements: []*observationv1.Measurement{qrMeasurement(stairs)},
+			},
+			want: connectrpc.CodePermissionDenied,
+		},
+		{
+			name:          "refuses an event other than the token's",
+			authorization: func(t *testing.T) string { return flow.token(t, otherEventPublicID, "events.report") },
+			request: &observationv1.ReportMeasurementsRequest{
+				TenantId: testTenantPublicID, EventId: eventID, Measurements: []*observationv1.Measurement{qrMeasurement(stairs)},
+			},
+			want: connectrpc.CodePermissionDenied,
+		},
+		{
+			name:          "refuses an edge device on QR counts",
+			authorization: func(t *testing.T) string { return flow.serviceToken(t, "", "") },
+			request: &observationv1.ReportMeasurementsRequest{
+				TenantId: testTenantPublicID, EventId: eventID, EdgeDeviceId: "1122334455667788",
+				Measurements: []*observationv1.Measurement{qrMeasurement(stairs)},
+			},
+			want: connectrpc.CodeInvalidArgument,
+		},
+		{
+			name:          "refuses a QR count naming an observation point",
+			authorization: func(t *testing.T) string { return flow.serviceToken(t, "", "") },
+			request: func() *observationv1.ReportMeasurementsRequest {
+				measurement := qrMeasurement(stairs)
+				measurement.ObservationPointId = stairs
+
+				return &observationv1.ReportMeasurementsRequest{
+					TenantId: testTenantPublicID, EventId: eventID, Measurements: []*observationv1.Measurement{measurement},
+				}
+			}(),
+			want: connectrpc.CodeInvalidArgument,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := connectrpc.CodeOf(report(tt.authorization(t), tt.request)); got != tt.want {
+				t.Errorf("ReportMeasurements() error code = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReportEdgeMeasurementsChecksTheTenant(t *testing.T) {
+	const eventID = "6f5616f8d5b5af13"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-1", ObservationPointNames: []string{"corridor"}},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	report := func(tenantID string) error {
+		_, err := flow.measurements.ReportMeasurements(ctx, authorized(
+			flow.token(t, eventID, "events.report"),
+			&observationv1.ReportMeasurementsRequest{
+				TenantId:     tenantID,
+				EventId:      eventID,
+				EdgeDeviceId: registered.Msg.GetDevice().GetEdgeDeviceId(),
+				Measurements: []*observationv1.Measurement{
+					edgeMeasurement(registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId(), time.Now().Add(-time.Minute)),
+				},
+			},
+		))
+
+		return err
+	}
+
+	for _, tenantID := range []string{"", testTenantPublicID} {
+		if err := report(tenantID); err != nil {
+			t.Errorf("ReportMeasurements(tenant_id=%q) error = %v", tenantID, err)
+		}
+	}
+
+	if got, want := connectrpc.CodeOf(report("ffffeeeeddddcccc")), connectrpc.CodePermissionDenied; got != want {
+		t.Errorf("ReportMeasurements(tenant_id of another tenant) error code = %v, want %v", got, want)
+	}
+}

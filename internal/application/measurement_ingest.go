@@ -27,8 +27,10 @@ type MeasurementInput struct {
 }
 
 type ReportMeasurementsInput struct {
+	TenantID     string
 	EventID      string
 	EdgeDeviceID string
+	Method       domain.MeasurementMethod
 	Measurements []MeasurementInput
 }
 
@@ -39,15 +41,17 @@ type MeasurementIngestUseCases interface {
 type MeasurementIngestService struct {
 	devices      repository.EdgeDeviceRepository
 	measurements repository.MeasurementRepository
+	graphs       GraphSupply
 	cycle        ObservationCycleRunner
 }
 
 func NewMeasurementIngestService(
 	devices repository.EdgeDeviceRepository,
 	measurements repository.MeasurementRepository,
+	graphs GraphSupply,
 	cycle ObservationCycleRunner,
 ) *MeasurementIngestService {
-	return &MeasurementIngestService{devices: devices, measurements: measurements, cycle: cycle}
+	return &MeasurementIngestService{devices: devices, measurements: measurements, graphs: graphs, cycle: cycle}
 }
 
 func (s *MeasurementIngestService) ReportMeasurements(
@@ -100,6 +104,17 @@ func (s *MeasurementIngestService) resolveTenant(
 	input ReportMeasurementsInput,
 	measurements []domain.Measurement,
 ) (string, error) {
+	tenantID := strings.TrimSpace(input.TenantID)
+	if tenantID != "" {
+		if err := tenantctx.VerifyOwnership(ctx, tenantID); err != nil {
+			return "", err
+		}
+	}
+
+	if input.Method == domain.MeasurementMethodQR {
+		return s.resolveQRTenant(ctx, tenantID, input.EventID, measurements)
+	}
+
 	edgeDeviceID := strings.TrimSpace(input.EdgeDeviceID)
 	if edgeDeviceID == "" {
 		return "", ErrEdgeDeviceRequired
@@ -130,4 +145,37 @@ func (s *MeasurementIngestService) resolveTenant(
 	}
 
 	return device.TenantPublicID, nil
+}
+
+func (s *MeasurementIngestService) resolveQRTenant(
+	ctx context.Context,
+	tenantID, eventID string,
+	measurements []domain.Measurement,
+) (string, error) {
+	if tenantID == "" {
+		return "", domain.ErrTenantRequired
+	}
+
+	graph, err := s.graphs.CurrentGraph(ctx, eventID)
+	if err != nil {
+		return "", fmt.Errorf("get current graph: %w", err)
+	}
+
+	locations, err := s.graphs.QrLocations(ctx, eventID, graph.RevisionID)
+	if err != nil {
+		return "", fmt.Errorf("get qr locations: %w", err)
+	}
+
+	placed := map[domain.ObservationPointID]bool{}
+	for _, location := range locations {
+		placed[location.ObservationPointID] = true
+	}
+
+	for _, measurement := range measurements {
+		if !placed[measurement.ObservationPointID] {
+			return "", ErrForeignEvent
+		}
+	}
+
+	return tenantID, nil
 }

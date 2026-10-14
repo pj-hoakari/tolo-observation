@@ -328,6 +328,7 @@ type ReportMeasurementsRequest struct {
 	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
 	EdgeDeviceId  string                 `protobuf:"bytes,2,opt,name=edge_device_id,json=edgeDeviceId,proto3" json:"edge_device_id,omitempty"`
 	Measurements  []*Measurement         `protobuf:"bytes,3,rep,name=measurements,proto3" json:"measurements,omitempty"`
+	TenantId      string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -381,6 +382,13 @@ func (x *ReportMeasurementsRequest) GetMeasurements() []*Measurement {
 		return x.Measurements
 	}
 	return nil
+}
+
+func (x *ReportMeasurementsRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
 }
 
 type ReportMeasurementsResponse struct {
@@ -2032,11 +2040,12 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\x06source\x18\x06 \x01(\x0e2&.tolo.observation.v1.MeasurementSourceR\x06source\x12$\n" +
 	"\x0eqr_location_id\x18\a \x01(\tR\fqrLocationId\x125\n" +
 	"\x14mean_detected_people\x18\b \x01(\x01H\x00R\x12meanDetectedPeople\x88\x01\x01B\x17\n" +
-	"\x15_mean_detected_people\"\xa2\x01\n" +
+	"\x15_mean_detected_people\"\xbf\x01\n" +
 	"\x19ReportMeasurementsRequest\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12$\n" +
 	"\x0eedge_device_id\x18\x02 \x01(\tR\fedgeDeviceId\x12D\n" +
-	"\fmeasurements\x18\x03 \x03(\v2 .tolo.observation.v1.MeasurementR\fmeasurements\"C\n" +
+	"\fmeasurements\x18\x03 \x03(\v2 .tolo.observation.v1.MeasurementR\fmeasurements\x12\x1b\n" +
+	"\ttenant_id\x18\x04 \x01(\tR\btenantId\"C\n" +
 	"\x1aReportMeasurementsResponse\x12%\n" +
 	"\x0eaccepted_count\x18\x01 \x01(\x05R\racceptedCount\"\xbb\x02\n" +
 	"\n" +

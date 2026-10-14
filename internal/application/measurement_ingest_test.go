@@ -54,7 +54,7 @@ func newIngestServiceWithCycle(t *testing.T, cycle application.ObservationCycleR
 	devices := NewMockEdgeDeviceRepository(controller)
 	measurements := NewMockMeasurementRepository(controller)
 
-	return application.NewMeasurementIngestService(devices, measurements, cycle), devices, measurements
+	return application.NewMeasurementIngestService(devices, measurements, nil, cycle), devices, measurements
 }
 
 func edgeMeasurement(pointID string) application.MeasurementInput {

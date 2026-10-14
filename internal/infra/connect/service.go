@@ -22,9 +22,11 @@ import (
 var errInternal = errors.New("internal error")
 
 var (
-	errMeasurementSourceRequired = errors.New("measurement source is required")
-	errQRLocationNotAllowed      = errors.New("qr_location_id is not allowed for edge measurements")
-	errQRUnimplemented           = errors.New("QR measurements are not implemented")
+	errMeasurementSourceRequired  = errors.New("measurement source is required")
+	errQRLocationNotAllowed       = errors.New("qr_location_id is not allowed for edge measurements")
+	errObservationPointNotAllowed = errors.New("observation_point_id is not allowed for QR measurements")
+	errEdgeDeviceNotAllowed       = errors.New("edge_device_id is not allowed for QR measurements")
+	errMixedMeasurementSources    = errors.New("measurements of one request must share a source")
 )
 
 // InternalError reports a failure the client can do nothing about. The cause is
@@ -72,13 +74,23 @@ func (s *MeasurementIngestService) ReportMeasurements(
 	reported := req.Msg.GetMeasurements()
 	measurements := make([]application.MeasurementInput, 0, len(reported))
 
+	method := domain.MeasurementMethodCamera
+	if len(reported) > 0 && reported[0].GetSource() == observationv1.MeasurementSource_MEASUREMENT_SOURCE_QR {
+		method = domain.MeasurementMethodQR
+	}
+
+	if method == domain.MeasurementMethodQR && req.Msg.GetEdgeDeviceId() != "" {
+		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, errEdgeDeviceNotAllowed)
+	}
+
 	for _, measurement := range reported {
-		if err := checkEdgeMeasurement(measurement); err != nil {
+		pointID, err := measurementPointID(measurement, method)
+		if err != nil {
 			return nil, err
 		}
 
 		measurements = append(measurements, application.MeasurementInput{
-			ObservationPointID: measurement.GetObservationPointId(),
+			ObservationPointID: pointID,
 			WindowStart:        timestampTime(measurement.GetWindowStart()),
 			WindowEnd:          timestampTime(measurement.GetWindowEnd()),
 			CountIn:            measurement.GetCountIn(),
@@ -88,8 +100,10 @@ func (s *MeasurementIngestService) ReportMeasurements(
 	}
 
 	accepted, err := s.useCases.ReportMeasurements(ctx, application.ReportMeasurementsInput{
+		TenantID:     req.Msg.GetTenantId(),
 		EventID:      req.Msg.GetEventId(),
 		EdgeDeviceID: req.Msg.GetEdgeDeviceId(),
+		Method:       method,
 		Measurements: measurements,
 	})
 	if err != nil {
@@ -99,20 +113,32 @@ func (s *MeasurementIngestService) ReportMeasurements(
 	return connectrpc.NewResponse(&observationv1.ReportMeasurementsResponse{AcceptedCount: accepted}), nil
 }
 
-func checkEdgeMeasurement(measurement *observationv1.Measurement) error {
+func measurementPointID(measurement *observationv1.Measurement, method domain.MeasurementMethod) (string, error) {
 	switch measurement.GetSource() {
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_EDGE:
-		if measurement.GetQrLocationId() != "" {
-			return connectrpc.NewError(connectrpc.CodeInvalidArgument, errQRLocationNotAllowed)
+		if method != domain.MeasurementMethodCamera {
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources)
 		}
 
-		return nil
+		if measurement.GetQrLocationId() != "" {
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errQRLocationNotAllowed)
+		}
+
+		return measurement.GetObservationPointId(), nil
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_QR:
-		return connectrpc.NewError(connectrpc.CodeUnimplemented, errQRUnimplemented)
+		if method != domain.MeasurementMethodQR {
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources)
+		}
+
+		if measurement.GetObservationPointId() != "" {
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errObservationPointNotAllowed)
+		}
+
+		return measurement.GetQrLocationId(), nil
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_UNSPECIFIED:
-		return connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
+		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
 	default:
-		return connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
+		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
 	}
 }
 
