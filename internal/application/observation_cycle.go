@@ -98,12 +98,12 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("list window measurements: %w", err)
 	}
 
-	observable, err := c.observableObservationPoints(ctx, eventID, windowEnd)
+	states, err := c.observationPointStates(ctx, eventID, windowEnd)
 	if err != nil {
 		return err
 	}
 
-	snapshot, gaps, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings, observable)
+	snapshot, gaps, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings, states)
 	if err != nil {
 		return err
 	}
@@ -186,25 +186,32 @@ func (c *ObservationCycle) availableHistory(ctx context.Context, eventID string,
 	return now.Sub(earliest), nil
 }
 
-func (c *ObservationCycle) observableObservationPoints(
+func (c *ObservationCycle) observationPointStates(
 	ctx context.Context,
 	eventID string,
 	now time.Time,
-) (map[domain.ObservationPointID]bool, error) {
+) (map[domain.ObservationPointID]domain.ObservationPointState, error) {
 	devices, err := c.devices.ListByEvent(ctx, eventID, true)
 	if err != nil {
 		return nil, fmt.Errorf("list edge devices: %w", err)
 	}
 
-	observable := map[domain.ObservationPointID]bool{}
+	states := map[domain.ObservationPointID]domain.ObservationPointState{}
 
 	for _, device := range devices {
 		online := device.Online(now, c.config.HeartbeatTimeout)
 
 		for _, point := range device.ObservationPoints {
-			observable[point.ID] = online && point.Enabled
+			switch {
+			case device.Unregistered || !point.Enabled:
+				states[point.ID] = domain.ObservationPointDisabled
+			case !online:
+				states[point.ID] = domain.ObservationPointOffline
+			default:
+				states[point.ID] = domain.ObservationPointActive
+			}
 		}
 	}
 
-	return observable, nil
+	return states, nil
 }

@@ -130,6 +130,14 @@ type Gaps struct {
 	InvalidRouteIDs []string
 }
 
+type ObservationPointState int
+
+const (
+	ObservationPointActive ObservationPointState = iota
+	ObservationPointOffline
+	ObservationPointDisabled
+)
+
 type confidence int
 
 const (
@@ -155,7 +163,7 @@ func NewSnapshot(
 	windowStart, windowEnd time.Time,
 	measurements []Measurement,
 	mappings []ObservationPointMapping,
-	observable map[ObservationPointID]bool,
+	states map[ObservationPointID]ObservationPointState,
 ) (Snapshot, Gaps, error) {
 	id, err := newPublicID()
 	if err != nil {
@@ -165,7 +173,8 @@ func NewSnapshot(
 	readings := map[ObservationPointID]*reading{}
 
 	for _, measurement := range measurements {
-		if !observable[measurement.ObservationPointID] || windowEnd.Sub(measurement.WindowEnd) > MaxHold {
+		state, known := states[measurement.ObservationPointID]
+		if !known || state == ObservationPointDisabled || windowEnd.Sub(measurement.WindowEnd) > MaxHold {
 			continue
 		}
 
@@ -187,7 +196,8 @@ func NewSnapshot(
 	anchors := map[GraphAnchor]*anchorScore{}
 
 	for _, mapping := range mappings {
-		if _, known := observable[mapping.ObservationPointID]; !known {
+		state, known := states[mapping.ObservationPointID]
+		if !known {
 			continue
 		}
 
@@ -205,7 +215,7 @@ func NewSnapshot(
 		}
 
 		detected := current.detected
-		if !current.latest.WindowEnd.After(windowStart) {
+		if state == ObservationPointOffline || !current.latest.WindowEnd.After(windowStart) {
 			score.confidence = max(score.confidence, confidenceHold)
 
 			detected = nil

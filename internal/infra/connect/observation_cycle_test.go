@@ -593,3 +593,66 @@ func TestObservationCycleConfidenceFlags(t *testing.T) {
 		}
 	})
 }
+
+func TestObservationCycleOfflineObservationPoints(t *testing.T) {
+	const eventID = "c0ffee00c0ffee01"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-offline", ObservationPointNames: []string{"hall", "lobby", "gate"}},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	points := registered.Msg.GetDevice().GetObservationPoints()
+	hall := points[0].GetObservationPointId()
+	lobby := points[1].GetObservationPointId()
+	gate := points[2].GetObservationPointId()
+
+	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p1"}})
+	flow.graph.mapTo(lobby, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
+	flow.graph.mapTo(gate, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p3"}})
+
+	if _, err := flow.edgeDevices.UpdateObservationPointConfig(ctx, authorized(
+		flow.token(t, eventID, "events.operate"),
+		&observationv1.UpdateObservationPointConfigRequest{EventId: eventID, ObservationPointId: gate, Name: "gate", Enabled: false},
+	)); err != nil {
+		t.Fatalf("UpdateObservationPointConfig() error = %v", err)
+	}
+
+	if _, err := flow.measurements.ReportMeasurements(ctx, authorized(
+		flow.token(t, eventID, "events.report"),
+		&observationv1.ReportMeasurementsRequest{
+			EventId:      eventID,
+			EdgeDeviceId: registered.Msg.GetDevice().GetEdgeDeviceId(),
+			Measurements: []*observationv1.Measurement{
+				edgeMeasurement(hall, time.Now().Add(-11*time.Minute)),
+				edgeMeasurement(lobby, time.Now().Add(-17*time.Minute)),
+				edgeMeasurement(gate, time.Now().Add(-time.Minute)),
+			},
+		},
+	)); err != nil {
+		t.Fatalf("ReportMeasurements() error = %v", err)
+	}
+
+	requests, _ := flow.flow.received()
+
+	got := map[string]flowv1.ConfidenceFlag{}
+	for _, occupancy := range requests[len(requests)-1].GetObservations().GetNodeOccupancies() {
+		got[occupancy.GetNodeId()] = occupancy.GetConfidenceFlag()
+	}
+
+	want := map[string]flowv1.ConfidenceFlag{
+		"p1": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD,
+		"p2": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID,
+		"p3": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID,
+	}
+	if !maps.Equal(got, want) {
+		t.Errorf("node confidence of a device without heartbeats "+
+			"(hall 10 min and lobby 16 min since last measurement, gate disabled with a fresh one) = %v, want %v", got, want)
+	}
+}
