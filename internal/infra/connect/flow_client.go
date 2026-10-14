@@ -273,7 +273,7 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 
 		observations.NodeOccupancies = append(observations.NodeOccupancies, &flowv1.NodeOccupancy{
 			NodeId:            proto.String(score.PointID),
-			Occupancy:         proto.Float64(score.PeopleScore),
+			Occupancy:         score.PeopleScore,
 			OccupancyDelta:    proto.Float64(score.OccupancyDelta),
 			SameSensorArrival: proto.Bool(false),
 			ConfidenceFlag:    ok.Enum(),

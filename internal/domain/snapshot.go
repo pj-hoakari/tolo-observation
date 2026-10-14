@@ -62,7 +62,7 @@ type ObservationPointMapping struct {
 
 type PointScore struct {
 	PointID        string
-	PeopleScore    float64
+	PeopleScore    *float64
 	OccupancyDelta float64
 	Exhaustive     bool
 }
@@ -165,22 +165,15 @@ func NewSnapshot(
 			score.Forward += measurement.RateIn()
 			score.Backward += measurement.RateOut()
 
-			if values := detected[mapping.ObservationPointID]; len(values) > 0 {
-				stagnation := mean(values)
-				if score.StagnationScore != nil {
-					stagnation += *score.StagnationScore
-				}
-
-				score.StagnationScore = &stagnation
-			}
+			score.StagnationScore = addMean(score.StagnationScore, detected[mapping.ObservationPointID])
 		case mapping.Anchor.PointID != "":
 			score, ok := points[mapping.Anchor.PointID]
 			if !ok {
-				score = &PointScore{PointID: mapping.Anchor.PointID, PeopleScore: 0, OccupancyDelta: 0, Exhaustive: true}
+				score = &PointScore{PointID: mapping.Anchor.PointID, PeopleScore: nil, OccupancyDelta: 0, Exhaustive: true}
 				points[mapping.Anchor.PointID] = score
 			}
 
-			score.PeopleScore += mean(detected[mapping.ObservationPointID])
+			score.PeopleScore = addMean(score.PeopleScore, detected[mapping.ObservationPointID])
 			score.OccupancyDelta += measurement.RateIn() - measurement.RateOut()
 		}
 	}
@@ -195,9 +188,9 @@ func NewSnapshot(
 	}, nil
 }
 
-func mean(values []float64) float64 {
+func addMean(total *float64, values []float64) *float64 {
 	if len(values) == 0 {
-		return 0
+		return total
 	}
 
 	var sum float64
@@ -205,7 +198,12 @@ func mean(values []float64) float64 {
 		sum += value
 	}
 
-	return sum / float64(len(values))
+	result := sum / float64(len(values))
+	if total != nil {
+		result += *total
+	}
+
+	return &result
 }
 
 func sortedScores[S any](scores map[string]*S, key func(S) string) []S {
