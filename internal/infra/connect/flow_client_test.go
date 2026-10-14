@@ -3,6 +3,7 @@ package connect
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ func TestFlowObservationsLeavesOccupancyUnsetWithoutDetectedPeople(t *testing.T)
 		RouteScores: nil,
 	}
 
-	observations := flowObservations(snapshot, map[string]bool{"p1": true, "p2": true}, nil)
+	observations := flowObservations(snapshot, domain.Gaps{}, map[string]bool{"p1": true, "p2": true}, nil)
 
 	got := map[string]string{}
 
@@ -51,5 +52,95 @@ func TestNewOptimizeRequestSendsShortFallbackEta(t *testing.T) {
 
 	if got := request.GetConfig().GetFallbackEta(); got != 0.25 {
 		t.Errorf("config fallback_eta = %v, want 0.25", got)
+	}
+}
+
+func TestFlowObservationsCarriesGapFlags(t *testing.T) {
+	people := 4.0
+	stagnation := 3.0
+	snapshot := domain.Snapshot{ID: "snapshot", WindowStart: time.Unix(0, 0), WindowEnd: time.Unix(60, 0)}
+	gaps := domain.Gaps{
+		HeldPointScores: []domain.PointScore{{PointID: "p-held", PeopleScore: &people, OccupancyDelta: 2, Exhaustive: true}},
+		HeldRouteScores: []domain.RouteScore{{RouteID: "r-held", Forward: 5, Backward: 1, StagnationScore: &stagnation, Exhaustive: true}},
+		InvalidPointIDs: []string{"p-invalid"},
+		InvalidRouteIDs: []string{"r-invalid"},
+	}
+
+	observations := flowObservations(snapshot, gaps,
+		map[string]bool{"p-held": true, "p-invalid": true}, map[string]bool{"r-held": true, "r-invalid": true})
+
+	got := map[string]string{}
+
+	for _, occupancy := range observations.GetNodeOccupancies() {
+		var delta any
+		if occupancy.OccupancyDelta != nil {
+			delta = occupancy.GetOccupancyDelta()
+		}
+
+		got[occupancy.GetNodeId()] = fmt.Sprintf("%v/%v/%v", occupancy.Occupancy != nil, delta, occupancy.GetConfidenceFlag())
+	}
+
+	for _, flow := range observations.GetArcFlows() {
+		got[flow.GetEdgeId()+"/"+flow.GetDirection().String()] = fmt.Sprintf("%v/%v", flow.GetFlowRate(), flow.GetConfidenceFlag())
+	}
+
+	for _, stagnation := range observations.GetArcStagnations() {
+		got[stagnation.GetEdgeId()+"/stagnation"] = fmt.Sprintf("%v/%v", stagnation.GetStagnation(), stagnation.GetConfidenceFlag())
+	}
+
+	want := map[string]string{
+		"p-held":                          "true/<nil>/CONFIDENCE_FLAG_HOLD",
+		"p-invalid":                       "false/0/CONFIDENCE_FLAG_INVALID",
+		"r-held/FLOW_DIRECTION_A_TO_B":    "5/CONFIDENCE_FLAG_HOLD",
+		"r-held/FLOW_DIRECTION_B_TO_A":    "1/CONFIDENCE_FLAG_HOLD",
+		"r-held/stagnation":               "3/CONFIDENCE_FLAG_HOLD",
+		"r-invalid/FLOW_DIRECTION_A_TO_B": "0/CONFIDENCE_FLAG_INVALID",
+		"r-invalid/FLOW_DIRECTION_B_TO_A": "0/CONFIDENCE_FLAG_INVALID",
+	}
+	if !maps.Equal(got, want) {
+		t.Errorf("observations = %v, want %v", got, want)
+	}
+}
+
+func TestFlowRequestLeavesOutScoresThatAreNotExhaustive(t *testing.T) {
+	end := time.Unix(60, 0)
+	snapshot := domain.Snapshot{
+		ID:          "snapshot",
+		WindowStart: time.Unix(0, 0),
+		WindowEnd:   end,
+		PointScores: []domain.PointScore{
+			{PointID: "p-camera", PeopleScore: nil, OccupancyDelta: 1, Exhaustive: true},
+			{PointID: "p-qr", PeopleScore: nil, OccupancyDelta: 4, Exhaustive: false},
+		},
+		RouteScores: []domain.RouteScore{
+			{RouteID: "r-camera", Forward: 2, Backward: 1, StagnationScore: nil, Exhaustive: true},
+			{RouteID: "r-qr", Forward: 7, Backward: 0, StagnationScore: nil, Exhaustive: false},
+		},
+	}
+	nodes := map[string]bool{"p-camera": true, "p-qr": true}
+	edges := map[string]bool{"r-camera": true, "r-qr": true}
+
+	observations := flowObservations(snapshot, domain.Gaps{}, nodes, edges)
+
+	var got []string
+	for _, occupancy := range observations.GetNodeOccupancies() {
+		got = append(got, occupancy.GetNodeId())
+	}
+
+	for _, flow := range observations.GetArcFlows() {
+		got = append(got, flow.GetEdgeId())
+	}
+
+	if want := []string{"p-camera", "r-camera", "r-camera"}; !slices.Equal(got, want) {
+		t.Errorf("observed targets = %v, want only the exhaustive scores %v", got, want)
+	}
+
+	var series []string
+	for _, arc := range flowHistoryDigest([]domain.Snapshot{snapshot}, nil, edges).GetWindowSeries() {
+		series = append(series, arc.GetEdgeId())
+	}
+
+	if want := []string{"r-camera"}; !slices.Equal(series, want) {
+		t.Errorf("history window series = %v, want only the exhaustive route %v", series, want)
 	}
 }

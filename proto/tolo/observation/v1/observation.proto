@@ -141,6 +141,7 @@ message ReportMeasurementsRequest {
   string event_id = 1;
   string edge_device_id = 2;
   repeated Measurement measurements = 3;
+  string tenant_id = 4;
 }
 
 message ReportMeasurementsResponse {

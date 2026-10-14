@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"testing"
 	"time"
 
@@ -178,5 +179,56 @@ func TestPostgresSnapshotRepositorySummarizeArcHistoryFlowSums(t *testing.T) {
 	if g.SampleCount != 3 || math.Abs(g.FlowSum-10.5) > 1e-9 || math.Abs(g.FlowSquareSum-52.25) > 1e-9 ||
 		math.Abs(g.FlowStagnationSum-51) > 1e-9 {
 		t.Errorf("SummarizeArcHistory = %+v, want 3 samples, flow sum 10.5, flow square sum 52.25, flow stagnation sum 51", g)
+	}
+}
+
+func TestPostgresSnapshotRepositorySummarizeArcHistoryAfterSensorSetChange(t *testing.T) {
+	repo := NewPostgresSnapshotRepository(testDB)
+	ctx := context.Background()
+	since := time.Date(2026, time.October, 2, 0, 0, 0, 0, time.UTC)
+
+	for _, minute := range []int{30, 70, 130} {
+		saveRouteSnapshot(t, repo, "event-arc-change", since.Add(time.Duration(minute)*time.Minute),
+			map[string]*float64{"r1": new(4.0), "r2": new(4.0)})
+	}
+
+	changed := []domain.SensorSet{
+		{Anchor: domain.GraphAnchor{RouteID: "r1"}, ObservationPointIDs: []domain.ObservationPointID{"a", "b"}, ChangedAt: since.Add(65 * time.Minute)},
+		{Anchor: domain.GraphAnchor{RouteID: "r2"}, ObservationPointIDs: []domain.ObservationPointID{"c"}},
+		{Anchor: domain.GraphAnchor{PointID: "p1"}, ObservationPointIDs: []domain.ObservationPointID{"d"}, ChangedAt: since},
+	}
+
+	if err := repo.SaveSensorSets(ctx, "event-arc-change", changed); err != nil {
+		t.Fatalf("SaveSensorSets: %v", err)
+	}
+
+	listed, err := repo.ListSensorSets(ctx, "event-arc-change")
+	if err != nil {
+		t.Fatalf("ListSensorSets: %v", err)
+	}
+
+	if len(listed) != len(changed) {
+		t.Fatalf("ListSensorSets = %v, want %v", listed, changed)
+	}
+
+	for i, set := range listed {
+		if set.Anchor != changed[i].Anchor || !slices.Equal(set.ObservationPointIDs, changed[i].ObservationPointIDs) ||
+			!set.ChangedAt.Equal(changed[i].ChangedAt) {
+			t.Errorf("ListSensorSets[%d] = %v, want %v", i, set, changed[i])
+		}
+	}
+
+	got, err := repo.SummarizeArcHistory(ctx, "event-arc-change", since)
+	if err != nil {
+		t.Fatalf("SummarizeArcHistory: %v", err)
+	}
+
+	counts := map[string]int{}
+	for _, history := range got {
+		counts[history.RouteID] = history.SampleCount
+	}
+
+	if counts["r1"] != 2 || counts["r2"] != 3 {
+		t.Errorf("sample counts = %v, want r1 without the hour started before its change and r2 untouched", counts)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -16,6 +15,7 @@ const historyWindow = 30 * time.Minute
 type GraphSupply interface {
 	CurrentGraph(ctx context.Context, eventID string) (domain.Graph, error)
 	ObservationPointMappings(ctx context.Context, eventID, revisionID string) ([]domain.ObservationPointMapping, error)
+	QrLocations(ctx context.Context, eventID, revisionID string) ([]domain.ObservationPointMapping, error)
 }
 
 type OptimizeInput struct {
@@ -23,6 +23,8 @@ type OptimizeInput struct {
 	EventType        domain.EventType
 	Graph            domain.Graph
 	Snapshot         domain.Snapshot
+	Gaps             domain.Gaps
+	SensorSetChanges []domain.SensorSet
 	History          []domain.Snapshot
 	ArcHistory       []domain.ArcHistory
 	AvailableHistory time.Duration
@@ -90,26 +92,40 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("get observation point mappings: %w", err)
 	}
 
+	qrLocations, err := c.graphs.QrLocations(ctx, eventID, graph.RevisionID)
+	if err != nil {
+		return fmt.Errorf("get qr locations: %w", err)
+	}
+
+	mappings = append(mappings, qrLocations...)
+
 	windowEnd := c.config.Now().Truncate(time.Microsecond)
 	windowStart := windowEnd.Add(-c.config.Window)
 
-	measurements, err := c.measurements.ListWindowEndingAfter(ctx, eventID, windowStart)
+	measurements, err := c.measurements.ListWindowEndingSince(ctx, eventID, windowEnd.Add(-domain.MaxHold))
 	if err != nil {
 		return fmt.Errorf("list window measurements: %w", err)
 	}
 
-	enabled, err := c.enabledObservationPoints(ctx, eventID, windowEnd)
+	states, err := c.observationPointStates(ctx, eventID, windowEnd)
 	if err != nil {
 		return err
 	}
 
-	measurements = slices.DeleteFunc(measurements, func(measurement domain.Measurement) bool {
-		return !enabled[measurement.ObservationPointID]
-	})
-
-	snapshot, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings)
+	snapshot, gaps, composed, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings, states)
 	if err != nil {
 		return err
+	}
+
+	recorded, err := c.snapshots.ListSensorSets(ctx, eventID)
+	if err != nil {
+		return fmt.Errorf("list sensor sets: %w", err)
+	}
+
+	sensorSets, updated := domain.TrackSensorSets(recorded, composed, windowEnd)
+
+	if err := c.snapshots.SaveSensorSets(ctx, eventID, updated); err != nil {
+		return fmt.Errorf("save sensor sets: %w", err)
 	}
 
 	settings, err := findObservationSettings(ctx, c.settings, eventID)
@@ -121,6 +137,8 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	if err != nil {
 		return fmt.Errorf("list history snapshots: %w", err)
 	}
+
+	history = domain.HistorySinceSensorSetChanges(history, sensorSets)
 
 	since := windowEnd.Add(-time.Duration(settings.HistoryWindowDays) * 24 * time.Hour)
 
@@ -138,13 +156,17 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("save snapshot: %w", err)
 	}
 
-	var previous *domain.OptimizationOutcome
+	var (
+		previous      *domain.OptimizationOutcome
+		previousCycle time.Time
+	)
 
 	latest, err := c.snapshots.LatestOptimizationOutcome(ctx, eventID)
 
 	switch {
 	case err == nil:
 		previous = &latest
+		previousCycle = latest.ServerTime
 	case !errors.Is(err, repository.ErrOptimizationOutcomeMissing):
 		return fmt.Errorf("find previous optimization outcome: %w", err)
 	}
@@ -157,6 +179,8 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		EventType:        settings.EventType,
 		Graph:            graph,
 		Snapshot:         snapshot,
+		Gaps:             gaps,
+		SensorSetChanges: domain.SensorSetsChangedAfter(sensorSets, previousCycle),
 		History:          history,
 		ArcHistory:       arcHistory,
 		AvailableHistory: availableHistory,
@@ -189,29 +213,32 @@ func (c *ObservationCycle) availableHistory(ctx context.Context, eventID string,
 	return now.Sub(earliest), nil
 }
 
-func (c *ObservationCycle) enabledObservationPoints(
+func (c *ObservationCycle) observationPointStates(
 	ctx context.Context,
 	eventID string,
 	now time.Time,
-) (map[domain.ObservationPointID]bool, error) {
-	devices, err := c.devices.ListByEvent(ctx, eventID, false)
+) (map[domain.ObservationPointID]domain.ObservationPointState, error) {
+	devices, err := c.devices.ListByEvent(ctx, eventID, true)
 	if err != nil {
 		return nil, fmt.Errorf("list edge devices: %w", err)
 	}
 
-	enabled := map[domain.ObservationPointID]bool{}
+	states := map[domain.ObservationPointID]domain.ObservationPointState{}
 
 	for _, device := range devices {
-		if !device.Online(now, c.config.HeartbeatTimeout) {
-			continue
-		}
+		online := device.Online(now, c.config.HeartbeatTimeout)
 
 		for _, point := range device.ObservationPoints {
-			if point.Enabled {
-				enabled[point.ID] = true
+			switch {
+			case device.Unregistered || !point.Enabled:
+				states[point.ID] = domain.ObservationPointDisabled
+			case !online:
+				states[point.ID] = domain.ObservationPointOffline
+			default:
+				states[point.ID] = domain.ObservationPointActive
 			}
 		}
 	}
 
-	return enabled, nil
+	return states, nil
 }

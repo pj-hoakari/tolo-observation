@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	connectrpc "connectrpc.com/connect"
@@ -60,6 +61,7 @@ func (c *FlowControlClient) Optimize(
 
 	outcome := domain.OptimizationOutcome{
 		SnapshotID:         input.Snapshot.ID,
+		ServerTime:         input.ServerTime,
 		Verdict:            res.Msg.GetVerdict().String(),
 		DetectionState:     detectionState,
 		OptimizationResult: nil,
@@ -110,12 +112,12 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 			AvailableHistoryHours: proto.Float64(input.AvailableHistory.Hours()),
 		},
 		Graph:          graph,
-		Observations:   flowObservations(snapshot, nodes, edges),
+		Observations:   flowObservations(snapshot, input.Gaps, nodes, edges),
 		HistoryDigest:  flowHistoryDigest(input.History, input.ArcHistory, edges),
 		DetectionState: detectionState,
 		References:     new(flowv1.Reference),
 		PreviousResult: previousResult,
-		Events:         nil,
+		Events:         flowEvents(input.SensorSetChanges, nodes, edges),
 		Config:         defaultFlowConfig(),
 		ServerTime:     timestamppb.New(input.ServerTime),
 	}, nil
@@ -220,9 +222,7 @@ func flowBoundaryDirection(direction domain.BoundaryDirection) flowv1.BoundaryDi
 	}
 }
 
-func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool) *flowv1.Observations {
-	ok := flowv1.ConfidenceFlag_CONFIDENCE_FLAG_OK
-
+func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeIDs map[string]bool) *flowv1.Observations {
 	observations := &flowv1.Observations{
 		ObservedAt:      timestamppb.New(snapshot.WindowEnd),
 		SnapshotRef:     proto.String(snapshot.ID),
@@ -233,54 +233,113 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 		NodeTurning:     nil,
 	}
 
+	addRoute := func(score domain.RouteScore, flag flowv1.ConfidenceFlag) {
+		if edgeIDs[score.RouteID] && score.Exhaustive {
+			appendArcObservations(observations, score, flag)
+		}
+	}
+
+	addPoint := func(score domain.PointScore, flag flowv1.ConfidenceFlag) {
+		if nodeIDs[score.PointID] && score.Exhaustive {
+			delta := proto.Float64(score.OccupancyDelta)
+			if flag == flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD {
+				delta = nil
+			}
+
+			observations.NodeOccupancies = append(observations.NodeOccupancies, &flowv1.NodeOccupancy{
+				NodeId:            proto.String(score.PointID),
+				Occupancy:         score.PeopleScore,
+				OccupancyDelta:    delta,
+				SameSensorArrival: proto.Bool(false),
+				ConfidenceFlag:    flag.Enum(),
+			})
+		}
+	}
+
 	for _, score := range snapshot.RouteScores {
-		if !edgeIDs[score.RouteID] {
-			continue
-		}
+		addRoute(score, flowv1.ConfidenceFlag_CONFIDENCE_FLAG_OK)
+	}
 
-		observations.ArcFlows = append(observations.ArcFlows,
-			&flowv1.ArcFlow{
-				EdgeId:         proto.String(score.RouteID),
-				Direction:      flowv1.FlowDirection_FLOW_DIRECTION_A_TO_B.Enum(),
-				FlowRate:       proto.Float64(score.Forward),
-				ConfidenceFlag: ok.Enum(),
-			},
-			&flowv1.ArcFlow{
-				EdgeId:         proto.String(score.RouteID),
-				Direction:      flowv1.FlowDirection_FLOW_DIRECTION_B_TO_A.Enum(),
-				FlowRate:       proto.Float64(score.Backward),
-				ConfidenceFlag: ok.Enum(),
-			},
-		)
+	for _, score := range gaps.HeldRouteScores {
+		addRoute(score, flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD)
+	}
 
-		if score.StagnationScore == nil {
-			continue
-		}
-
-		observations.ArcStagnations = append(observations.ArcStagnations, &flowv1.ArcStagnation{
-			EdgeId:         proto.String(score.RouteID),
-			Stagnation:     score.StagnationScore,
-			Derivation:     flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC.Enum(),
-			SameSensorFlow: proto.Bool(false),
-			ConfidenceFlag: ok.Enum(),
-		})
+	for _, routeID := range gaps.InvalidRouteIDs {
+		addRoute(domain.RouteScore{RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: nil, StagnationScore: nil, Exhaustive: true},
+			flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID)
 	}
 
 	for _, score := range snapshot.PointScores {
-		if !nodeIDs[score.PointID] {
-			continue
-		}
+		addPoint(score, flowv1.ConfidenceFlag_CONFIDENCE_FLAG_OK)
+	}
 
-		observations.NodeOccupancies = append(observations.NodeOccupancies, &flowv1.NodeOccupancy{
-			NodeId:            proto.String(score.PointID),
-			Occupancy:         score.PeopleScore,
-			OccupancyDelta:    proto.Float64(score.OccupancyDelta),
-			SameSensorArrival: proto.Bool(false),
-			ConfidenceFlag:    ok.Enum(),
-		})
+	for _, score := range gaps.HeldPointScores {
+		addPoint(score, flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD)
+	}
+
+	for _, pointID := range gaps.InvalidPointIDs {
+		addPoint(domain.PointScore{PointID: pointID, PeopleScore: nil, OccupancyDelta: 0, Exhaustive: true},
+			flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID)
 	}
 
 	return observations
+}
+
+func flowEvents(changes []domain.SensorSet, nodeIDs, edgeIDs map[string]bool) []*flowv1.Event {
+	var events []*flowv1.Event
+
+	for _, change := range slices.SortedStableFunc(slices.Values(changes), func(a, b domain.SensorSet) int {
+		return a.ChangedAt.Compare(b.ChangedAt)
+	}) {
+		var target string
+
+		switch {
+		case edgeIDs[change.Anchor.RouteID]:
+			target = "edge:" + change.Anchor.RouteID
+		case nodeIDs[change.Anchor.PointID]:
+			target = "node:" + change.Anchor.PointID
+		default:
+			continue
+		}
+
+		events = append(events, &flowv1.Event{
+			Kind:       flowv1.EventKind_EVENT_KIND_SENSOR_SET_CHANGED,
+			TargetId:   target,
+			OccurredAt: timestamppb.New(change.ChangedAt),
+			Params:     nil,
+		})
+	}
+
+	return events
+}
+
+func appendArcObservations(observations *flowv1.Observations, score domain.RouteScore, flag flowv1.ConfidenceFlag) {
+	observations.ArcFlows = append(observations.ArcFlows,
+		&flowv1.ArcFlow{
+			EdgeId:         proto.String(score.RouteID),
+			Direction:      flowv1.FlowDirection_FLOW_DIRECTION_A_TO_B.Enum(),
+			FlowRate:       proto.Float64(score.Forward),
+			ConfidenceFlag: flag.Enum(),
+		},
+		&flowv1.ArcFlow{
+			EdgeId:         proto.String(score.RouteID),
+			Direction:      flowv1.FlowDirection_FLOW_DIRECTION_B_TO_A.Enum(),
+			FlowRate:       proto.Float64(score.Backward),
+			ConfidenceFlag: flag.Enum(),
+		},
+	)
+
+	if score.StagnationScore == nil {
+		return
+	}
+
+	observations.ArcStagnations = append(observations.ArcStagnations, &flowv1.ArcStagnation{
+		EdgeId:         proto.String(score.RouteID),
+		Stagnation:     score.StagnationScore,
+		Derivation:     flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC.Enum(),
+		SameSensorFlow: proto.Bool(false),
+		ConfidenceFlag: flag.Enum(),
+	})
 }
 
 func flowHistoryDigest(
@@ -321,7 +380,7 @@ func flowHistoryDigest(
 		at := timestamppb.New(snapshot.WindowEnd)
 
 		for _, score := range snapshot.RouteScores {
-			if !edgeIDs[score.RouteID] {
+			if !edgeIDs[score.RouteID] || !score.Exhaustive {
 				continue
 			}
 

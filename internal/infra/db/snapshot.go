@@ -38,6 +38,7 @@ type routeScoreJSON struct {
 	RouteID         string   `json:"route_id"`
 	Forward         float64  `json:"forward"`
 	Backward        float64  `json:"backward"`
+	ScalarFlow      *float64 `json:"scalar_flow,omitempty"`
 	StagnationScore *float64 `json:"stagnation_score"`
 	Exhaustive      bool     `json:"exhaustive"`
 }
@@ -185,18 +186,19 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 
 	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
 		WITH buckets AS (
-			SELECT route_id,
-				stagnation_bucket,
-				sum(sample_count) AS sample_count,
-				sum(stagnation_sum) AS stagnation_sum,
-				min(first_start) AS first_start,
-				max(last_end) AS last_end,
-				sum(flow_sum) AS flow_sum,
-				sum(flow_square_sum) AS flow_square_sum,
-				sum(flow_stagnation_sum) AS flow_stagnation_sum
-			FROM arc_stagnation_hourly
-			WHERE event_id = $1 AND hour_start >= $2
-			GROUP BY route_id, stagnation_bucket
+			SELECT h.route_id,
+				h.stagnation_bucket,
+				sum(h.sample_count) AS sample_count,
+				sum(h.stagnation_sum) AS stagnation_sum,
+				min(h.first_start) AS first_start,
+				max(h.last_end) AS last_end,
+				sum(h.flow_sum) AS flow_sum,
+				sum(h.flow_square_sum) AS flow_square_sum,
+				sum(h.flow_stagnation_sum) AS flow_stagnation_sum
+			FROM arc_stagnation_hourly h
+			LEFT JOIN anchor_sensor_sets s ON s.event_id = h.event_id AND s.route_id = h.route_id
+			WHERE h.event_id = $1 AND h.hour_start >= $2 AND (s.changed_at IS NULL OR h.first_start >= s.changed_at)
+			GROUP BY h.route_id, h.stagnation_bucket
 		), ranked AS (
 			SELECT *,
 				sum(sample_count) OVER (PARTITION BY route_id ORDER BY stagnation_bucket) AS cumulative,
@@ -270,10 +272,11 @@ func (row snapshotRow) snapshot() (domain.Snapshot, error) {
 }
 
 type optimizationOutcomeRow struct {
-	SnapshotID         string `db:"snapshot_id"`
-	Verdict            string `db:"verdict"`
-	DetectionState     []byte `db:"detection_state"`
-	OptimizationResult []byte `db:"optimization_result"`
+	SnapshotID         string    `db:"snapshot_id"`
+	ServerTime         time.Time `db:"server_time"`
+	Verdict            string    `db:"verdict"`
+	DetectionState     []byte    `db:"detection_state"`
+	OptimizationResult []byte    `db:"optimization_result"`
 }
 
 func (r *PostgresSnapshotRepository) SaveOptimizationOutcome(
@@ -299,10 +302,11 @@ func (r *PostgresSnapshotRepository) LatestOptimizationOutcome(
 	var row optimizationOutcomeRow
 
 	err := sqlx.GetContext(ctx, Executor(ctx, r.db), &row, `
-		SELECT snapshot_id, verdict, detection_state, optimization_result
-		FROM optimization_results
-		WHERE event_id = $1
-		ORDER BY id DESC
+		SELECT o.snapshot_id, s.window_end AS server_time, o.verdict, o.detection_state, o.optimization_result
+		FROM optimization_results o
+		JOIN snapshots s ON s.snapshot_id = o.snapshot_id
+		WHERE o.event_id = $1
+		ORDER BY o.id DESC
 		LIMIT 1`, eventID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.OptimizationOutcome{}, repository.ErrOptimizationOutcomeMissing
@@ -313,6 +317,76 @@ func (r *PostgresSnapshotRepository) LatestOptimizationOutcome(
 	}
 
 	return domain.OptimizationOutcome(row), nil
+}
+
+type sensorSetRow struct {
+	PointID             string     `db:"point_id"`
+	RouteID             string     `db:"route_id"`
+	ObservationPointIDs []byte     `db:"observation_point_ids"`
+	ChangedAt           *time.Time `db:"changed_at"`
+}
+
+func (r *PostgresSnapshotRepository) ListSensorSets(ctx context.Context, eventID string) ([]domain.SensorSet, error) {
+	var rows []sensorSetRow
+
+	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
+		SELECT point_id, route_id, observation_point_ids, changed_at
+		FROM anchor_sensor_sets
+		WHERE event_id = $1
+		ORDER BY point_id, route_id`, eventID)
+	if err != nil {
+		return nil, fmt.Errorf("select sensor sets: %w", err)
+	}
+
+	sets := make([]domain.SensorSet, 0, len(rows))
+
+	for _, row := range rows {
+		set := domain.SensorSet{
+			Anchor:              domain.GraphAnchor{PointID: row.PointID, RouteID: row.RouteID},
+			ObservationPointIDs: nil,
+			ChangedAt:           time.Time{},
+		}
+
+		if err := json.Unmarshal(row.ObservationPointIDs, &set.ObservationPointIDs); err != nil {
+			return nil, fmt.Errorf("decode sensor set: %w", err)
+		}
+
+		if row.ChangedAt != nil {
+			set.ChangedAt = *row.ChangedAt
+		}
+
+		sets = append(sets, set)
+	}
+
+	return sets, nil
+}
+
+func (r *PostgresSnapshotRepository) SaveSensorSets(ctx context.Context, eventID string, sets []domain.SensorSet) error {
+	return RunInTransaction(ctx, r.db, func(ctx context.Context) error {
+		for _, set := range sets {
+			ids, err := json.Marshal(set.ObservationPointIDs)
+			if err != nil {
+				return fmt.Errorf("encode sensor set: %w", err)
+			}
+
+			var changedAt *time.Time
+			if !set.ChangedAt.IsZero() {
+				changedAt = &set.ChangedAt
+			}
+
+			_, err = Executor(ctx, r.db).ExecContext(ctx, `
+				INSERT INTO anchor_sensor_sets (event_id, point_id, route_id, observation_point_ids, changed_at)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (event_id, point_id, route_id) DO UPDATE
+				SET observation_point_ids = EXCLUDED.observation_point_ids, changed_at = EXCLUDED.changed_at`,
+				eventID, set.Anchor.PointID, set.Anchor.RouteID, ids, changedAt)
+			if err != nil {
+				return fmt.Errorf("upsert sensor set: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 func nullableJSON(value []byte) any {

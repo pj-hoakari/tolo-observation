@@ -42,19 +42,19 @@ func (m *MockMeasurementRepository) EXPECT() *MockMeasurementRepositoryMockRecor
 	return m.recorder
 }
 
-// ListWindowEndingAfter mocks base method.
-func (m *MockMeasurementRepository) ListWindowEndingAfter(ctx context.Context, eventID string, after time.Time) ([]domain.Measurement, error) {
+// ListWindowEndingSince mocks base method.
+func (m *MockMeasurementRepository) ListWindowEndingSince(ctx context.Context, eventID string, since time.Time) ([]domain.Measurement, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListWindowEndingAfter", ctx, eventID, after)
+	ret := m.ctrl.Call(m, "ListWindowEndingSince", ctx, eventID, since)
 	ret0, _ := ret[0].([]domain.Measurement)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListWindowEndingAfter indicates an expected call of ListWindowEndingAfter.
-func (mr *MockMeasurementRepositoryMockRecorder) ListWindowEndingAfter(ctx, eventID, after any) *gomock.Call {
+// ListWindowEndingSince indicates an expected call of ListWindowEndingSince.
+func (mr *MockMeasurementRepositoryMockRecorder) ListWindowEndingSince(ctx, eventID, since any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWindowEndingAfter", reflect.TypeOf((*MockMeasurementRepository)(nil).ListWindowEndingAfter), ctx, eventID, after)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWindowEndingSince", reflect.TypeOf((*MockMeasurementRepository)(nil).ListWindowEndingSince), ctx, eventID, since)
 }
 
 // RecordAll mocks base method.

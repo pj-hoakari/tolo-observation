@@ -128,8 +128,10 @@ func run() error {
 	snapshots := dbinfra.NewPostgresSnapshotRepository(db)
 	observationSettings := dbinfra.NewPostgresObservationSettingsRepository(db)
 
+	graphs := connectinfra.NewGraphSupplyClient(http.DefaultClient, graphAuthoringURL)
+
 	cycle := application.NewObservationCycle(
-		connectinfra.NewGraphSupplyClient(http.DefaultClient, graphAuthoringURL),
+		graphs,
 		connectinfra.NewFlowControlClient(flowControlURL),
 		edgeDeviceRepository,
 		measurementRepository,
@@ -146,6 +148,7 @@ func run() error {
 	measurements := application.NewMeasurementIngestService(
 		edgeDeviceRepository,
 		measurementRepository,
+		graphs,
 		cycle,
 	)
 

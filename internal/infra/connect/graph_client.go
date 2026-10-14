@@ -83,6 +83,28 @@ func (c *GraphSupplyClient) ObservationPointMappings(
 				PointID: mapping.GetAnchor().GetPointId(),
 				RouteID: mapping.GetAnchor().GetRouteId(),
 			},
+			Method: domain.MeasurementMethodCamera,
+		})
+	}
+
+	return mappings, nil
+}
+
+func (c *GraphSupplyClient) QrLocations(ctx context.Context, eventID, revisionID string) ([]domain.ObservationPointMapping, error) {
+	res, err := c.client.GetQrLocations(ctx, connectrpc.NewRequest(&graphv1.GetQrLocationsRequest{EventId: eventID, RevisionId: revisionID}))
+	if err != nil {
+		return nil, fmt.Errorf("call GetQrLocations: %w", err)
+	}
+
+	mappings := make([]domain.ObservationPointMapping, 0, len(res.Msg.GetQrLocations()))
+	for _, location := range res.Msg.GetQrLocations() {
+		mappings = append(mappings, domain.ObservationPointMapping{
+			ObservationPointID: domain.ObservationPointID(location.GetQrLocationId()),
+			Anchor: domain.GraphAnchor{
+				PointID: location.GetAnchor().GetPointId(),
+				RouteID: location.GetAnchor().GetRouteId(),
+			},
+			Method: domain.MeasurementMethodQR,
 		})
 	}
 

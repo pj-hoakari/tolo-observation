@@ -5,13 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"maps"
 	"strings"
 	"testing"
+	"time"
 
 	connectrpc "connectrpc.com/connect"
 	"go.opentelemetry.io/otel/trace"
 
+	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
+	"github.com/pj-hoakari/tolo-observation/internal/domain"
 	"github.com/pj-hoakari/tolo-observation/internal/logging"
 )
 
@@ -135,4 +140,32 @@ func withSampledSpan(t *testing.T, ctx context.Context) context.Context {
 		SpanID:     spanID,
 		TraceFlags: trace.FlagsSampled,
 	}))
+}
+
+func TestNewProtoSnapshotRouteFlows(t *testing.T) {
+	t.Parallel()
+
+	scalar := 2.5
+	snapshot := newProtoSnapshot(&domain.Snapshot{
+		ID: "snapshot", EventID: "event", WindowStart: time.Unix(0, 0), WindowEnd: time.Unix(60, 0), PointScores: nil,
+		RouteScores: []domain.RouteScore{
+			{RouteID: "r-camera", Forward: 4, Backward: 1, ScalarFlow: nil, StagnationScore: nil, Exhaustive: true},
+			{RouteID: "r-qr", Forward: 0, Backward: 0, ScalarFlow: &scalar, StagnationScore: nil, Exhaustive: false},
+		},
+	})
+
+	got := map[string]string{}
+	for _, route := range snapshot.GetRouteScores() {
+		got[route.GetRouteId()] = fmt.Sprintf("%v", route.GetFlow())
+	}
+
+	want := map[string]string{
+		"r-camera": fmt.Sprintf("%v", &kernelv1.RouteScore_DirectionalFlow{
+			DirectionalFlow: &kernelv1.DirectionalFlow{Forward: 4, Backward: 1},
+		}),
+		"r-qr": fmt.Sprintf("%v", &kernelv1.RouteScore_ScalarFlow{ScalarFlow: 2.5}),
+	}
+	if !maps.Equal(got, want) {
+		t.Errorf("route flows = %v, want %v", got, want)
+	}
 }
