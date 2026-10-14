@@ -111,7 +111,7 @@ message Measurement {
   google.protobuf.Timestamp window_start = 2;
   google.protobuf.Timestamp window_end = 3;
   int32 count_in = 4;   // ウィンドウ内の流入計上
-  int32 count_out = 5;  // ウィンドウ内の流出計上
+  int32 count_out = 5;  // ウィンドウ内の流出計上。source=QR のときは 0
   MeasurementSource source = 6;
   string qr_location_id = 7;  // source=QR のとき必須（設置箇所。正本はグラフ編集の QrLocation）。source=EDGE のときは空
   optional double mean_detected_people = 8;  // ウィンドウ内の視野内検知人数（検知フレームごとの人数の平均。人）。0 以上の有限値
@@ -127,6 +127,7 @@ message ReportMeasurementsRequest {
   string event_id = 1;
   string edge_device_id = 2;  // QR 由来の場合は空
   repeated Measurement measurements = 3;
+  string tenant_id = 4;  // QR 由来（edge_device_id が空）の場合は必須。エッジ端末由来の場合は省略してよい
 }
 message ReportMeasurementsResponse {
   int32 accepted_count = 1;  // この要求で新たに受理した計測値の数。受理済みの組（ADR-0090）の再送は数えない
@@ -333,7 +334,12 @@ message UpdateObservationSettingsResponse {
 - 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、UnregisterEdgeDevice、UpdateObservationPointConfig）も例外としない
   内部 JWT に `event_id` クレームがあればリクエストの `event_id` と突合し、不一致は `permission_denied` を返す
   リクエストが指す子資源（`edge_device_id`、`observation_point_id`、`Measurement.qr_location_id`）がリクエストの `event_id` に属さない場合も `permission_denied` を返す
-  Guest Service からの QR 由来計上はマシン起点の `token_use=service` でクレームを持たないため、リクエストの `event_id` と `qr_location_id` の所属の一致で対象イベントを確定する
+  Guest Service からの QR 由来計上はマシン起点の `token_use=service` でクレームを持たないため、リクエストの `tenant_id` と `event_id` で対象テナント・イベントを受け取る（ADR-0093）
+  本サービスは、`event_id` が `tenant_id` に属すること、`qr_location_id` が `event_id` に属すること（`GetQrLocations` で取得した設置箇所で確かめる）を検証し、満たさない場合は `permission_denied` を返す。テナントとイベントの所属の確かめ方は実装フェーズで確定する
+  `edge_device_id` が空で `tenant_id` も空の要求は `invalid_argument` を返す
+  エッジ端末由来の計上では、テナントを `event_access` のクレームから取る。リクエストに `tenant_id` があればクレームと突合し、不一致は `permission_denied` を返す
+- グラフ要素の合成に使う観測点の組み合わせが前回の合成から変わったとき、本サービスは Flow へ `SENSOR_SET_CHANGED` を送り、そのグラフ要素の履歴の要約から変更前の標本を除く（Flow Control）
+  初めて観測されたグラフ要素では送らない。故障や観測不能化から復帰しても、観測点の組み合わせが同じなら送らない
 - 正準単位への正規化（人/分）は本サービスの責務。エッジはウィンドウ内の計上数を送る
   視野内検知人数（`mean_detected_people`）は時点の人数を表す量であり、人/分へ換算せず人数のまま扱う。停滞量スコアと人数スコアの源泉になる
 - 観測点はグラフのポイントと1対1ではない。スコア算出時に紐づけ（グラフ編集所有）で変換
@@ -344,6 +350,11 @@ message UpdateObservationSettingsResponse {
   保留には上限時間を置き、上限時間を超えても途絶が続くエッジ端末は通常どおり切断する。保留中に Heartbeat が戻ったエッジ端末は、切断も観測不能化も起きなかったものとして扱う
   閾値、母数の下限、上限時間は本サービスの設定とし、値は実装フェーズで確定する。保留の開始と終了、対象の端末数を記録する
   登録解除は `UnregisterEdgeDevice` による明示の操作であり、復帰しない（恒久的）。両者は `EdgeDevice.unregistered` で区別する
+- Flow へ渡す観測の信頼度（`confidence_flag`）は、計測の途絶から本サービスが決める（Flow Control）
+  対象の合成に使う観測点がすべて今の窓で計測していれば OK とする。途絶えた観測点を含む対象は、最後の計測から 15 分までは HOLD、超えたら INVALID とする
+  Heartbeat の途絶による切断で観測不能化した観測点も、計測の途絶と同じく扱う。観測点の設定（`enabled = false`）による観測不能化と、登録解除による観測不能化は、直ちに INVALID とする
+  HOLD の間は、途絶えた観測点の最後の値で合成し、占有量変化は欠測として渡す。HOLD の値は観測スナップショットに入れない
+  途絶えた観測点を含むグラフ要素は、観測スナップショットとスタッフ向けの詳細状況（`GetEventOverview`）で欠測とする。直近有効値も、残りの観測点だけの部分和も出さない
 - エッジ端末の稼働状態は本サービスが Heartbeat から判定し、`ListEdgeDevices` の `EdgeDevice.online` と `last_heartbeat_at` で返す
   稼働中は、観測ページが WebRTC で待ち受けていることを表す（Edge Bridge Service）。観測ページは待ち受けている間だけ Heartbeat を送り、待ち受けをやめたら送らない
   `online` の判定は切断の判定と同じ基準を使う。基準は Heartbeat の途絶30秒とし、観測ページは基準より短い10秒間隔で送る。基準の時間は本サービスの設定であり、呼び出し側に判定を複製させない
@@ -353,6 +364,7 @@ message UpdateObservationSettingsResponse {
   配下観測点は観測不能化（`enabled = false`）し、観測再開の対象から外す
 - 登録解除の取り消しは設けない。撤去した端末を再び使う場合は新規登録とし、グラフ紐づけをやり直す
   機材の入れ替えは登録解除を伴わない。新しい機材に同じ観測ページ URL を設定すれば同一のエッジ端末として続く
+  ただし、計測の水準が変わる機材の入れ替えとラインの増減では、観測点を登録し直す運用とする。本サービスはライン設定を持たず、同じ観測点のままではこれらの変化を検知できないため
 - 登録解除済みのエッジ端末の扱い: `ReportMeasurements`／`Heartbeat` は `failed_precondition` を返す
   発行済みの観測ページ URL は無効となり、開いても計測値を送れない
   `ListEdgeDevices` は既定で解除済みを返さず、`include_unregistered` の指定時のみ含める
@@ -387,6 +399,7 @@ message UpdateObservationSettingsResponse {
   QR 由来（source=QR）の計測値は対象外とする
 - QR 由来計測（source=QR）は設置箇所単位で計上する（QR は設置箇所×種類ごとの発行 URL。計上は設置箇所単位）
   設置箇所は `Measurement.qr_location_id` で指定する。正本はグラフ編集の QrLocation（グラフ要素参照付き）
+  ゲスト用ページを開くたびに、その設置箇所で 1 人の人数増加として数える。QR は向きを持たないため、計上は `count_in` に入れ、`count_out` は 0 とする
 - QR 設置箇所は QR 方式の観測点として扱う。カメラ方式の観測点と対等であり、補完的な位置づけではない
   登録はグラフ編集の `AddQrLocation` が所有し、本サービスは `GetQrLocations` で取得して観測点として読み替える。観測点として別途登録しない
   QR 方式の観測点はエッジ端末に属さない。Heartbeat を持たないため観測不能化の対象外とし、計上がゼロでも障害と判定しない
@@ -394,4 +407,8 @@ message UpdateObservationSettingsResponse {
   併存すると同一の来場者をカメラと QR で二重に数えるため。この制約はグラフ編集が紐づけ時に検証する
 - 観測スコアには計測方式に応じた悉皆性を付す。QR 方式は自発的な読み取りに依存し採取率が未知のため、悉皆計測ではない
   悉皆でないスコアは容量ヒントとの比較（パンク判定）およびポイント間の大小比較に使えない。時系列比較（履歴パーセンタイルによる高停滞判定）にのみ用いる
-  計上値のスコアへの反映方法（QrLocation の GraphAnchor からグラフ要素への写像を含む）は実装フェーズで決定
+- QR 方式の観測点の計上は、QrLocation の GraphAnchor でグラフ要素へ写し、窓の中に終わる計測の `count_in` の合計を窓の長さ（分）で割ってスコアにする
+  ルートに置いた QR は流量スコアのスカラー値（`RouteScore.scalar_flow`。人/分）、ポイントに置いた QR は占有量変化（`PointScore.occupancy_delta`。人/分）とする。人数スコアは欠測とする
+  Guest Service がまとめて送るため、一つの窓に複数の計測が入りうる。カメラ方式のように最新の 1 件だけを使わない
+- 悉皆でないスコアは Flow へ渡さない。Flow の型は悉皆性の欄を持たず、受け取ったスコアを絶対量として比較するため
+  QR 方式は停滞量スコアを作らないため、Flow が悉皆でないスコアに許される時系列比較に使える値はない。Flow に悉皆性の欄を足すのは、悉皆でないスコアを Flow で使う必要が生じたときとする
