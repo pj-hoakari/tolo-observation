@@ -113,8 +113,8 @@ github.com/pj-hoakari/protoc-gen-authz-go v0.3.0 h1:oLKiB3M/JaFROsHR7NHU0+kN6IZz
 github.com/pj-hoakari/protoc-gen-authz-go v0.3.0/go.mod h1:wrZQc2mY9d2WXSt/7P3+4Fp5yesNuQPCrEWqt6UGPqI=
 github.com/pj-hoakari/tolo-graph-authoring v0.1.0-rc.1.0.20261014130411-75998d149228 h1:L3O3xxax6OShkn3YJ0TGsGDdGQoF3XXf6ly/yUn9ZkY=
 github.com/pj-hoakari/tolo-graph-authoring v0.1.0-rc.1.0.20261014130411-75998d149228/go.mod h1:jwGQWfEl2ESsOngFnMCtmZELw761XNwR+IL4qAI0Fd4=
-github.com/pj-hoakari/tolo-kernel-proto v0.3.0 h1:oxeN+b7GKggyY9IAiJ6QWrMNbRgh6DAZ9AnMbm7bkj0=
-github.com/pj-hoakari/tolo-kernel-proto v0.3.0/go.mod h1:dH46KE1uBX0a+aL4VYDFYvdkuNPTmbFWcB6B/xjvekQ=
+github.com/pj-hoakari/tolo-kernel-proto v0.3.1-0.20261014132455-b3f67c99e3e8 h1:lwSpeJWHDtrCIDcUfe0Rxn5Muoxzd92q9BEg8KUMPP8=
+github.com/pj-hoakari/tolo-kernel-proto v0.3.1-0.20261014132455-b3f67c99e3e8/go.mod h1:dH46KE1uBX0a+aL4VYDFYvdkuNPTmbFWcB6B/xjvekQ=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 h1:o4JXh1EVt9k/+g42oCprj/FisM4qX9L3sZB3upGN2ZU=
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=

@@ -232,3 +232,87 @@ func TestPostgresSnapshotRepositorySummarizeArcHistoryAfterSensorSetChange(t *te
 		t.Errorf("sample counts = %v, want r1 without the hour started before its change and r2 untouched", counts)
 	}
 }
+
+func TestPostgresSnapshotRepositoryKeepsMissingAnchorsOutOfHistory(t *testing.T) {
+	repo := NewPostgresSnapshotRepository(testDB)
+	ctx := context.Background()
+	windowEnd := time.Date(2026, time.October, 3, 0, 0, 0, 0, time.UTC)
+
+	snapshot := domain.Snapshot{
+		ID:          "snapshot-missing",
+		EventID:     "event-missing",
+		WindowStart: windowEnd.Add(-time.Minute),
+		WindowEnd:   windowEnd,
+		PointScores: []domain.PointScore{{PointID: "p1", PeopleScore: new(2.0), OccupancyDelta: 1, Exhaustive: true}},
+		RouteScores: []domain.RouteScore{{RouteID: "r1", Forward: 1, Backward: 1, StagnationScore: new(3.0), Exhaustive: true}},
+		Missing:     domain.MissingAnchors{PointIDs: []string{"p2"}, RouteIDs: []string{"r2"}},
+	}
+
+	if err := repo.SaveSnapshot(ctx, "tenant-missing", snapshot); err != nil {
+		t.Fatalf("SaveSnapshot: %v", err)
+	}
+
+	anchors := func(snapshot domain.Snapshot) string {
+		got := ""
+		for _, score := range snapshot.RouteScores {
+			got += score.RouteID + " "
+		}
+
+		for _, score := range snapshot.PointScores {
+			got += score.PointID + " "
+		}
+
+		return got
+	}
+
+	latest, err := repo.LatestSnapshot(ctx, "event-missing")
+	if err != nil {
+		t.Fatalf("LatestSnapshot: %v", err)
+	}
+
+	if !slices.Equal(latest.Missing.PointIDs, []string{"p2"}) || !slices.Equal(latest.Missing.RouteIDs, []string{"r2"}) {
+		t.Errorf("LatestSnapshot missing = %+v, want points [p2] and routes [r2]", latest.Missing)
+	}
+
+	history, err := repo.ListSnapshotsEndingAfter(ctx, "event-missing", windowEnd.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("ListSnapshotsEndingAfter: %v", err)
+	}
+
+	if len(history) != 1 || anchors(history[0]) != "r1 p1 " {
+		t.Errorf("ListSnapshotsEndingAfter = %+v, want scores of r1 and p1 only", history)
+	}
+
+	arcs, err := repo.SummarizeArcHistory(ctx, "event-missing", windowEnd.Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("SummarizeArcHistory: %v", err)
+	}
+
+	if len(arcs) != 1 || arcs[0].RouteID != "r1" {
+		t.Errorf("SummarizeArcHistory = %+v, want r1 only", arcs)
+	}
+}
+
+func TestPostgresSnapshotRepositoryDecodesSnapshotsWithoutMissingAnchors(t *testing.T) {
+	ctx := context.Background()
+	windowEnd := time.Date(2026, time.October, 4, 0, 0, 0, 0, time.UTC)
+
+	if _, err := testDB.ExecContext(ctx, `
+		INSERT INTO snapshots (snapshot_id, tenant_public_id, event_id, window_start, window_end, scores)
+		VALUES ('snapshot-legacy', 'tenant-legacy', 'event-legacy', $1, $2, $3)`,
+		windowEnd.Add(-time.Minute), windowEnd,
+		`{"points":[{"point_id":"p1","people_score":null,"occupancy_delta":1,"exhaustive":true}],"routes":[]}`,
+	); err != nil {
+		t.Fatalf("insert legacy snapshot: %v", err)
+	}
+
+	got, err := NewPostgresSnapshotRepository(testDB).LatestSnapshot(ctx, "event-legacy")
+	if err != nil {
+		t.Fatalf("LatestSnapshot: %v", err)
+	}
+
+	if len(got.PointScores) != 1 || got.PointScores[0].PointID != "p1" ||
+		len(got.Missing.PointIDs)+len(got.Missing.RouteIDs) != 0 {
+		t.Errorf("LatestSnapshot = %+v, want p1 and no missing anchors", got)
+	}
+}

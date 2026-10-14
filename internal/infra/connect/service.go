@@ -7,6 +7,7 @@ import (
 	"time"
 
 	connectrpc "connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
@@ -363,34 +364,28 @@ func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
 		return nil
 	}
 
-	points := make([]*kernelv1.PointScore, 0, len(snapshot.PointScores))
+	points := make([]*kernelv1.PointScore, 0, len(snapshot.PointScores)+len(snapshot.Missing.PointIDs))
 	for _, score := range snapshot.PointScores {
-		var people float64
-		if score.PeopleScore != nil {
-			people = *score.PeopleScore
-		}
-
 		points = append(points, &kernelv1.PointScore{
 			PointId:        score.PointID,
-			PeopleScore:    people,
-			OccupancyDelta: score.OccupancyDelta,
+			PeopleScore:    score.PeopleScore,
+			OccupancyDelta: proto.Float64(score.OccupancyDelta),
 			Exhaustive:     score.Exhaustive,
 		})
 	}
 
-	routes := make([]*kernelv1.RouteScore, 0, len(snapshot.RouteScores))
-	for _, score := range snapshot.RouteScores {
-		var stagnation float64
-		if score.StagnationScore != nil {
-			stagnation = *score.StagnationScore
-		}
+	for _, pointID := range snapshot.Missing.PointIDs {
+		points = append(points, &kernelv1.PointScore{PointId: pointID, PeopleScore: nil, OccupancyDelta: nil, Exhaustive: false})
+	}
 
+	routes := make([]*kernelv1.RouteScore, 0, len(snapshot.RouteScores)+len(snapshot.Missing.RouteIDs))
+	for _, score := range snapshot.RouteScores {
 		route := &kernelv1.RouteScore{
 			RouteId: score.RouteID,
 			Flow: &kernelv1.RouteScore_DirectionalFlow{
 				DirectionalFlow: &kernelv1.DirectionalFlow{Forward: score.Forward, Backward: score.Backward},
 			},
-			StagnationScore: stagnation,
+			StagnationScore: score.StagnationScore,
 			TurnRatio:       nil,
 			Exhaustive:      score.Exhaustive,
 		}
@@ -399,6 +394,12 @@ func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
 		}
 
 		routes = append(routes, route)
+	}
+
+	for _, routeID := range snapshot.Missing.RouteIDs {
+		routes = append(routes, &kernelv1.RouteScore{
+			RouteId: routeID, Flow: nil, StagnationScore: nil, TurnRatio: nil, Exhaustive: false,
+		})
 	}
 
 	return &kernelv1.ObservationSnapshot{

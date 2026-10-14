@@ -92,6 +92,12 @@ type Snapshot struct {
 	WindowEnd   time.Time
 	PointScores []PointScore
 	RouteScores []RouteScore
+	Missing     MissingAnchors
+}
+
+type MissingAnchors struct {
+	PointIDs []string
+	RouteIDs []string
 }
 
 type ArcHistory struct {
@@ -276,6 +282,7 @@ func NewSnapshot(
 		WindowEnd:   windowEnd,
 		PointScores: nil,
 		RouteScores: nil,
+		Missing:     MissingAnchors{PointIDs: nil, RouteIDs: nil},
 	}
 
 	var (
@@ -289,15 +296,19 @@ func NewSnapshot(
 		switch {
 		case anchor.RouteID != "" && score.confidence == confidenceInvalid:
 			gaps.InvalidRouteIDs = append(gaps.InvalidRouteIDs, anchor.RouteID)
+			snapshot.Missing.RouteIDs = append(snapshot.Missing.RouteIDs, anchor.RouteID)
 		case anchor.RouteID != "" && score.confidence == confidenceHold:
 			gaps.HeldRouteScores = append(gaps.HeldRouteScores, score.route(anchor.RouteID))
+			snapshot.Missing.RouteIDs = append(snapshot.Missing.RouteIDs, anchor.RouteID)
 		case anchor.RouteID != "":
 			snapshot.RouteScores = append(snapshot.RouteScores, score.route(anchor.RouteID))
 			sensors = append(sensors, score.sensorSet(anchor))
 		case anchor.PointID != "" && score.confidence == confidenceInvalid:
 			gaps.InvalidPointIDs = append(gaps.InvalidPointIDs, anchor.PointID)
+			snapshot.Missing.PointIDs = append(snapshot.Missing.PointIDs, anchor.PointID)
 		case anchor.PointID != "" && score.confidence == confidenceHold:
 			gaps.HeldPointScores = append(gaps.HeldPointScores, score.point(anchor.PointID))
+			snapshot.Missing.PointIDs = append(snapshot.Missing.PointIDs, anchor.PointID)
 		case anchor.PointID != "":
 			snapshot.PointScores = append(snapshot.PointScores, score.point(anchor.PointID))
 			sensors = append(sensors, score.sensorSet(anchor))
