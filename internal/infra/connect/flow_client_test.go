@@ -71,8 +71,12 @@ func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 	got := map[string]string{}
 
 	for _, occupancy := range observations.GetNodeOccupancies() {
-		got[occupancy.GetNodeId()] = fmt.Sprintf("%v/%v/%v",
-			occupancy.Occupancy != nil, occupancy.GetOccupancyDelta(), occupancy.GetConfidenceFlag())
+		var delta any
+		if occupancy.OccupancyDelta != nil {
+			delta = occupancy.GetOccupancyDelta()
+		}
+
+		got[occupancy.GetNodeId()] = fmt.Sprintf("%v/%v/%v", occupancy.Occupancy != nil, delta, occupancy.GetConfidenceFlag())
 	}
 
 	for _, flow := range observations.GetArcFlows() {
@@ -84,7 +88,7 @@ func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 	}
 
 	want := map[string]string{
-		"p-held":                          "true/2/CONFIDENCE_FLAG_HOLD",
+		"p-held":                          "true/<nil>/CONFIDENCE_FLAG_HOLD",
 		"p-invalid":                       "false/0/CONFIDENCE_FLAG_INVALID",
 		"r-held/FLOW_DIRECTION_A_TO_B":    "5/CONFIDENCE_FLAG_HOLD",
 		"r-held/FLOW_DIRECTION_B_TO_A":    "1/CONFIDENCE_FLAG_HOLD",

@@ -641,18 +641,19 @@ func TestObservationCycleOfflineObservationPoints(t *testing.T) {
 
 	requests, _ := flow.flow.received()
 
-	got := map[string]flowv1.ConfidenceFlag{}
+	got := map[string]string{}
 	for _, occupancy := range requests[len(requests)-1].GetObservations().GetNodeOccupancies() {
-		got[occupancy.GetNodeId()] = occupancy.GetConfidenceFlag()
+		got[occupancy.GetNodeId()] = fmt.Sprintf("%v/occupancy_delta_set=%v/occupancy=%v",
+			occupancy.GetConfidenceFlag(), occupancy.OccupancyDelta != nil, occupancy.GetOccupancy())
 	}
 
-	want := map[string]flowv1.ConfidenceFlag{
-		"p1": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD,
-		"p2": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID,
-		"p3": flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID,
+	want := map[string]string{
+		"p1": "CONFIDENCE_FLAG_HOLD/occupancy_delta_set=false/occupancy=2.5",
+		"p2": "CONFIDENCE_FLAG_INVALID/occupancy_delta_set=true/occupancy=0",
+		"p3": "CONFIDENCE_FLAG_INVALID/occupancy_delta_set=true/occupancy=0",
 	}
 	if !maps.Equal(got, want) {
-		t.Errorf("node confidence of a device without heartbeats "+
+		t.Errorf("node occupancies of a device without heartbeats "+
 			"(hall 10 min and lobby 16 min since last measurement, gate disabled with a fresh one) = %v, want %v", got, want)
 	}
 }

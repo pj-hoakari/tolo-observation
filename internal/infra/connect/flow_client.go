@@ -239,10 +239,15 @@ func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeI
 
 	addPoint := func(score domain.PointScore, flag flowv1.ConfidenceFlag) {
 		if nodeIDs[score.PointID] {
+			delta := proto.Float64(score.OccupancyDelta)
+			if flag == flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD {
+				delta = nil
+			}
+
 			observations.NodeOccupancies = append(observations.NodeOccupancies, &flowv1.NodeOccupancy{
 				NodeId:            proto.String(score.PointID),
 				Occupancy:         score.PeopleScore,
-				OccupancyDelta:    proto.Float64(score.OccupancyDelta),
+				OccupancyDelta:    delta,
 				SameSensorArrival: proto.Bool(false),
 				ConfidenceFlag:    flag.Enum(),
 			})
