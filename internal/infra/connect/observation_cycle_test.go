@@ -12,11 +12,11 @@ import (
 	connectrpc "connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	flowv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/flow/v1"
-	"github.com/pj-hoakari/tolo-observation/gen/tolo/flow/v1/flowv1connect"
 	graphv1 "github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1"
 	"github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1/graphv1connect"
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
+	flowv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/flow/v1"
+	"github.com/pj-hoakari/tolo-observation/gen/tolo/flow/v1/flowv1connect"
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 )
 

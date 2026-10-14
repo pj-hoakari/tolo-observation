@@ -102,7 +102,7 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 	}
 
 	return RegisterEdgeDeviceOutput{
-		Device:             s.view(device),
+		Device: s.view(device),
 		ObservationPageURL: strings.NewReplacer(
 			"{tenant_id}", device.TenantPublicID,
 			"{event_id}", device.EventID,
