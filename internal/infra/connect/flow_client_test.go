@@ -3,6 +3,7 @@ package connect
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -59,8 +60,8 @@ func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 	stagnation := 3.0
 	snapshot := domain.Snapshot{ID: "snapshot", WindowStart: time.Unix(0, 0), WindowEnd: time.Unix(60, 0)}
 	gaps := domain.Gaps{
-		HeldPointScores: []domain.PointScore{{PointID: "p-held", PeopleScore: &people, OccupancyDelta: 2}},
-		HeldRouteScores: []domain.RouteScore{{RouteID: "r-held", Forward: 5, Backward: 1, StagnationScore: &stagnation}},
+		HeldPointScores: []domain.PointScore{{PointID: "p-held", PeopleScore: &people, OccupancyDelta: 2, Exhaustive: true}},
+		HeldRouteScores: []domain.RouteScore{{RouteID: "r-held", Forward: 5, Backward: 1, StagnationScore: &stagnation, Exhaustive: true}},
 		InvalidPointIDs: []string{"p-invalid"},
 		InvalidRouteIDs: []string{"r-invalid"},
 	}
@@ -98,5 +99,48 @@ func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 	}
 	if !maps.Equal(got, want) {
 		t.Errorf("observations = %v, want %v", got, want)
+	}
+}
+
+func TestFlowRequestLeavesOutScoresThatAreNotExhaustive(t *testing.T) {
+	end := time.Unix(60, 0)
+	snapshot := domain.Snapshot{
+		ID:          "snapshot",
+		WindowStart: time.Unix(0, 0),
+		WindowEnd:   end,
+		PointScores: []domain.PointScore{
+			{PointID: "p-camera", PeopleScore: nil, OccupancyDelta: 1, Exhaustive: true},
+			{PointID: "p-qr", PeopleScore: nil, OccupancyDelta: 4, Exhaustive: false},
+		},
+		RouteScores: []domain.RouteScore{
+			{RouteID: "r-camera", Forward: 2, Backward: 1, StagnationScore: nil, Exhaustive: true},
+			{RouteID: "r-qr", Forward: 7, Backward: 0, StagnationScore: nil, Exhaustive: false},
+		},
+	}
+	nodes := map[string]bool{"p-camera": true, "p-qr": true}
+	edges := map[string]bool{"r-camera": true, "r-qr": true}
+
+	observations := flowObservations(snapshot, domain.Gaps{}, nodes, edges)
+
+	var got []string
+	for _, occupancy := range observations.GetNodeOccupancies() {
+		got = append(got, occupancy.GetNodeId())
+	}
+
+	for _, flow := range observations.GetArcFlows() {
+		got = append(got, flow.GetEdgeId())
+	}
+
+	if want := []string{"p-camera", "r-camera", "r-camera"}; !slices.Equal(got, want) {
+		t.Errorf("observed targets = %v, want only the exhaustive scores %v", got, want)
+	}
+
+	var series []string
+	for _, arc := range flowHistoryDigest([]domain.Snapshot{snapshot}, nil, edges).GetWindowSeries() {
+		series = append(series, arc.GetEdgeId())
+	}
+
+	if want := []string{"r-camera"}; !slices.Equal(series, want) {
+		t.Errorf("history window series = %v, want only the exhaustive route %v", series, want)
 	}
 }

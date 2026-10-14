@@ -234,13 +234,13 @@ func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeI
 	}
 
 	addRoute := func(score domain.RouteScore, flag flowv1.ConfidenceFlag) {
-		if edgeIDs[score.RouteID] {
+		if edgeIDs[score.RouteID] && score.Exhaustive {
 			appendArcObservations(observations, score, flag)
 		}
 	}
 
 	addPoint := func(score domain.PointScore, flag flowv1.ConfidenceFlag) {
-		if nodeIDs[score.PointID] {
+		if nodeIDs[score.PointID] && score.Exhaustive {
 			delta := proto.Float64(score.OccupancyDelta)
 			if flag == flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD {
 				delta = nil
@@ -380,7 +380,7 @@ func flowHistoryDigest(
 		at := timestamppb.New(snapshot.WindowEnd)
 
 		for _, score := range snapshot.RouteScores {
-			if !edgeIDs[score.RouteID] {
+			if !edgeIDs[score.RouteID] || !score.Exhaustive {
 				continue
 			}
 
