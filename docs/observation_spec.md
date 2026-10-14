@@ -61,7 +61,7 @@ package: `tolo.observation.v1`
 | Guest Service | （PubSub: `guest-status` へ publish） | スナップショット確定・行列状態更新のたびにゲスト向け状況（混雑・行列。`tolo.guest.v1.GuestStatus`。ID と数値のみ）を publish。誘導提案・表示名は含めない（提案はスタッフ向け、表示名の付与は Guest Service） | （ゲスト側 GuestViewUpdated の源） |
 | Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用）。Operation の型へ変換して渡す | — |
 | Reference Aggregation | GetReferenceValues | コールドスタート用参照値の取得（短期イベント等）。Flow の型へ変換して `OptimizeRequest.references` に同梱する | — |
-| Graph Authoring | GetQrLocations | QR 設置箇所の取得（QR 方式の観測点として扱う）。GetCurrentRevision で得た `revision_id` を指定する | — |
+| Graph Authoring | GetQrLocations | QR 設置箇所の取得（QR 方式の観測点として扱う）。GetCurrentRevision で得た `revision_id` を指定する。QR 由来計上の受け付けではリクエストの `tenant_id`、観測サイクルではイベントの所属テナントを `tenant_id` に入れる | — |
 
 ## 参考 proto 定義
 
@@ -335,7 +335,8 @@ message UpdateObservationSettingsResponse {
   内部 JWT に `event_id` クレームがあればリクエストの `event_id` と突合し、不一致は `permission_denied` を返す
   リクエストが指す子資源（`edge_device_id`、`observation_point_id`、`Measurement.qr_location_id`）がリクエストの `event_id` に属さない場合も `permission_denied` を返す
   Guest Service からの QR 由来計上はマシン起点の `token_use=service` でクレームを持たないため、リクエストの `tenant_id` と `event_id` で対象テナント・イベントを受け取る（ADR-0093）
-  本サービスは、`event_id` が `tenant_id` に属すること、`qr_location_id` が `event_id` に属すること（`GetQrLocations` で取得した設置箇所で確かめる）を検証し、満たさない場合は `permission_denied` を返す。テナントとイベントの所属の確かめ方は実装フェーズで確定する
+  本サービスは、`event_id` が `tenant_id` に属すること、`qr_location_id` が `event_id` に属することを検証し、満たさない場合は `permission_denied` を返す
+  検証には `GetQrLocations` を使う。リクエストの `tenant_id` を渡し、グラフ編集がイベントの所属テナントと一致しないとして拒否したら、テナントとイベントの所属を満たさないとする。設置箇所の所属は、返った設置箇所に `qr_location_id` が含まれるかで確かめる
   `edge_device_id` が空で `tenant_id` も空の要求は `invalid_argument` を返す
   エッジ端末由来の計上では、テナントを `event_access` のクレームから取る。リクエストに `tenant_id` があればクレームと突合し、不一致は `permission_denied` を返す
 - グラフ要素の合成に使う観測点の組み合わせが前回の合成から変わったとき、本サービスは Flow へ `SENSOR_SET_CHANGED` を送り、そのグラフ要素の履歴の要約から変更前の標本を除く（Flow Control）
