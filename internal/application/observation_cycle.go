@@ -23,6 +23,7 @@ type OptimizeInput struct {
 	Graph            domain.Graph
 	Snapshot         domain.Snapshot
 	Gaps             domain.Gaps
+	SensorSetChanges []domain.SensorSet
 	History          []domain.Snapshot
 	ArcHistory       []domain.ArcHistory
 	AvailableHistory time.Duration
@@ -103,9 +104,20 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return err
 	}
 
-	snapshot, gaps, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings, states)
+	snapshot, gaps, composed, err := domain.NewSnapshot(eventID, windowStart, windowEnd, measurements, mappings, states)
 	if err != nil {
 		return err
+	}
+
+	recorded, err := c.snapshots.ListSensorSets(ctx, eventID)
+	if err != nil {
+		return fmt.Errorf("list sensor sets: %w", err)
+	}
+
+	sensorSets, updated := domain.TrackSensorSets(recorded, composed, windowEnd)
+
+	if err := c.snapshots.SaveSensorSets(ctx, eventID, updated); err != nil {
+		return fmt.Errorf("save sensor sets: %w", err)
 	}
 
 	settings, err := findObservationSettings(ctx, c.settings, eventID)
@@ -117,6 +129,8 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	if err != nil {
 		return fmt.Errorf("list history snapshots: %w", err)
 	}
+
+	history = domain.HistorySinceSensorSetChanges(history, sensorSets)
 
 	since := windowEnd.Add(-time.Duration(settings.HistoryWindowDays) * 24 * time.Hour)
 
@@ -134,13 +148,17 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("save snapshot: %w", err)
 	}
 
-	var previous *domain.OptimizationOutcome
+	var (
+		previous      *domain.OptimizationOutcome
+		previousCycle time.Time
+	)
 
 	latest, err := c.snapshots.LatestOptimizationOutcome(ctx, eventID)
 
 	switch {
 	case err == nil:
 		previous = &latest
+		previousCycle = latest.ServerTime
 	case !errors.Is(err, repository.ErrOptimizationOutcomeMissing):
 		return fmt.Errorf("find previous optimization outcome: %w", err)
 	}
@@ -154,6 +172,7 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		Graph:            graph,
 		Snapshot:         snapshot,
 		Gaps:             gaps,
+		SensorSetChanges: domain.SensorSetsChangedAfter(sensorSets, previousCycle),
 		History:          history,
 		ArcHistory:       arcHistory,
 		AvailableHistory: availableHistory,

@@ -156,6 +156,7 @@ type anchorScore struct {
 	rateIn     float64
 	rateOut    float64
 	detected   *float64
+	sensors    []ObservationPointID
 }
 
 func NewSnapshot(
@@ -164,10 +165,10 @@ func NewSnapshot(
 	measurements []Measurement,
 	mappings []ObservationPointMapping,
 	states map[ObservationPointID]ObservationPointState,
-) (Snapshot, Gaps, error) {
+) (Snapshot, Gaps, []SensorSet, error) {
 	id, err := newPublicID()
 	if err != nil {
-		return Snapshot{}, Gaps{}, err
+		return Snapshot{}, Gaps{}, nil, err
 	}
 
 	readings := map[ObservationPointID]*reading{}
@@ -203,9 +204,11 @@ func NewSnapshot(
 
 		score, ok := anchors[mapping.Anchor]
 		if !ok {
-			score = &anchorScore{confidence: confidenceOK, rateIn: 0, rateOut: 0, detected: nil}
+			score = &anchorScore{confidence: confidenceOK, rateIn: 0, rateOut: 0, detected: nil, sensors: nil}
 			anchors[mapping.Anchor] = score
 		}
+
+		score.sensors = append(score.sensors, mapping.ObservationPointID)
 
 		current, ok := readings[mapping.ObservationPointID]
 		if !ok {
@@ -238,7 +241,10 @@ func NewSnapshot(
 		RouteScores: nil,
 	}
 
-	var gaps Gaps
+	var (
+		gaps    Gaps
+		sensors []SensorSet
+	)
 
 	for _, anchor := range slices.SortedFunc(maps.Keys(anchors), compareAnchors) {
 		score := anchors[anchor]
@@ -250,16 +256,18 @@ func NewSnapshot(
 			gaps.HeldRouteScores = append(gaps.HeldRouteScores, score.route(anchor.RouteID))
 		case anchor.RouteID != "":
 			snapshot.RouteScores = append(snapshot.RouteScores, score.route(anchor.RouteID))
+			sensors = append(sensors, score.sensorSet(anchor))
 		case anchor.PointID != "" && score.confidence == confidenceInvalid:
 			gaps.InvalidPointIDs = append(gaps.InvalidPointIDs, anchor.PointID)
 		case anchor.PointID != "" && score.confidence == confidenceHold:
 			gaps.HeldPointScores = append(gaps.HeldPointScores, score.point(anchor.PointID))
 		case anchor.PointID != "":
 			snapshot.PointScores = append(snapshot.PointScores, score.point(anchor.PointID))
+			sensors = append(sensors, score.sensorSet(anchor))
 		}
 	}
 
-	return snapshot, gaps, nil
+	return snapshot, gaps, sensors, nil
 }
 
 func compareAnchors(a, b GraphAnchor) int {
@@ -268,6 +276,10 @@ func compareAnchors(a, b GraphAnchor) int {
 
 func (s anchorScore) route(routeID string) RouteScore {
 	return RouteScore{RouteID: routeID, Forward: s.rateIn, Backward: s.rateOut, StagnationScore: s.detected, Exhaustive: true}
+}
+
+func (s anchorScore) sensorSet(anchor GraphAnchor) SensorSet {
+	return SensorSet{Anchor: anchor, ObservationPointIDs: slices.Compact(slices.Sorted(slices.Values(s.sensors))), ChangedAt: time.Time{}}
 }
 
 func (s anchorScore) point(pointID string) PointScore {
@@ -294,6 +306,7 @@ func addMean(total *float64, values []float64) *float64 {
 
 type OptimizationOutcome struct {
 	SnapshotID         string
+	ServerTime         time.Time
 	Verdict            string
 	DetectionState     []byte
 	OptimizationResult []byte

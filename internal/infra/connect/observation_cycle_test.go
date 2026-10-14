@@ -55,6 +55,15 @@ func (s *graphStub) mapTo(observationPointID string, anchor *kernelv1.GraphAncho
 	s.mappings = append(s.mappings, &graphv1.ObservationPointMapping{ObservationPointId: observationPointID, Anchor: anchor})
 }
 
+func (s *graphStub) unmap(observationPointID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.mappings = slices.DeleteFunc(s.mappings, func(mapping *graphv1.ObservationPointMapping) bool {
+		return mapping.GetObservationPointId() == observationPointID
+	})
+}
+
 func (s *graphStub) GetCurrentRevision(
 	_ context.Context,
 	req *connectrpc.Request[graphv1.GetCurrentRevisionRequest],
@@ -590,6 +599,211 @@ func TestObservationCycleConfidenceFlags(t *testing.T) {
 		wantArc := "FLOW_DIRECTION_A_TO_B:0/CONFIDENCE_FLAG_INVALID FLOW_DIRECTION_B_TO_A:0/CONFIDENCE_FLAG_INVALID "
 		if got := arc(request); got != wantArc {
 			t.Errorf("r1 observations = %q, want %q", got, wantArc)
+		}
+	})
+}
+
+func TestObservationCycleSensorSetChanges(t *testing.T) {
+	const eventID = "5e4505e7c4a49e00"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{
+			EventId:               eventID,
+			Name:                  "gate-1",
+			ObservationPointNames: []string{"corridor", "aisle", "hall"},
+		},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
+	points := registered.Msg.GetDevice().GetObservationPoints()
+	corridor, aisle, hall := points[0].GetObservationPointId(), points[1].GetObservationPointId(), points[2].GetObservationPointId()
+	r1 := &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}}
+
+	flow.graph.mapTo(corridor, r1)
+	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
+	flow.graph.mapTo(aisle, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r9"}})
+
+	reportToken := flow.token(t, eventID, "events.report")
+
+	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+		EventId:                   eventID,
+		EdgeDeviceId:              deviceID,
+		ActiveObservationPointIds: []string{corridor, aisle, hall},
+	})); err != nil {
+		t.Fatalf("Heartbeat() error = %v", err)
+	}
+
+	report := func(t *testing.T, windowStart time.Time) {
+		t.Helper()
+
+		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+			EventId:      eventID,
+			EdgeDeviceId: deviceID,
+			Measurements: []*observationv1.Measurement{
+				edgeMeasurement(corridor, windowStart),
+				edgeMeasurement(aisle, windowStart),
+				edgeMeasurement(hall, windowStart),
+			},
+		})); err != nil {
+			t.Fatalf("ReportMeasurements() error = %v", err)
+		}
+	}
+
+	cycle := func(t *testing.T) *flowv1.OptimizeRequest {
+		t.Helper()
+
+		report(t, time.Now().Add(-time.Minute))
+
+		requests, _ := flow.flow.received()
+
+		return requests[len(requests)-1]
+	}
+
+	events := func(request *flowv1.OptimizeRequest) []string {
+		var got []string
+		for _, event := range request.GetEvents() {
+			got = append(got, fmt.Sprintf("%v %s", event.GetKind(), event.GetTargetId()))
+		}
+
+		return got
+	}
+
+	r1Flows := func(request *flowv1.OptimizeRequest) []float64 {
+		var got []float64
+
+		for _, series := range request.GetHistoryDigest().GetWindowSeries() {
+			if series.GetEdgeId() == "r1" {
+				for _, sample := range series.GetFlowSamples() {
+					got = append(got, sample.GetValue())
+				}
+			}
+		}
+
+		return got
+	}
+
+	r1Stat := func(request *flowv1.OptimizeRequest) *flowv1.ArcHistoryStat {
+		for _, stat := range request.GetHistoryDigest().GetArcStats() {
+			if stat.GetEdgeId() == "r1" {
+				return stat
+			}
+		}
+
+		return nil
+	}
+
+	t.Run("sends no event for anchors observed for the first time", func(t *testing.T) {
+		if got := events(cycle(t)); len(got) != 0 {
+			t.Errorf("events = %v, want none", got)
+		}
+
+		request := cycle(t)
+		if got := events(request); len(got) != 0 {
+			t.Errorf("events = %v, want none", got)
+		}
+
+		if got := r1Flows(request); !slices.Equal(got, []float64{10}) {
+			t.Errorf("r1 flow samples = %v, want the one sample from the corridor", got)
+		}
+
+		if r1Stat(request) == nil {
+			t.Errorf("r1 arc stat is missing, want the stored corridor history")
+		}
+	})
+
+	var changedAt time.Time
+
+	t.Run("sends SENSOR_SET_CHANGED for a route that gains an observation point and drops its history", func(t *testing.T) {
+		flow.graph.unmap(aisle)
+		flow.graph.mapTo(aisle, r1)
+
+		request := cycle(t)
+
+		want := []string{"EVENT_KIND_SENSOR_SET_CHANGED edge:r1"}
+		if got := events(request); !slices.Equal(got, want) {
+			t.Fatalf("events = %v, want %v", got, want)
+		}
+
+		changedAt = request.GetEvents()[0].GetOccurredAt().AsTime()
+		if serverTime := request.GetServerTime().AsTime(); !changedAt.Equal(serverTime) {
+			t.Errorf("occurred_at = %v, want the server time %v", changedAt, serverTime)
+		}
+
+		if got := r1Flows(request); len(got) != 0 {
+			t.Errorf("r1 flow samples = %v, want none from before the change", got)
+		}
+
+		if stat := r1Stat(request); stat != nil {
+			t.Errorf("r1 arc stat = %v, want none across the change", stat)
+		}
+	})
+
+	t.Run("does not repeat the event once Flow Control received it", func(t *testing.T) {
+		request := cycle(t)
+		if got := events(request); len(got) != 0 {
+			t.Errorf("events = %v, want none", got)
+		}
+
+		if got := r1Flows(request); !slices.Equal(got, []float64{20}) {
+			t.Errorf("r1 flow samples = %v, want only the corridor and aisle sample from the change on", got)
+		}
+	})
+
+	t.Run("keeps a route recovering from INVALID with the same points continuous", func(t *testing.T) {
+		setEnabled := func(t *testing.T, enabled bool) {
+			t.Helper()
+
+			if _, err := flow.edgeDevices.UpdateObservationPointConfig(ctx, authorized(
+				flow.token(t, eventID, "events.operate"),
+				&observationv1.UpdateObservationPointConfigRequest{
+					EventId: eventID, ObservationPointId: corridor, Name: "corridor", Enabled: enabled,
+				},
+			)); err != nil {
+				t.Fatalf("UpdateObservationPointConfig() error = %v", err)
+			}
+		}
+
+		setEnabled(t, false)
+
+		request := cycle(t)
+		if flows := request.GetObservations().GetArcFlows(); len(flows) == 0 || flows[0].GetEdgeId() != "r1" ||
+			flows[0].GetConfidenceFlag() != flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID {
+			t.Fatalf("arc flows = %v, want r1 INVALID while the corridor is disabled", flows)
+		}
+
+		setEnabled(t, true)
+
+		if got := events(cycle(t)); len(got) != 0 {
+			t.Errorf("events = %v, want none for a recovery with the same observation points", got)
+		}
+	})
+
+	t.Run("resends the event until Flow Control receives it", func(t *testing.T) {
+		flow.flow.setUnavailable(true)
+		flow.graph.unmap(aisle)
+		report(t, time.Now().Add(-time.Minute))
+		flow.flow.setUnavailable(false)
+
+		request := cycle(t)
+
+		want := []string{"EVENT_KIND_SENSOR_SET_CHANGED edge:r1"}
+		if got := events(request); !slices.Equal(got, want) {
+			t.Fatalf("events = %v, want %v", got, want)
+		}
+
+		if at := request.GetEvents()[0].GetOccurredAt().AsTime(); !at.After(changedAt) || !at.Before(request.GetServerTime().AsTime()) {
+			t.Errorf("occurred_at = %v, want the time of the failed cycle that detected the change", at)
+		}
+
+		if got := events(cycle(t)); len(got) != 0 {
+			t.Errorf("events = %v, want none", got)
 		}
 	})
 }

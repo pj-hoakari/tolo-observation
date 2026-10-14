@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	connectrpc "connectrpc.com/connect"
@@ -60,6 +61,7 @@ func (c *FlowControlClient) Optimize(
 
 	outcome := domain.OptimizationOutcome{
 		SnapshotID:         input.Snapshot.ID,
+		ServerTime:         input.ServerTime,
 		Verdict:            res.Msg.GetVerdict().String(),
 		DetectionState:     detectionState,
 		OptimizationResult: nil,
@@ -115,7 +117,7 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 		DetectionState: detectionState,
 		References:     new(flowv1.Reference),
 		PreviousResult: previousResult,
-		Events:         nil,
+		Events:         flowEvents(input.SensorSetChanges, nodes, edges),
 		Config:         defaultFlowConfig(),
 		ServerTime:     timestamppb.New(input.ServerTime),
 	}, nil
@@ -281,6 +283,34 @@ func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeI
 	}
 
 	return observations
+}
+
+func flowEvents(changes []domain.SensorSet, nodeIDs, edgeIDs map[string]bool) []*flowv1.Event {
+	var events []*flowv1.Event
+
+	for _, change := range slices.SortedStableFunc(slices.Values(changes), func(a, b domain.SensorSet) int {
+		return a.ChangedAt.Compare(b.ChangedAt)
+	}) {
+		var target string
+
+		switch {
+		case edgeIDs[change.Anchor.RouteID]:
+			target = "edge:" + change.Anchor.RouteID
+		case nodeIDs[change.Anchor.PointID]:
+			target = "node:" + change.Anchor.PointID
+		default:
+			continue
+		}
+
+		events = append(events, &flowv1.Event{
+			Kind:       flowv1.EventKind_EVENT_KIND_SENSOR_SET_CHANGED,
+			TargetId:   target,
+			OccurredAt: timestamppb.New(change.ChangedAt),
+			Params:     nil,
+		})
+	}
+
+	return events
 }
 
 func appendArcObservations(observations *flowv1.Observations, score domain.RouteScore, flag flowv1.ConfidenceFlag) {

@@ -61,7 +61,7 @@ func TestNewSnapshot(t *testing.T) {
 		routePointA: active, routePointB: active, nodePoint: active, unmapped: active, silentPoint: active, emptyPoint: active,
 	}
 
-	snapshot, _, err := domain.NewSnapshot("event", start, start.Add(2*time.Minute), measurements, mappings, states)
+	snapshot, _, _, err := domain.NewSnapshot("event", start, start.Add(2*time.Minute), measurements, mappings, states)
 	if err != nil {
 		t.Fatalf("NewSnapshot: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestNewSnapshotOccupancyDeltaPerMinute(t *testing.T) {
 		shortWindow: domain.ObservationPointActive, longWindow: domain.ObservationPointActive,
 	}
 
-	snapshot, _, err := domain.NewSnapshot("event", end.Add(-5*time.Minute), end, measurements, mappings, states)
+	snapshot, _, _, err := domain.NewSnapshot("event", end.Add(-5*time.Minute), end, measurements, mappings, states)
 	if err != nil {
 		t.Fatalf("NewSnapshot: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestNewSnapshotConfidence(t *testing.T) {
 		silent: active, composite: active, noPeople: active, offline10: offline, offline16: offline, offlineNow: offline,
 	}
 
-	snapshot, gaps, err := domain.NewSnapshot("event", start, end, measurements, mappings, states)
+	snapshot, gaps, _, err := domain.NewSnapshot("event", start, end, measurements, mappings, states)
 	if err != nil {
 		t.Fatalf("NewSnapshot: %v", err)
 	}
