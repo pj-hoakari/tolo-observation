@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"fmt"
 	"maps"
 	"testing"
 	"time"
@@ -8,7 +9,7 @@ import (
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
-func TestFlowObservationsOmitsNodeOccupancyWithoutDetectedPeople(t *testing.T) {
+func TestFlowObservationsLeavesOccupancyUnsetWithoutDetectedPeople(t *testing.T) {
 	people := 0.0
 	snapshot := domain.Snapshot{
 		ID:          "snapshot",
@@ -24,12 +25,19 @@ func TestFlowObservationsOmitsNodeOccupancyWithoutDetectedPeople(t *testing.T) {
 
 	observations := flowObservations(snapshot, map[string]bool{"p1": true, "p2": true}, nil)
 
-	got := map[string]float64{}
+	got := map[string]string{}
+
 	for _, occupancy := range observations.GetNodeOccupancies() {
-		got[occupancy.GetNodeId()] = occupancy.GetOccupancy()
+		level := "unset"
+		if occupancy.Occupancy != nil {
+			level = fmt.Sprint(occupancy.GetOccupancy())
+		}
+
+		got[occupancy.GetNodeId()] = fmt.Sprintf("%s/%v", level, occupancy.GetOccupancyDelta())
 	}
 
-	if want := map[string]float64{"p1": 0}; !maps.Equal(got, want) {
-		t.Errorf("node occupancies = %v, want %v without p2, which reported no detected people", got, want)
+	want := map[string]string{"p1": "0/2", "p2": "unset/3"}
+	if !maps.Equal(got, want) {
+		t.Errorf("node occupancies (occupancy/delta) = %v, want %v", got, want)
 	}
 }

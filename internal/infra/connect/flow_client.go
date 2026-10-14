@@ -267,7 +267,7 @@ func flowObservations(snapshot domain.Snapshot, nodeIDs, edgeIDs map[string]bool
 	}
 
 	for _, score := range snapshot.PointScores {
-		if !nodeIDs[score.PointID] || score.PeopleScore == nil {
+		if !nodeIDs[score.PointID] {
 			continue
 		}
 
