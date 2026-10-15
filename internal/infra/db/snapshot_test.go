@@ -144,10 +144,11 @@ func TestPostgresSnapshotRepositorySummarizeArcHistoryFlowSums(t *testing.T) {
 		windowEnd         time.Time
 		forward, backward float64
 		stagnation        float64
+		sameSensorFlow    bool
 	}{
-		{since.Add(10 * time.Minute), 3, 1, 5},
-		{since.Add(20 * time.Minute), 2, 4, 5},
-		{since.Add(90 * time.Minute), 0.5, 0, 2},
+		{since.Add(10 * time.Minute), 3, 1, 5, true},
+		{since.Add(20 * time.Minute), 2, 4, 5, false},
+		{since.Add(90 * time.Minute), 0.5, 0, 2, true},
 	}
 
 	for _, sample := range samples {
@@ -158,7 +159,7 @@ func TestPostgresSnapshotRepositorySummarizeArcHistoryFlowSums(t *testing.T) {
 			WindowEnd:   sample.windowEnd,
 			RouteScores: []domain.RouteScore{{
 				RouteID: "r1", Forward: sample.forward, Backward: sample.backward,
-				StagnationScore: new(sample.stagnation), Exhaustive: true,
+				StagnationScore: new(sample.stagnation), Exhaustive: true, SameSensorFlow: sample.sameSensorFlow,
 			}},
 		})
 		if err != nil {
@@ -176,10 +177,25 @@ func TestPostgresSnapshotRepositorySummarizeArcHistoryFlowSums(t *testing.T) {
 	}
 
 	g := got[0]
-	if g.SampleCount != 3 || math.Abs(g.FlowSum-10.5) > 1e-9 || math.Abs(g.FlowSquareSum-52.25) > 1e-9 ||
-		math.Abs(g.FlowStagnationSum-51) > 1e-9 {
-		t.Errorf("SummarizeArcHistory = %+v, want 3 samples, flow sum 10.5, flow square sum 52.25, flow stagnation sum 51", g)
+	if g.SampleCount != 3 || math.Abs(g.MeanStagnation-4) > 1e-9 {
+		t.Errorf("SummarizeArcHistory = %+v, want 3 samples with mean stagnation 4", g)
 	}
+
+	want := domain.FlowRegression{SampleCount: 3, StagnationSum: 12, FlowSum: 10.5, FlowSquareSum: 52.25, FlowStagnationSum: 51}
+	if !regressionEqual(g.Flow, want) {
+		t.Errorf("SummarizeArcHistory flow = %+v, want %+v", g.Flow, want)
+	}
+
+	want = domain.FlowRegression{SampleCount: 2, StagnationSum: 7, FlowSum: 4.5, FlowSquareSum: 16.25, FlowStagnationSum: 21}
+	if !regressionEqual(g.SameSensorFlow, want) {
+		t.Errorf("SummarizeArcHistory same sensor flow = %+v, want %+v", g.SameSensorFlow, want)
+	}
+}
+
+func regressionEqual(a, b domain.FlowRegression) bool {
+	return a.SampleCount == b.SampleCount && math.Abs(a.StagnationSum-b.StagnationSum) < 1e-9 &&
+		math.Abs(a.FlowSum-b.FlowSum) < 1e-9 && math.Abs(a.FlowSquareSum-b.FlowSquareSum) < 1e-9 &&
+		math.Abs(a.FlowStagnationSum-b.FlowStagnationSum) < 1e-9
 }
 
 func TestPostgresSnapshotRepositorySummarizeArcHistoryAfterSensorSetChange(t *testing.T) {

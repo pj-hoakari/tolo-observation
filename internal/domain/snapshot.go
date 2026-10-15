@@ -83,6 +83,7 @@ type RouteScore struct {
 	ScalarFlow      *float64
 	StagnationScore *float64
 	Exhaustive      bool
+	SameSensorFlow  bool
 }
 
 type Snapshot struct {
@@ -101,12 +102,19 @@ type MissingAnchors struct {
 }
 
 type ArcHistory struct {
-	RouteID           string
+	RouteID        string
+	SampleCount    int
+	P90Stagnation  float64
+	MeanStagnation float64
+	FirstStart     time.Time
+	LastEnd        time.Time
+	Flow           FlowRegression
+	SameSensorFlow FlowRegression
+}
+
+type FlowRegression struct {
 	SampleCount       int
-	P90Stagnation     float64
-	MeanStagnation    float64
-	FirstStart        time.Time
-	LastEnd           time.Time
+	StagnationSum     float64
 	FlowSum           float64
 	FlowSquareSum     float64
 	FlowStagnationSum float64
@@ -115,18 +123,26 @@ type ArcHistory struct {
 const minFlowSensitivitySamples = 12
 
 func (h ArcHistory) FlowSensitivityEta() (float64, bool) {
-	if h.SampleCount < minFlowSensitivitySamples {
+	if h.SameSensorFlow.SampleCount >= minFlowSensitivitySamples {
+		return h.SameSensorFlow.eta()
+	}
+
+	return h.Flow.eta()
+}
+
+func (r FlowRegression) eta() (float64, bool) {
+	if r.SampleCount < minFlowSensitivitySamples {
 		return 0, false
 	}
 
-	n := float64(h.SampleCount)
-	flowVariance := n*h.FlowSquareSum - h.FlowSum*h.FlowSum
+	n := float64(r.SampleCount)
+	flowVariance := n*r.FlowSquareSum - r.FlowSum*r.FlowSum
 
-	if flowVariance <= 1e-9*n*h.FlowSquareSum {
+	if flowVariance <= 1e-9*n*r.FlowSquareSum {
 		return 0, false
 	}
 
-	covariance := n*h.FlowStagnationSum - h.FlowSum*n*h.MeanStagnation
+	covariance := n*r.FlowStagnationSum - r.FlowSum*r.StagnationSum
 	eta := -covariance / flowVariance
 
 	if eta <= 0 {
@@ -326,16 +342,24 @@ func (s anchorScore) route(routeID string) RouteScore {
 	if s.qr {
 		scalar := s.rateIn + s.rateOut
 
-		return RouteScore{RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: &scalar, StagnationScore: s.detected, Exhaustive: false}
+		return RouteScore{
+			RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: &scalar, StagnationScore: s.detected, Exhaustive: false,
+			SameSensorFlow: false,
+		}
 	}
 
 	return RouteScore{
 		RouteID: routeID, Forward: s.rateIn, Backward: s.rateOut, ScalarFlow: nil, StagnationScore: s.detected, Exhaustive: true,
+		SameSensorFlow: s.detected != nil && len(s.distinctSensors()) == 1,
 	}
 }
 
 func (s anchorScore) sensorSet(anchor GraphAnchor) SensorSet {
-	return SensorSet{Anchor: anchor, ObservationPointIDs: slices.Compact(slices.Sorted(slices.Values(s.sensors))), ChangedAt: time.Time{}}
+	return SensorSet{Anchor: anchor, ObservationPointIDs: s.distinctSensors(), ChangedAt: time.Time{}}
+}
+
+func (s anchorScore) distinctSensors() []ObservationPointID {
+	return slices.Compact(slices.Sorted(slices.Values(s.sensors)))
 }
 
 func (s anchorScore) point(pointID string) PointScore {

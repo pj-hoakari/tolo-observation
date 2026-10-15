@@ -72,16 +72,17 @@ func TestNewSnapshot(t *testing.T) {
 
 	gotRoutes := map[string]string{}
 	for _, score := range snapshot.RouteScores {
-		gotRoutes[score.RouteID] = fmt.Sprintf("%v/%v/%v/%v", score.Forward, score.Backward, deref(score.StagnationScore), score.Exhaustive)
+		gotRoutes[score.RouteID] = fmt.Sprintf("%v/%v/%v/%v/%v",
+			score.Forward, score.Backward, deref(score.StagnationScore), score.Exhaustive, score.SameSensorFlow)
 	}
 
 	wantRoutes := map[string]string{
-		"r1": "10/3/7/true",
-		"r3": "2/1/<nil>/true",
-		"r4": "3/0/0/true",
+		"r1": "10/3/7/true/false",
+		"r3": "2/1/<nil>/true/false",
+		"r4": "3/0/0/true/true",
 	}
 	if !maps.Equal(gotRoutes, wantRoutes) {
-		t.Errorf("route scores (forward/backward/stagnation/exhaustive) = %v, want %v", gotRoutes, wantRoutes)
+		t.Errorf("route scores (forward/backward/stagnation/exhaustive/same sensor flow) = %v, want %v", gotRoutes, wantRoutes)
 	}
 
 	gotPoints := map[string]string{}
@@ -275,24 +276,25 @@ func deref(value *float64) any {
 	return *value
 }
 
-func arcHistoryFromSamples(samples [][2]float64) domain.ArcHistory {
-	history := domain.ArcHistory{SampleCount: len(samples)}
-
-	var stagnationSum float64
+func flowRegression(samples [][2]float64) domain.FlowRegression {
+	regression := domain.FlowRegression{SampleCount: len(samples)}
 
 	for _, sample := range samples {
 		flow, stagnation := sample[0], sample[1]
-		history.FlowSum += flow
-		history.FlowSquareSum += flow * flow
-		history.FlowStagnationSum += flow * stagnation
-		stagnationSum += stagnation
+		regression.StagnationSum += stagnation
+		regression.FlowSum += flow
+		regression.FlowSquareSum += flow * flow
+		regression.FlowStagnationSum += flow * stagnation
 	}
 
-	if len(samples) > 0 {
-		history.MeanStagnation = stagnationSum / float64(len(samples))
-	}
+	return regression
+}
 
-	return history
+func arcHistoryFromSamples(samples, sameSensorSamples [][2]float64) domain.ArcHistory {
+	return domain.ArcHistory{
+		Flow:           flowRegression(slices.Concat(samples, sameSensorSamples)),
+		SameSensorFlow: flowRegression(sameSensorSamples),
+	}
 }
 
 func linearSamples(count int, flowAt func(int) float64, stagnationAt func(float64) float64) [][2]float64 {
@@ -309,10 +311,11 @@ func TestArcHistoryFlowSensitivityEta(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		samples [][2]float64
-		wantEta float64
-		wantOK  bool
+		name              string
+		samples           [][2]float64
+		sameSensorSamples [][2]float64
+		wantEta           float64
+		wantOK            bool
 	}{
 		{
 			name:    "negative linear relation recovers eta",
@@ -345,13 +348,33 @@ func TestArcHistoryFlowSensitivityEta(t *testing.T) {
 			samples: linearSamples(11, func(i int) float64 { return float64(i) }, func(v float64) float64 { return 20 - v }),
 			wantOK:  false,
 		},
+		{
+			name:              "enough same sensor samples are regressed alone",
+			samples:           linearSamples(12, func(i int) float64 { return float64(i) }, func(v float64) float64 { return 50 - 2*v }),
+			sameSensorSamples: linearSamples(12, func(i int) float64 { return float64(i * 3) }, func(v float64) float64 { return 20 - 0.25*v }),
+			wantEta:           0.25,
+			wantOK:            true,
+		},
+		{
+			name:              "same sensor samples without a negative slope give no eta",
+			samples:           linearSamples(12, func(i int) float64 { return float64(i) }, func(v float64) float64 { return 50 - 2*v }),
+			sameSensorSamples: linearSamples(12, func(i int) float64 { return float64(i) }, func(float64) float64 { return 5 }),
+			wantOK:            false,
+		},
+		{
+			name:              "too few same sensor samples fall back to all samples",
+			samples:           linearSamples(6, func(i int) float64 { return float64(i * 3) }, func(v float64) float64 { return 20 - 0.25*v }),
+			sameSensorSamples: linearSamples(6, func(i int) float64 { return float64(i*3 + 1) }, func(v float64) float64 { return 20 - 0.25*v }),
+			wantEta:           0.25,
+			wantOK:            true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			eta, ok := arcHistoryFromSamples(tt.samples).FlowSensitivityEta()
+			eta, ok := arcHistoryFromSamples(tt.samples, tt.sameSensorSamples).FlowSensitivityEta()
 			if ok != tt.wantOK || (ok && math.Abs(eta-tt.wantEta) > 1e-9) {
 				t.Errorf("FlowSensitivityEta() = %v, %v, want %v, %v", eta, ok, tt.wantEta, tt.wantOK)
 			}
