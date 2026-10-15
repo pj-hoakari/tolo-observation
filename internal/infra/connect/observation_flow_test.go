@@ -26,6 +26,7 @@ import (
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
 	"github.com/pj-hoakari/tolo-observation/internal/application"
+	"github.com/pj-hoakari/tolo-observation/internal/domain"
 	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
 )
 
@@ -120,6 +121,12 @@ func newObservationFlow(t *testing.T) observationFlow {
 	}
 
 	devices := dbinfra.NewPostgresEdgeDeviceRepository(testDB)
+	holds := application.NewHeartbeatLossHolds(dbinfra.NewPostgresHeartbeatLossHoldRepository(testDB), domain.HeartbeatLossHoldPolicy{
+		HeartbeatTimeout: time.Hour,
+		Threshold:        0.8,
+		MinDevices:       10,
+		MaxDuration:      5 * time.Minute,
+	})
 	measurements := dbinfra.NewPostgresMeasurementRepository(testDB)
 	snapshots := dbinfra.NewPostgresSnapshotRepository(testDB)
 	settings := dbinfra.NewPostgresObservationSettingsRepository(testDB)
@@ -132,20 +139,20 @@ func newObservationFlow(t *testing.T) observationFlow {
 		graphs,
 		NewFlowControlClient(flowURL),
 		devices,
+		holds,
 		measurements,
 		snapshots,
 		settings,
 		application.ObservationCycleConfig{
-			Window:           time.Minute,
-			OptimizeTimeout:  5 * time.Second,
-			HeartbeatTimeout: time.Hour,
-			Now:              func() time.Time { return time.Now().Add(123 * time.Nanosecond) },
+			Window:          time.Minute,
+			OptimizeTimeout: 5 * time.Second,
+			Now:             func() time.Time { return time.Now().Add(123 * time.Nanosecond) },
 		},
 	)
 
 	routes, err := RoutesWithVerifier(
 		newTestVerifier(t, keys),
-		application.NewEdgeDeviceService(devices, application.EdgeDeviceConfig{
+		application.NewEdgeDeviceService(devices, holds, application.EdgeDeviceConfig{
 			ObservationPageURLTemplate: "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}",
 			HeartbeatTimeout:           time.Hour,
 			Now:                        time.Now,

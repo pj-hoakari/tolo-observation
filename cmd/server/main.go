@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/pj-hoakari/tolo-observation/internal/application"
+	"github.com/pj-hoakari/tolo-observation/internal/domain"
 	connectinfra "github.com/pj-hoakari/tolo-observation/internal/infra/connect"
 	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
 	"github.com/pj-hoakari/tolo-observation/internal/infra/httpapi"
@@ -26,6 +28,9 @@ const (
 	defaultHeartbeatTimeout  = 30 * time.Second
 	defaultObservationWindow = time.Minute
 	defaultOptimizeTimeout   = 30 * time.Second
+	defaultHoldThreshold     = 0.8
+	defaultHoldMinDevices    = 10
+	defaultHoldMaxDuration   = 5 * time.Minute
 	shutdownTimeout          = 10 * time.Second
 	readHeaderTimeout        = 10 * time.Second
 )
@@ -93,6 +98,11 @@ func run() error {
 		return fmt.Errorf("read OPTIMIZE_TIMEOUT: %w", err)
 	}
 
+	holdPolicy, err := heartbeatLossHoldPolicy(heartbeatTimeout)
+	if err != nil {
+		return err
+	}
+
 	shutdownTracing, err := telemetry.Setup(ctx)
 	if err != nil {
 		return fmt.Errorf("setup tracing: %w", err)
@@ -114,9 +124,11 @@ func run() error {
 	}()
 
 	edgeDeviceRepository := dbinfra.NewPostgresEdgeDeviceRepository(db)
+	holds := application.NewHeartbeatLossHolds(dbinfra.NewPostgresHeartbeatLossHoldRepository(db), holdPolicy)
 
 	edgeDevices := application.NewEdgeDeviceService(
 		edgeDeviceRepository,
+		holds,
 		application.EdgeDeviceConfig{
 			ObservationPageURLTemplate: observationPageURLTemplate,
 			HeartbeatTimeout:           heartbeatTimeout,
@@ -134,14 +146,14 @@ func run() error {
 		graphs,
 		connectinfra.NewFlowControlClient(flowControlURL),
 		edgeDeviceRepository,
+		holds,
 		measurementRepository,
 		snapshots,
 		observationSettings,
 		application.ObservationCycleConfig{
-			Window:           observationWindow,
-			OptimizeTimeout:  optimizeTimeout,
-			HeartbeatTimeout: heartbeatTimeout,
-			Now:              nil,
+			Window:          observationWindow,
+			OptimizeTimeout: optimizeTimeout,
+			Now:             nil,
 		},
 	)
 
@@ -203,6 +215,42 @@ func run() error {
 
 		return httpServer.Shutdown(shutdownCtx)
 	}
+}
+
+func heartbeatLossHoldPolicy(heartbeatTimeout time.Duration) (domain.HeartbeatLossHoldPolicy, error) {
+	threshold, err := strconv.ParseFloat(getenv("HEARTBEAT_LOSS_HOLD_THRESHOLD", strconv.FormatFloat(defaultHoldThreshold, 'g', -1, 64)), 64)
+	if err != nil {
+		return domain.HeartbeatLossHoldPolicy{}, fmt.Errorf("read HEARTBEAT_LOSS_HOLD_THRESHOLD: %w", err)
+	}
+
+	if threshold <= 0 || threshold > 1 {
+		return domain.HeartbeatLossHoldPolicy{}, fmt.Errorf("HEARTBEAT_LOSS_HOLD_THRESHOLD must be in (0, 1], got %v", threshold)
+	}
+
+	minDevices, err := strconv.Atoi(getenv("HEARTBEAT_LOSS_HOLD_MIN_DEVICES", strconv.Itoa(defaultHoldMinDevices)))
+	if err != nil {
+		return domain.HeartbeatLossHoldPolicy{}, fmt.Errorf("read HEARTBEAT_LOSS_HOLD_MIN_DEVICES: %w", err)
+	}
+
+	if minDevices < 1 {
+		return domain.HeartbeatLossHoldPolicy{}, fmt.Errorf("HEARTBEAT_LOSS_HOLD_MIN_DEVICES must be positive, got %d", minDevices)
+	}
+
+	maxDuration, err := time.ParseDuration(getenv("HEARTBEAT_LOSS_HOLD_MAX_DURATION", defaultHoldMaxDuration.String()))
+	if err != nil {
+		return domain.HeartbeatLossHoldPolicy{}, fmt.Errorf("read HEARTBEAT_LOSS_HOLD_MAX_DURATION: %w", err)
+	}
+
+	if maxDuration <= 0 {
+		return domain.HeartbeatLossHoldPolicy{}, fmt.Errorf("HEARTBEAT_LOSS_HOLD_MAX_DURATION must be positive, got %s", maxDuration)
+	}
+
+	return domain.HeartbeatLossHoldPolicy{
+		HeartbeatTimeout: heartbeatTimeout,
+		Threshold:        threshold,
+		MinDevices:       minDevices,
+		MaxDuration:      maxDuration,
+	}, nil
 }
 
 // newLogger builds the process logger from the environment. It is the first
