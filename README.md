@@ -52,6 +52,9 @@ RPC を呼び出すには Service Gateway 発行の内部 JWT が必要なので
 | `DATABASE_URL` | なし（必須） | PostgreSQL の接続先 |
 | `OBSERVATION_PAGE_URL_TEMPLATE` | なし（必須） | 端末登録時に返す観測ページ URL のテンプレート。`{tenant_id}`、`{event_id}`、`{edge_device_id}` をすべて含め、登録した端末の公開 ID で置き換えて返す |
 | `HEARTBEAT_TIMEOUT` | `30s` | エッジ端末の `online`、切断、観測点の実効的な `enabled` を判定する Heartbeat の鮮度。`time.ParseDuration` が解釈する形式を取る |
+| `HEARTBEAT_LOSS_HOLD_THRESHOLD` | `0.8` | 切断を保留する、Heartbeat が同時に途絶えた端末の割合の閾値。0 より大きく 1 以下 |
+| `HEARTBEAT_LOSS_HOLD_MIN_DEVICES` | `10` | 保留を判定する母数の下限。母数は直前の `HEARTBEAT_TIMEOUT` の 2 倍の間に Heartbeat を送った、全テナントの登録済み端末 |
+| `HEARTBEAT_LOSS_HOLD_MAX_DURATION` | `5m` | 保留の上限時間。保留の開始からこの時間を過ぎたら、途絶が続く端末を通常どおり切断する |
 | `GRAPH_AUTHORING_URL` | なし（必須） | GraphSupplyService の呼び出し先。Service Gateway の internal listener（compose では `http://gateway:8090`）を指す。public listener は GraphSupplyService を拒否する。受領した内部 JWT をそのまま `Authorization` に載せて呼ぶ |
 | `FLOW_CONTROL_URL` | なし（必須） | FlowControlService の呼び出し先。gRPC で、認証情報を付けずに呼ぶ |
 | `OBSERVATION_WINDOW` | `1m` | スナップショットに含める計測値の期間（`window_end` がこの期間内のもの） |

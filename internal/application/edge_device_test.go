@@ -33,16 +33,43 @@ func withEventToken(eventPublicID string) context.Context {
 	})
 }
 
+var testHoldPolicy = domain.HeartbeatLossHoldPolicy{
+	HeartbeatTimeout: 2 * time.Minute,
+	Threshold:        0.8,
+	MinDevices:       10,
+	MaxDuration:      5 * time.Minute,
+}
+
 func newService(t *testing.T, template string) (*application.EdgeDeviceService, *MockEdgeDeviceRepository) {
 	t.Helper()
 
-	devices := NewMockEdgeDeviceRepository(gomock.NewController(t))
+	service, devices, holds := newServiceWithHolds(t, template)
+	holds.EXPECT().FindOpen(gomock.Any()).Return(time.Time{}, false, nil).AnyTimes()
+	holds.EXPECT().CountAcrossTenants(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.HeartbeatLossCount{}, nil).AnyTimes()
 
-	return application.NewEdgeDeviceService(devices, application.EdgeDeviceConfig{
-		ObservationPageURLTemplate: template,
-		HeartbeatTimeout:           2 * time.Minute,
-		Now:                        func() time.Time { return testNow },
-	}), devices
+	return service, devices
+}
+
+func newServiceWithHolds(
+	t *testing.T,
+	template string,
+) (*application.EdgeDeviceService, *MockEdgeDeviceRepository, *MockHeartbeatLossHoldRepository) {
+	t.Helper()
+
+	controller := gomock.NewController(t)
+	devices := NewMockEdgeDeviceRepository(controller)
+	holds := NewMockHeartbeatLossHoldRepository(controller)
+
+	return application.NewEdgeDeviceService(
+		devices,
+		application.NewHeartbeatLossHolds(holds, testHoldPolicy),
+		application.EdgeDeviceConfig{
+			ObservationPageURLTemplate: template,
+			HeartbeatTimeout:           testHoldPolicy.HeartbeatTimeout,
+			Now:                        func() time.Time { return testNow },
+		},
+	), devices, holds
 }
 
 func TestRegisterEdgeDeviceBuildsObservationPageURL(t *testing.T) {

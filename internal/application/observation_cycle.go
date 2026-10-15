@@ -41,16 +41,16 @@ type ObservationCycleRunner interface {
 }
 
 type ObservationCycleConfig struct {
-	Window           time.Duration
-	OptimizeTimeout  time.Duration
-	HeartbeatTimeout time.Duration
-	Now              func() time.Time
+	Window          time.Duration
+	OptimizeTimeout time.Duration
+	Now             func() time.Time
 }
 
 type ObservationCycle struct {
 	graphs       GraphSupply
 	flow         FlowControl
 	devices      repository.EdgeDeviceRepository
+	holds        *HeartbeatLossHolds
 	measurements repository.MeasurementRepository
 	snapshots    repository.SnapshotRepository
 	settings     repository.ObservationSettingsRepository
@@ -61,6 +61,7 @@ func NewObservationCycle(
 	graphs GraphSupply,
 	flow FlowControl,
 	devices repository.EdgeDeviceRepository,
+	holds *HeartbeatLossHolds,
 	measurements repository.MeasurementRepository,
 	snapshots repository.SnapshotRepository,
 	settings repository.ObservationSettingsRepository,
@@ -74,6 +75,7 @@ func NewObservationCycle(
 		graphs:       graphs,
 		flow:         flow,
 		devices:      devices,
+		holds:        holds,
 		measurements: measurements,
 		snapshots:    snapshots,
 		settings:     settings,
@@ -223,22 +225,10 @@ func (c *ObservationCycle) observationPointStates(
 		return nil, fmt.Errorf("list edge devices: %w", err)
 	}
 
-	states := map[domain.ObservationPointID]domain.ObservationPointState{}
-
-	for _, device := range devices {
-		online := device.Online(now, c.config.HeartbeatTimeout)
-
-		for _, point := range device.ObservationPoints {
-			switch {
-			case device.Unregistered || !point.Enabled:
-				states[point.ID] = domain.ObservationPointDisabled
-			case !online:
-				states[point.ID] = domain.ObservationPointOffline
-			default:
-				states[point.ID] = domain.ObservationPointActive
-			}
-		}
+	hold, err := c.holds.Evaluate(ctx, now)
+	if err != nil {
+		return nil, err
 	}
 
-	return states, nil
+	return domain.ObservationPointStates(devices, now, hold), nil
 }

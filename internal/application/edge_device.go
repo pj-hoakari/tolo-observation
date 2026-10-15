@@ -71,15 +71,20 @@ type EdgeDeviceConfig struct {
 
 type EdgeDeviceService struct {
 	devices repository.EdgeDeviceRepository
+	holds   *HeartbeatLossHolds
 	config  EdgeDeviceConfig
 }
 
-func NewEdgeDeviceService(devices repository.EdgeDeviceRepository, config EdgeDeviceConfig) *EdgeDeviceService {
+func NewEdgeDeviceService(
+	devices repository.EdgeDeviceRepository,
+	holds *HeartbeatLossHolds,
+	config EdgeDeviceConfig,
+) *EdgeDeviceService {
 	if config.Now == nil {
 		config.Now = time.Now
 	}
 
-	return &EdgeDeviceService{devices: devices, config: config}
+	return &EdgeDeviceService{devices: devices, holds: holds, config: config}
 }
 
 func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input RegisterEdgeDeviceInput) (RegisterEdgeDeviceOutput, error) {
@@ -151,11 +156,18 @@ func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeD
 		return nil, fmt.Errorf("list edge devices: %w", err)
 	}
 
+	now := s.config.Now()
+
+	hold, err := s.holds.Evaluate(ctx, now)
+	if err != nil {
+		return nil, err
+	}
+
 	views := make([]EdgeDeviceView, 0, len(devices))
 
 	for _, device := range devices {
 		view := s.view(device)
-		applyEffectiveEnabled(&view.Device, view.Online)
+		applyEffectiveEnabled(&view.Device, hold.Connected(device, now))
 		views = append(views, view)
 	}
 
@@ -230,7 +242,14 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(ctx context.Context, in
 		return domain.ObservationPoint{}, fmt.Errorf("save edge device: %w", err)
 	}
 
-	applyEffectiveEnabled(&device, s.view(device).Online)
+	now := s.config.Now()
+
+	hold, err := s.holds.Evaluate(ctx, now)
+	if err != nil {
+		return domain.ObservationPoint{}, err
+	}
+
+	applyEffectiveEnabled(&device, hold.Connected(device, now))
 
 	for _, point := range device.ObservationPoints {
 		if point.ID == id {
@@ -245,8 +264,8 @@ func (s *EdgeDeviceService) view(device domain.EdgeDevice) EdgeDeviceView {
 	return EdgeDeviceView{Device: device, Online: device.Online(s.config.Now(), s.config.HeartbeatTimeout)}
 }
 
-func applyEffectiveEnabled(device *domain.EdgeDevice, online bool) {
+func applyEffectiveEnabled(device *domain.EdgeDevice, connected bool) {
 	for i := range device.ObservationPoints {
-		device.ObservationPoints[i].Enabled = device.ObservationPoints[i].Enabled && online
+		device.ObservationPoints[i].Enabled = device.ObservationPoints[i].Enabled && connected
 	}
 }
