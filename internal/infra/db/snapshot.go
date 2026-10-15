@@ -47,6 +47,7 @@ type routeScoreJSON struct {
 	ScalarFlow      *float64 `json:"scalar_flow,omitempty"`
 	StagnationScore *float64 `json:"stagnation_score"`
 	Exhaustive      bool     `json:"exhaustive"`
+	SameSensorFlow  bool     `json:"same_sensor_flow"`
 }
 
 type snapshotRow struct {
@@ -100,10 +101,10 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 			_, err := executor.ExecContext(ctx, `
 				INSERT INTO arc_stagnation_hourly AS h (
 					event_id, hour_start, route_id, stagnation_bucket, sample_count, stagnation_sum, first_start, last_end,
-					flow_sum, flow_square_sum, flow_stagnation_sum)
+					flow_sum, flow_square_sum, flow_stagnation_sum, same_sensor_flow)
 				VALUES ($1, date_trunc('hour', $2::timestamptz, 'UTC'), $3, arc_stagnation_bucket($4), 1, $4, $2, $5,
-					$6::float8, $6::float8 * $6::float8, $6::float8 * $4)
-				ON CONFLICT (event_id, hour_start, route_id, stagnation_bucket) DO UPDATE
+					$6::float8, $6::float8 * $6::float8, $6::float8 * $4, $7)
+				ON CONFLICT (event_id, hour_start, route_id, stagnation_bucket, same_sensor_flow) DO UPDATE
 				SET sample_count = h.sample_count + 1,
 					stagnation_sum = h.stagnation_sum + EXCLUDED.stagnation_sum,
 					first_start = LEAST(h.first_start, EXCLUDED.first_start),
@@ -112,7 +113,7 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 					flow_square_sum = h.flow_square_sum + EXCLUDED.flow_square_sum,
 					flow_stagnation_sum = h.flow_stagnation_sum + EXCLUDED.flow_stagnation_sum`,
 				snapshot.EventID, snapshot.WindowStart, score.RouteID, *score.StagnationScore, snapshot.WindowEnd,
-				score.Forward+score.Backward)
+				score.Forward+score.Backward, score.SameSensorFlow)
 			if err != nil {
 				return fmt.Errorf("upsert arc stagnation: %w", err)
 			}
@@ -173,15 +174,20 @@ func (r *PostgresSnapshotRepository) ListSnapshotsEndingAfter(
 }
 
 type arcHistoryRow struct {
-	RouteID           string    `db:"route_id"`
-	SampleCount       int       `db:"sample_count"`
-	P90Stagnation     float64   `db:"p90_stagnation"`
-	MeanStagnation    float64   `db:"mean_stagnation"`
-	FirstStart        time.Time `db:"first_start"`
-	LastEnd           time.Time `db:"last_end"`
-	FlowSum           float64   `db:"flow_sum"`
-	FlowSquareSum     float64   `db:"flow_square_sum"`
-	FlowStagnationSum float64   `db:"flow_stagnation_sum"`
+	RouteID                     string    `db:"route_id"`
+	SampleCount                 int       `db:"sample_count"`
+	P90Stagnation               float64   `db:"p90_stagnation"`
+	StagnationSum               float64   `db:"stagnation_sum"`
+	FirstStart                  time.Time `db:"first_start"`
+	LastEnd                     time.Time `db:"last_end"`
+	FlowSum                     float64   `db:"flow_sum"`
+	FlowSquareSum               float64   `db:"flow_square_sum"`
+	FlowStagnationSum           float64   `db:"flow_stagnation_sum"`
+	SameSensorSampleCount       int       `db:"same_sensor_sample_count"`
+	SameSensorStagnationSum     float64   `db:"same_sensor_stagnation_sum"`
+	SameSensorFlowSum           float64   `db:"same_sensor_flow_sum"`
+	SameSensorFlowSquareSum     float64   `db:"same_sensor_flow_square_sum"`
+	SameSensorFlowStagnationSum float64   `db:"same_sensor_flow_stagnation_sum"`
 }
 
 func (r *PostgresSnapshotRepository) SummarizeArcHistory(
@@ -201,7 +207,12 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 				max(h.last_end) AS last_end,
 				sum(h.flow_sum) AS flow_sum,
 				sum(h.flow_square_sum) AS flow_square_sum,
-				sum(h.flow_stagnation_sum) AS flow_stagnation_sum
+				sum(h.flow_stagnation_sum) AS flow_stagnation_sum,
+				coalesce(sum(h.sample_count) FILTER (WHERE h.same_sensor_flow), 0) AS same_sensor_sample_count,
+				coalesce(sum(h.stagnation_sum) FILTER (WHERE h.same_sensor_flow), 0) AS same_sensor_stagnation_sum,
+				coalesce(sum(h.flow_sum) FILTER (WHERE h.same_sensor_flow), 0) AS same_sensor_flow_sum,
+				coalesce(sum(h.flow_square_sum) FILTER (WHERE h.same_sensor_flow), 0) AS same_sensor_flow_square_sum,
+				coalesce(sum(h.flow_stagnation_sum) FILTER (WHERE h.same_sensor_flow), 0) AS same_sensor_flow_stagnation_sum
 			FROM arc_stagnation_hourly h
 			LEFT JOIN anchor_sensor_sets s ON s.event_id = h.event_id AND s.route_id = h.route_id
 			WHERE h.event_id = $1 AND h.hour_start >= $2 AND (s.changed_at IS NULL OR h.first_start >= s.changed_at)
@@ -215,12 +226,17 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 		SELECT route_id,
 			max(total) AS sample_count,
 			min(stagnation_bucket) FILTER (WHERE cumulative >= 0.9 * total) AS p90_stagnation,
-			sum(stagnation_sum) / max(total) AS mean_stagnation,
+			sum(stagnation_sum) AS stagnation_sum,
 			min(first_start) AS first_start,
 			max(last_end) AS last_end,
 			sum(flow_sum) AS flow_sum,
 			sum(flow_square_sum) AS flow_square_sum,
-			sum(flow_stagnation_sum) AS flow_stagnation_sum
+			sum(flow_stagnation_sum) AS flow_stagnation_sum,
+			sum(same_sensor_sample_count) AS same_sensor_sample_count,
+			sum(same_sensor_stagnation_sum) AS same_sensor_stagnation_sum,
+			sum(same_sensor_flow_sum) AS same_sensor_flow_sum,
+			sum(same_sensor_flow_square_sum) AS same_sensor_flow_square_sum,
+			sum(same_sensor_flow_stagnation_sum) AS same_sensor_flow_stagnation_sum
 		FROM ranked
 		GROUP BY route_id
 		ORDER BY route_id`, eventID, since)
@@ -230,7 +246,28 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 
 	histories := make([]domain.ArcHistory, 0, len(rows))
 	for _, row := range rows {
-		histories = append(histories, domain.ArcHistory(row))
+		histories = append(histories, domain.ArcHistory{
+			RouteID:        row.RouteID,
+			SampleCount:    row.SampleCount,
+			P90Stagnation:  row.P90Stagnation,
+			MeanStagnation: row.StagnationSum / float64(row.SampleCount),
+			FirstStart:     row.FirstStart,
+			LastEnd:        row.LastEnd,
+			Flow: domain.FlowRegression{
+				SampleCount:       row.SampleCount,
+				StagnationSum:     row.StagnationSum,
+				FlowSum:           row.FlowSum,
+				FlowSquareSum:     row.FlowSquareSum,
+				FlowStagnationSum: row.FlowStagnationSum,
+			},
+			SameSensorFlow: domain.FlowRegression{
+				SampleCount:       row.SameSensorSampleCount,
+				StagnationSum:     row.SameSensorStagnationSum,
+				FlowSum:           row.SameSensorFlowSum,
+				FlowSquareSum:     row.SameSensorFlowSquareSum,
+				FlowStagnationSum: row.SameSensorFlowStagnationSum,
+			},
+		})
 	}
 
 	return histories, nil

@@ -265,8 +265,9 @@ func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeI
 	}
 
 	for _, routeID := range gaps.InvalidRouteIDs {
-		addRoute(domain.RouteScore{RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: nil, StagnationScore: nil, Exhaustive: true},
-			flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID)
+		addRoute(domain.RouteScore{
+			RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: nil, StagnationScore: nil, Exhaustive: true, SameSensorFlow: false,
+		}, flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID)
 	}
 
 	for _, score := range snapshot.PointScores {
@@ -337,7 +338,7 @@ func appendArcObservations(observations *flowv1.Observations, score domain.Route
 		EdgeId:         proto.String(score.RouteID),
 		Stagnation:     score.StagnationScore,
 		Derivation:     flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC.Enum(),
-		SameSensorFlow: proto.Bool(false),
+		SameSensorFlow: proto.Bool(score.SameSensorFlow),
 		ConfidenceFlag: flag.Enum(),
 	})
 }

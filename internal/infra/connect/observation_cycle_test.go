@@ -323,8 +323,9 @@ func TestObservationCycle(t *testing.T) {
 
 	stagnations := optimize.GetObservations().GetArcStagnations()
 	if len(stagnations) != 1 || stagnations[0].GetEdgeId() != "r1" || stagnations[0].GetStagnation() != 2.5 ||
-		stagnations[0].GetDerivation() != flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC {
-		t.Errorf("Optimize arc stagnations = %v, want 2.5 detected people on r1", stagnations)
+		stagnations[0].GetDerivation() != flowv1.StagnationDerivation_STAGNATION_DERIVATION_BASIC ||
+		!stagnations[0].GetSameSensorFlow() {
+		t.Errorf("Optimize arc stagnations = %v, want 2.5 detected people on r1 from the observation point counting its flow", stagnations)
 	}
 
 	if series := optimize.GetHistoryDigest().GetWindowSeries(); len(series) != 0 {
