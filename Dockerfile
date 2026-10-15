@@ -16,7 +16,7 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build,id=go-build-${TARGETARCH} \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -ldflags='-s -w' -o /out/server ./cmd/server
+    go build -trimpath -ldflags='-s -w' -o /out/ ./cmd/...
 
 
 FROM migrate/migrate:v4.20.1@sha256:76cc2074cb6642631f34a898ced71e6aeaa6b1a4d78c4daa743275a22e0c5be7 AS migrate
@@ -24,6 +24,17 @@ FROM migrate/migrate:v4.20.1@sha256:76cc2074cb6642631f34a898ced71e6aeaa6b1a4d78c
 COPY migrations /migrations
 
 ENTRYPOINT ["migrate", "-path", "/migrations"]
+
+
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 AS mockdeps
+
+COPY --from=builder /out/mockdeps /usr/local/bin/mockdeps
+
+EXPOSE 8080
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/usr/local/bin/mockdeps"]
 
 
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
