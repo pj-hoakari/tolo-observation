@@ -7,7 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"connectrpc.com/otelconnect"
 
 	internaljwt "github.com/pj-hoakari/internal-jwt-handling"
@@ -90,7 +91,7 @@ func RoutesWithVerifier(
 ) (func(mux *http.ServeMux), error) {
 	// The caller sits behind the Service Gateway, so an incoming trace context is
 	// trusted and continued instead of being demoted to a span link.
-	tracing, err := otelconnect.NewInterceptor(otelconnect.WithTrustRemote())
+	tracing, err := otelconnect.NewServerInterceptor(otelconnect.WithTrustRemote())
 	if err != nil {
 		return nil, fmt.Errorf("create tracing interceptor: %w", err)
 	}
@@ -118,14 +119,15 @@ func RoutesWithVerifier(
 
 	// Tracing runs before authentication, so a rejected call is still recorded
 	// on the trace it belongs to.
-	options := connectrpc.WithInterceptors(tracing, auth, forwardAuthorization())
+	server := connectrpc.NewServer(tracing, auth)
+	observationv1connect.RegisterMeasurementIngestServiceHandler(server, NewMeasurementIngestService(measurements))
+	observationv1connect.RegisterEdgeDeviceServiceHandler(server, NewEdgeDeviceService(edgeDevices))
+	observationv1connect.RegisterManualInterventionServiceHandler(server, NewManualInterventionService())
+	observationv1connect.RegisterStatusQueryServiceHandler(server, NewStatusQueryService(statusQueries))
+	observationv1connect.RegisterObservationSettingsServiceHandler(server, NewObservationSettingsService(observationSettings))
 
 	return func(mux *http.ServeMux) {
-		mux.Handle(observationv1connect.NewMeasurementIngestServiceHandler(NewMeasurementIngestService(measurements), options))
-		mux.Handle(observationv1connect.NewEdgeDeviceServiceHandler(NewEdgeDeviceService(edgeDevices), options))
-		mux.Handle(observationv1connect.NewManualInterventionServiceHandler(NewManualInterventionService(), options))
-		mux.Handle(observationv1connect.NewStatusQueryServiceHandler(NewStatusQueryService(statusQueries), options))
-		mux.Handle(observationv1connect.NewObservationSettingsServiceHandler(NewObservationSettingsService(observationSettings), options))
+		connecthttp.Mount(mux, server)
 	}, nil
 }
 

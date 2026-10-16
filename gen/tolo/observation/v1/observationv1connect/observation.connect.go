@@ -5,20 +5,11 @@
 package observationv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// MeasurementIngestServiceName is the fully-qualified name of the MeasurementIngestService service.
@@ -35,652 +26,717 @@ const (
 	ObservationSettingsServiceName = "tolo.observation.v1.ObservationSettingsService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// MeasurementIngestServiceReportMeasurementsProcedure is the fully-qualified name of the
+	// MeasurementIngestServiceReportMeasurementsProcedure is the procedure name of the
 	// MeasurementIngestService's ReportMeasurements RPC.
 	MeasurementIngestServiceReportMeasurementsProcedure = "/tolo.observation.v1.MeasurementIngestService/ReportMeasurements"
-	// EdgeDeviceServiceRegisterEdgeDeviceProcedure is the fully-qualified name of the
-	// EdgeDeviceService's RegisterEdgeDevice RPC.
+	// EdgeDeviceServiceRegisterEdgeDeviceProcedure is the procedure name of the EdgeDeviceService's
+	// RegisterEdgeDevice RPC.
 	EdgeDeviceServiceRegisterEdgeDeviceProcedure = "/tolo.observation.v1.EdgeDeviceService/RegisterEdgeDevice"
-	// EdgeDeviceServiceUnregisterEdgeDeviceProcedure is the fully-qualified name of the
-	// EdgeDeviceService's UnregisterEdgeDevice RPC.
+	// EdgeDeviceServiceUnregisterEdgeDeviceProcedure is the procedure name of the EdgeDeviceService's
+	// UnregisterEdgeDevice RPC.
 	EdgeDeviceServiceUnregisterEdgeDeviceProcedure = "/tolo.observation.v1.EdgeDeviceService/UnregisterEdgeDevice"
-	// EdgeDeviceServiceListEdgeDevicesProcedure is the fully-qualified name of the EdgeDeviceService's
+	// EdgeDeviceServiceListEdgeDevicesProcedure is the procedure name of the EdgeDeviceService's
 	// ListEdgeDevices RPC.
 	EdgeDeviceServiceListEdgeDevicesProcedure = "/tolo.observation.v1.EdgeDeviceService/ListEdgeDevices"
-	// EdgeDeviceServiceHeartbeatProcedure is the fully-qualified name of the EdgeDeviceService's
-	// Heartbeat RPC.
+	// EdgeDeviceServiceHeartbeatProcedure is the procedure name of the EdgeDeviceService's Heartbeat
+	// RPC.
 	EdgeDeviceServiceHeartbeatProcedure = "/tolo.observation.v1.EdgeDeviceService/Heartbeat"
-	// EdgeDeviceServiceUpdateObservationPointConfigProcedure is the fully-qualified name of the
+	// EdgeDeviceServiceUpdateObservationPointConfigProcedure is the procedure name of the
 	// EdgeDeviceService's UpdateObservationPointConfig RPC.
 	EdgeDeviceServiceUpdateObservationPointConfigProcedure = "/tolo.observation.v1.EdgeDeviceService/UpdateObservationPointConfig"
-	// ManualInterventionServiceOperateGateProcedure is the fully-qualified name of the
+	// ManualInterventionServiceOperateGateProcedure is the procedure name of the
 	// ManualInterventionService's OperateGate RPC.
 	ManualInterventionServiceOperateGateProcedure = "/tolo.observation.v1.ManualInterventionService/OperateGate"
-	// ManualInterventionServiceToggleDangerFlagProcedure is the fully-qualified name of the
+	// ManualInterventionServiceToggleDangerFlagProcedure is the procedure name of the
 	// ManualInterventionService's ToggleDangerFlag RPC.
 	ManualInterventionServiceToggleDangerFlagProcedure = "/tolo.observation.v1.ManualInterventionService/ToggleDangerFlag"
-	// ManualInterventionServiceRegisterScheduleEventProcedure is the fully-qualified name of the
+	// ManualInterventionServiceRegisterScheduleEventProcedure is the procedure name of the
 	// ManualInterventionService's RegisterScheduleEvent RPC.
 	ManualInterventionServiceRegisterScheduleEventProcedure = "/tolo.observation.v1.ManualInterventionService/RegisterScheduleEvent"
-	// ManualInterventionServiceReportCongestionProcedure is the fully-qualified name of the
+	// ManualInterventionServiceReportCongestionProcedure is the procedure name of the
 	// ManualInterventionService's ReportCongestion RPC.
 	ManualInterventionServiceReportCongestionProcedure = "/tolo.observation.v1.ManualInterventionService/ReportCongestion"
-	// ManualInterventionServiceCorrectQueueProcedure is the fully-qualified name of the
+	// ManualInterventionServiceCorrectQueueProcedure is the procedure name of the
 	// ManualInterventionService's CorrectQueue RPC.
 	ManualInterventionServiceCorrectQueueProcedure = "/tolo.observation.v1.ManualInterventionService/CorrectQueue"
-	// StatusQueryServiceGetEventOverviewProcedure is the fully-qualified name of the
-	// StatusQueryService's GetEventOverview RPC.
+	// StatusQueryServiceGetEventOverviewProcedure is the procedure name of the StatusQueryService's
+	// GetEventOverview RPC.
 	StatusQueryServiceGetEventOverviewProcedure = "/tolo.observation.v1.StatusQueryService/GetEventOverview"
-	// ObservationSettingsServiceGetObservationSettingsProcedure is the fully-qualified name of the
+	// ObservationSettingsServiceGetObservationSettingsProcedure is the procedure name of the
 	// ObservationSettingsService's GetObservationSettings RPC.
 	ObservationSettingsServiceGetObservationSettingsProcedure = "/tolo.observation.v1.ObservationSettingsService/GetObservationSettings"
-	// ObservationSettingsServiceUpdateObservationSettingsProcedure is the fully-qualified name of the
+	// ObservationSettingsServiceUpdateObservationSettingsProcedure is the procedure name of the
 	// ObservationSettingsService's UpdateObservationSettings RPC.
 	ObservationSettingsServiceUpdateObservationSettingsProcedure = "/tolo.observation.v1.ObservationSettingsService/UpdateObservationSettings"
+)
+
+var (
+	measurementIngestServiceReportMeasurementsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("MeasurementIngestService").Methods().ByName("ReportMeasurements"),
+			Procedure:  MeasurementIngestServiceReportMeasurementsProcedure,
+		}
+	})
 )
 
 // MeasurementIngestServiceClient is a client for the tolo.observation.v1.MeasurementIngestService
 // service.
 type MeasurementIngestServiceClient interface {
-	ReportMeasurements(context.Context, *connect.Request[v1.ReportMeasurementsRequest]) (*connect.Response[v1.ReportMeasurementsResponse], error)
+	ReportMeasurements(context.Context, *v1.ReportMeasurementsRequest) (*v1.ReportMeasurementsResponse, error)
 }
 
 // NewMeasurementIngestServiceClient constructs a client for the
-// tolo.observation.v1.MeasurementIngestService service. By default, it uses the Connect protocol
-// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
-// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
-// options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewMeasurementIngestServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) MeasurementIngestServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	measurementIngestServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("MeasurementIngestService").Methods()
-	return &measurementIngestServiceClient{
-		reportMeasurements: connect.NewClient[v1.ReportMeasurementsRequest, v1.ReportMeasurementsResponse](
-			httpClient,
-			baseURL+MeasurementIngestServiceReportMeasurementsProcedure,
-			connect.WithSchema(measurementIngestServiceMethods.ByName("ReportMeasurements")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// measurementIngestServiceClient implements MeasurementIngestServiceClient.
-type measurementIngestServiceClient struct {
-	reportMeasurements *connect.Client[v1.ReportMeasurementsRequest, v1.ReportMeasurementsResponse]
-}
-
-// ReportMeasurements calls tolo.observation.v1.MeasurementIngestService.ReportMeasurements.
-func (c *measurementIngestServiceClient) ReportMeasurements(ctx context.Context, req *connect.Request[v1.ReportMeasurementsRequest]) (*connect.Response[v1.ReportMeasurementsResponse], error) {
-	return c.reportMeasurements.CallUnary(ctx, req)
+// tolo.observation.v1.MeasurementIngestService service. Multiple service clients may share a single
+// connect.Client.
+func NewMeasurementIngestServiceClient(client *connect.Client) MeasurementIngestServiceClient {
+	return &measurementIngestServiceClient{client: client}
 }
 
 // MeasurementIngestServiceHandler is an implementation of the
 // tolo.observation.v1.MeasurementIngestService service.
 type MeasurementIngestServiceHandler interface {
-	ReportMeasurements(context.Context, *connect.Request[v1.ReportMeasurementsRequest]) (*connect.Response[v1.ReportMeasurementsResponse], error)
+	ReportMeasurements(context.Context, *v1.ReportMeasurementsRequest) (*v1.ReportMeasurementsResponse, error)
 }
 
-// NewMeasurementIngestServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewMeasurementIngestServiceHandler(svc MeasurementIngestServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	measurementIngestServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("MeasurementIngestService").Methods()
-	measurementIngestServiceReportMeasurementsHandler := connect.NewUnaryHandler(
-		MeasurementIngestServiceReportMeasurementsProcedure,
-		svc.ReportMeasurements,
-		connect.WithSchema(measurementIngestServiceMethods.ByName("ReportMeasurements")),
-		connect.WithHandlerOptions(opts...),
+// RegisterMeasurementIngestServiceHandler registers svc as the
+// tolo.observation.v1.MeasurementIngestService implementation on server.
+func RegisterMeasurementIngestServiceHandler(server *connect.Server, svc MeasurementIngestServiceHandler) {
+	adapter := measurementIngestServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: measurementIngestServiceReportMeasurementsSpec(), Handler: adapter.reportMeasurements},
 	)
-	return "/tolo.observation.v1.MeasurementIngestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case MeasurementIngestServiceReportMeasurementsProcedure:
-			measurementIngestServiceReportMeasurementsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedMeasurementIngestServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMeasurementIngestServiceHandler struct{}
 
-func (UnimplementedMeasurementIngestServiceHandler) ReportMeasurements(context.Context, *connect.Request[v1.ReportMeasurementsRequest]) (*connect.Response[v1.ReportMeasurementsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.MeasurementIngestService.ReportMeasurements is not implemented"))
+func (UnimplementedMeasurementIngestServiceHandler) ReportMeasurements(context.Context, *v1.ReportMeasurementsRequest) (*v1.ReportMeasurementsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.MeasurementIngestService.ReportMeasurements is not implemented")
 }
+
+type measurementIngestServiceClient struct {
+	client *connect.Client
+}
+
+func (c *measurementIngestServiceClient) ReportMeasurements(ctx context.Context, req *v1.ReportMeasurementsRequest) (*v1.ReportMeasurementsResponse, error) {
+	var res v1.ReportMeasurementsResponse
+	if err := c.client.CallUnary(ctx, measurementIngestServiceReportMeasurementsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type measurementIngestServiceHandler struct {
+	svc MeasurementIngestServiceHandler
+}
+
+func (h measurementIngestServiceHandler) reportMeasurements(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReportMeasurementsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReportMeasurements(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	edgeDeviceServiceRegisterEdgeDeviceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods().ByName("RegisterEdgeDevice"),
+			Procedure:  EdgeDeviceServiceRegisterEdgeDeviceProcedure,
+		}
+	})
+	edgeDeviceServiceUnregisterEdgeDeviceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods().ByName("UnregisterEdgeDevice"),
+			Procedure:  EdgeDeviceServiceUnregisterEdgeDeviceProcedure,
+		}
+	})
+	edgeDeviceServiceListEdgeDevicesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods().ByName("ListEdgeDevices"),
+			Procedure:  EdgeDeviceServiceListEdgeDevicesProcedure,
+		}
+	})
+	edgeDeviceServiceHeartbeatSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods().ByName("Heartbeat"),
+			Procedure:  EdgeDeviceServiceHeartbeatProcedure,
+		}
+	})
+	edgeDeviceServiceUpdateObservationPointConfigSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods().ByName("UpdateObservationPointConfig"),
+			Procedure:  EdgeDeviceServiceUpdateObservationPointConfigProcedure,
+		}
+	})
+)
 
 // EdgeDeviceServiceClient is a client for the tolo.observation.v1.EdgeDeviceService service.
 type EdgeDeviceServiceClient interface {
-	RegisterEdgeDevice(context.Context, *connect.Request[v1.RegisterEdgeDeviceRequest]) (*connect.Response[v1.RegisterEdgeDeviceResponse], error)
-	UnregisterEdgeDevice(context.Context, *connect.Request[v1.UnregisterEdgeDeviceRequest]) (*connect.Response[v1.UnregisterEdgeDeviceResponse], error)
-	ListEdgeDevices(context.Context, *connect.Request[v1.ListEdgeDevicesRequest]) (*connect.Response[v1.ListEdgeDevicesResponse], error)
-	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
-	UpdateObservationPointConfig(context.Context, *connect.Request[v1.UpdateObservationPointConfigRequest]) (*connect.Response[v1.UpdateObservationPointConfigResponse], error)
+	RegisterEdgeDevice(context.Context, *v1.RegisterEdgeDeviceRequest) (*v1.RegisterEdgeDeviceResponse, error)
+	UnregisterEdgeDevice(context.Context, *v1.UnregisterEdgeDeviceRequest) (*v1.UnregisterEdgeDeviceResponse, error)
+	ListEdgeDevices(context.Context, *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error)
+	Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error)
+	UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error)
 }
 
 // NewEdgeDeviceServiceClient constructs a client for the tolo.observation.v1.EdgeDeviceService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewEdgeDeviceServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) EdgeDeviceServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	edgeDeviceServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods()
-	return &edgeDeviceServiceClient{
-		registerEdgeDevice: connect.NewClient[v1.RegisterEdgeDeviceRequest, v1.RegisterEdgeDeviceResponse](
-			httpClient,
-			baseURL+EdgeDeviceServiceRegisterEdgeDeviceProcedure,
-			connect.WithSchema(edgeDeviceServiceMethods.ByName("RegisterEdgeDevice")),
-			connect.WithClientOptions(opts...),
-		),
-		unregisterEdgeDevice: connect.NewClient[v1.UnregisterEdgeDeviceRequest, v1.UnregisterEdgeDeviceResponse](
-			httpClient,
-			baseURL+EdgeDeviceServiceUnregisterEdgeDeviceProcedure,
-			connect.WithSchema(edgeDeviceServiceMethods.ByName("UnregisterEdgeDevice")),
-			connect.WithClientOptions(opts...),
-		),
-		listEdgeDevices: connect.NewClient[v1.ListEdgeDevicesRequest, v1.ListEdgeDevicesResponse](
-			httpClient,
-			baseURL+EdgeDeviceServiceListEdgeDevicesProcedure,
-			connect.WithSchema(edgeDeviceServiceMethods.ByName("ListEdgeDevices")),
-			connect.WithClientOptions(opts...),
-		),
-		heartbeat: connect.NewClient[v1.HeartbeatRequest, v1.HeartbeatResponse](
-			httpClient,
-			baseURL+EdgeDeviceServiceHeartbeatProcedure,
-			connect.WithSchema(edgeDeviceServiceMethods.ByName("Heartbeat")),
-			connect.WithClientOptions(opts...),
-		),
-		updateObservationPointConfig: connect.NewClient[v1.UpdateObservationPointConfigRequest, v1.UpdateObservationPointConfigResponse](
-			httpClient,
-			baseURL+EdgeDeviceServiceUpdateObservationPointConfigProcedure,
-			connect.WithSchema(edgeDeviceServiceMethods.ByName("UpdateObservationPointConfig")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// edgeDeviceServiceClient implements EdgeDeviceServiceClient.
-type edgeDeviceServiceClient struct {
-	registerEdgeDevice           *connect.Client[v1.RegisterEdgeDeviceRequest, v1.RegisterEdgeDeviceResponse]
-	unregisterEdgeDevice         *connect.Client[v1.UnregisterEdgeDeviceRequest, v1.UnregisterEdgeDeviceResponse]
-	listEdgeDevices              *connect.Client[v1.ListEdgeDevicesRequest, v1.ListEdgeDevicesResponse]
-	heartbeat                    *connect.Client[v1.HeartbeatRequest, v1.HeartbeatResponse]
-	updateObservationPointConfig *connect.Client[v1.UpdateObservationPointConfigRequest, v1.UpdateObservationPointConfigResponse]
-}
-
-// RegisterEdgeDevice calls tolo.observation.v1.EdgeDeviceService.RegisterEdgeDevice.
-func (c *edgeDeviceServiceClient) RegisterEdgeDevice(ctx context.Context, req *connect.Request[v1.RegisterEdgeDeviceRequest]) (*connect.Response[v1.RegisterEdgeDeviceResponse], error) {
-	return c.registerEdgeDevice.CallUnary(ctx, req)
-}
-
-// UnregisterEdgeDevice calls tolo.observation.v1.EdgeDeviceService.UnregisterEdgeDevice.
-func (c *edgeDeviceServiceClient) UnregisterEdgeDevice(ctx context.Context, req *connect.Request[v1.UnregisterEdgeDeviceRequest]) (*connect.Response[v1.UnregisterEdgeDeviceResponse], error) {
-	return c.unregisterEdgeDevice.CallUnary(ctx, req)
-}
-
-// ListEdgeDevices calls tolo.observation.v1.EdgeDeviceService.ListEdgeDevices.
-func (c *edgeDeviceServiceClient) ListEdgeDevices(ctx context.Context, req *connect.Request[v1.ListEdgeDevicesRequest]) (*connect.Response[v1.ListEdgeDevicesResponse], error) {
-	return c.listEdgeDevices.CallUnary(ctx, req)
-}
-
-// Heartbeat calls tolo.observation.v1.EdgeDeviceService.Heartbeat.
-func (c *edgeDeviceServiceClient) Heartbeat(ctx context.Context, req *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
-	return c.heartbeat.CallUnary(ctx, req)
-}
-
-// UpdateObservationPointConfig calls
-// tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig.
-func (c *edgeDeviceServiceClient) UpdateObservationPointConfig(ctx context.Context, req *connect.Request[v1.UpdateObservationPointConfigRequest]) (*connect.Response[v1.UpdateObservationPointConfigResponse], error) {
-	return c.updateObservationPointConfig.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewEdgeDeviceServiceClient(client *connect.Client) EdgeDeviceServiceClient {
+	return &edgeDeviceServiceClient{client: client}
 }
 
 // EdgeDeviceServiceHandler is an implementation of the tolo.observation.v1.EdgeDeviceService
 // service.
 type EdgeDeviceServiceHandler interface {
-	RegisterEdgeDevice(context.Context, *connect.Request[v1.RegisterEdgeDeviceRequest]) (*connect.Response[v1.RegisterEdgeDeviceResponse], error)
-	UnregisterEdgeDevice(context.Context, *connect.Request[v1.UnregisterEdgeDeviceRequest]) (*connect.Response[v1.UnregisterEdgeDeviceResponse], error)
-	ListEdgeDevices(context.Context, *connect.Request[v1.ListEdgeDevicesRequest]) (*connect.Response[v1.ListEdgeDevicesResponse], error)
-	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
-	UpdateObservationPointConfig(context.Context, *connect.Request[v1.UpdateObservationPointConfigRequest]) (*connect.Response[v1.UpdateObservationPointConfigResponse], error)
+	RegisterEdgeDevice(context.Context, *v1.RegisterEdgeDeviceRequest) (*v1.RegisterEdgeDeviceResponse, error)
+	UnregisterEdgeDevice(context.Context, *v1.UnregisterEdgeDeviceRequest) (*v1.UnregisterEdgeDeviceResponse, error)
+	ListEdgeDevices(context.Context, *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error)
+	Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error)
+	UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error)
 }
 
-// NewEdgeDeviceServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewEdgeDeviceServiceHandler(svc EdgeDeviceServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	edgeDeviceServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods()
-	edgeDeviceServiceRegisterEdgeDeviceHandler := connect.NewUnaryHandler(
-		EdgeDeviceServiceRegisterEdgeDeviceProcedure,
-		svc.RegisterEdgeDevice,
-		connect.WithSchema(edgeDeviceServiceMethods.ByName("RegisterEdgeDevice")),
-		connect.WithHandlerOptions(opts...),
+// RegisterEdgeDeviceServiceHandler registers svc as the tolo.observation.v1.EdgeDeviceService
+// implementation on server.
+func RegisterEdgeDeviceServiceHandler(server *connect.Server, svc EdgeDeviceServiceHandler) {
+	adapter := edgeDeviceServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: edgeDeviceServiceRegisterEdgeDeviceSpec(), Handler: adapter.registerEdgeDevice},
+		connect.Method{Spec: edgeDeviceServiceUnregisterEdgeDeviceSpec(), Handler: adapter.unregisterEdgeDevice},
+		connect.Method{Spec: edgeDeviceServiceListEdgeDevicesSpec(), Handler: adapter.listEdgeDevices},
+		connect.Method{Spec: edgeDeviceServiceHeartbeatSpec(), Handler: adapter.heartbeat},
+		connect.Method{Spec: edgeDeviceServiceUpdateObservationPointConfigSpec(), Handler: adapter.updateObservationPointConfig},
 	)
-	edgeDeviceServiceUnregisterEdgeDeviceHandler := connect.NewUnaryHandler(
-		EdgeDeviceServiceUnregisterEdgeDeviceProcedure,
-		svc.UnregisterEdgeDevice,
-		connect.WithSchema(edgeDeviceServiceMethods.ByName("UnregisterEdgeDevice")),
-		connect.WithHandlerOptions(opts...),
-	)
-	edgeDeviceServiceListEdgeDevicesHandler := connect.NewUnaryHandler(
-		EdgeDeviceServiceListEdgeDevicesProcedure,
-		svc.ListEdgeDevices,
-		connect.WithSchema(edgeDeviceServiceMethods.ByName("ListEdgeDevices")),
-		connect.WithHandlerOptions(opts...),
-	)
-	edgeDeviceServiceHeartbeatHandler := connect.NewUnaryHandler(
-		EdgeDeviceServiceHeartbeatProcedure,
-		svc.Heartbeat,
-		connect.WithSchema(edgeDeviceServiceMethods.ByName("Heartbeat")),
-		connect.WithHandlerOptions(opts...),
-	)
-	edgeDeviceServiceUpdateObservationPointConfigHandler := connect.NewUnaryHandler(
-		EdgeDeviceServiceUpdateObservationPointConfigProcedure,
-		svc.UpdateObservationPointConfig,
-		connect.WithSchema(edgeDeviceServiceMethods.ByName("UpdateObservationPointConfig")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/tolo.observation.v1.EdgeDeviceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case EdgeDeviceServiceRegisterEdgeDeviceProcedure:
-			edgeDeviceServiceRegisterEdgeDeviceHandler.ServeHTTP(w, r)
-		case EdgeDeviceServiceUnregisterEdgeDeviceProcedure:
-			edgeDeviceServiceUnregisterEdgeDeviceHandler.ServeHTTP(w, r)
-		case EdgeDeviceServiceListEdgeDevicesProcedure:
-			edgeDeviceServiceListEdgeDevicesHandler.ServeHTTP(w, r)
-		case EdgeDeviceServiceHeartbeatProcedure:
-			edgeDeviceServiceHeartbeatHandler.ServeHTTP(w, r)
-		case EdgeDeviceServiceUpdateObservationPointConfigProcedure:
-			edgeDeviceServiceUpdateObservationPointConfigHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedEdgeDeviceServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedEdgeDeviceServiceHandler struct{}
 
-func (UnimplementedEdgeDeviceServiceHandler) RegisterEdgeDevice(context.Context, *connect.Request[v1.RegisterEdgeDeviceRequest]) (*connect.Response[v1.RegisterEdgeDeviceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.EdgeDeviceService.RegisterEdgeDevice is not implemented"))
+func (UnimplementedEdgeDeviceServiceHandler) RegisterEdgeDevice(context.Context, *v1.RegisterEdgeDeviceRequest) (*v1.RegisterEdgeDeviceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.RegisterEdgeDevice is not implemented")
 }
 
-func (UnimplementedEdgeDeviceServiceHandler) UnregisterEdgeDevice(context.Context, *connect.Request[v1.UnregisterEdgeDeviceRequest]) (*connect.Response[v1.UnregisterEdgeDeviceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.EdgeDeviceService.UnregisterEdgeDevice is not implemented"))
+func (UnimplementedEdgeDeviceServiceHandler) UnregisterEdgeDevice(context.Context, *v1.UnregisterEdgeDeviceRequest) (*v1.UnregisterEdgeDeviceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.UnregisterEdgeDevice is not implemented")
 }
 
-func (UnimplementedEdgeDeviceServiceHandler) ListEdgeDevices(context.Context, *connect.Request[v1.ListEdgeDevicesRequest]) (*connect.Response[v1.ListEdgeDevicesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.EdgeDeviceService.ListEdgeDevices is not implemented"))
+func (UnimplementedEdgeDeviceServiceHandler) ListEdgeDevices(context.Context, *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.ListEdgeDevices is not implemented")
 }
 
-func (UnimplementedEdgeDeviceServiceHandler) Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.EdgeDeviceService.Heartbeat is not implemented"))
+func (UnimplementedEdgeDeviceServiceHandler) Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.Heartbeat is not implemented")
 }
 
-func (UnimplementedEdgeDeviceServiceHandler) UpdateObservationPointConfig(context.Context, *connect.Request[v1.UpdateObservationPointConfigRequest]) (*connect.Response[v1.UpdateObservationPointConfigResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig is not implemented"))
+func (UnimplementedEdgeDeviceServiceHandler) UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig is not implemented")
 }
+
+type edgeDeviceServiceClient struct {
+	client *connect.Client
+}
+
+func (c *edgeDeviceServiceClient) RegisterEdgeDevice(ctx context.Context, req *v1.RegisterEdgeDeviceRequest) (*v1.RegisterEdgeDeviceResponse, error) {
+	var res v1.RegisterEdgeDeviceResponse
+	if err := c.client.CallUnary(ctx, edgeDeviceServiceRegisterEdgeDeviceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *edgeDeviceServiceClient) UnregisterEdgeDevice(ctx context.Context, req *v1.UnregisterEdgeDeviceRequest) (*v1.UnregisterEdgeDeviceResponse, error) {
+	var res v1.UnregisterEdgeDeviceResponse
+	if err := c.client.CallUnary(ctx, edgeDeviceServiceUnregisterEdgeDeviceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *edgeDeviceServiceClient) ListEdgeDevices(ctx context.Context, req *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error) {
+	var res v1.ListEdgeDevicesResponse
+	if err := c.client.CallUnary(ctx, edgeDeviceServiceListEdgeDevicesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *edgeDeviceServiceClient) Heartbeat(ctx context.Context, req *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error) {
+	var res v1.HeartbeatResponse
+	if err := c.client.CallUnary(ctx, edgeDeviceServiceHeartbeatSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *edgeDeviceServiceClient) UpdateObservationPointConfig(ctx context.Context, req *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error) {
+	var res v1.UpdateObservationPointConfigResponse
+	if err := c.client.CallUnary(ctx, edgeDeviceServiceUpdateObservationPointConfigSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type edgeDeviceServiceHandler struct{ svc EdgeDeviceServiceHandler }
+
+func (h edgeDeviceServiceHandler) registerEdgeDevice(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RegisterEdgeDeviceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RegisterEdgeDevice(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h edgeDeviceServiceHandler) unregisterEdgeDevice(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UnregisterEdgeDeviceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UnregisterEdgeDevice(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h edgeDeviceServiceHandler) listEdgeDevices(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEdgeDevicesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEdgeDevices(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h edgeDeviceServiceHandler) heartbeat(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.HeartbeatRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.Heartbeat(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h edgeDeviceServiceHandler) updateObservationPointConfig(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateObservationPointConfigRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateObservationPointConfig(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	manualInterventionServiceOperateGateSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("ManualInterventionService").Methods().ByName("OperateGate"),
+			Procedure:  ManualInterventionServiceOperateGateProcedure,
+		}
+	})
+	manualInterventionServiceToggleDangerFlagSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("ManualInterventionService").Methods().ByName("ToggleDangerFlag"),
+			Procedure:  ManualInterventionServiceToggleDangerFlagProcedure,
+		}
+	})
+	manualInterventionServiceRegisterScheduleEventSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("ManualInterventionService").Methods().ByName("RegisterScheduleEvent"),
+			Procedure:  ManualInterventionServiceRegisterScheduleEventProcedure,
+		}
+	})
+	manualInterventionServiceReportCongestionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("ManualInterventionService").Methods().ByName("ReportCongestion"),
+			Procedure:  ManualInterventionServiceReportCongestionProcedure,
+		}
+	})
+	manualInterventionServiceCorrectQueueSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("ManualInterventionService").Methods().ByName("CorrectQueue"),
+			Procedure:  ManualInterventionServiceCorrectQueueProcedure,
+		}
+	})
+)
 
 // ManualInterventionServiceClient is a client for the tolo.observation.v1.ManualInterventionService
 // service.
 type ManualInterventionServiceClient interface {
-	OperateGate(context.Context, *connect.Request[v1.OperateGateRequest]) (*connect.Response[v1.OperateGateResponse], error)
-	ToggleDangerFlag(context.Context, *connect.Request[v1.ToggleDangerFlagRequest]) (*connect.Response[v1.ToggleDangerFlagResponse], error)
-	RegisterScheduleEvent(context.Context, *connect.Request[v1.RegisterScheduleEventRequest]) (*connect.Response[v1.RegisterScheduleEventResponse], error)
-	ReportCongestion(context.Context, *connect.Request[v1.ReportCongestionRequest]) (*connect.Response[v1.ReportCongestionResponse], error)
-	CorrectQueue(context.Context, *connect.Request[v1.CorrectQueueRequest]) (*connect.Response[v1.CorrectQueueResponse], error)
+	OperateGate(context.Context, *v1.OperateGateRequest) (*v1.OperateGateResponse, error)
+	ToggleDangerFlag(context.Context, *v1.ToggleDangerFlagRequest) (*v1.ToggleDangerFlagResponse, error)
+	RegisterScheduleEvent(context.Context, *v1.RegisterScheduleEventRequest) (*v1.RegisterScheduleEventResponse, error)
+	ReportCongestion(context.Context, *v1.ReportCongestionRequest) (*v1.ReportCongestionResponse, error)
+	CorrectQueue(context.Context, *v1.CorrectQueueRequest) (*v1.CorrectQueueResponse, error)
 }
 
 // NewManualInterventionServiceClient constructs a client for the
-// tolo.observation.v1.ManualInterventionService service. By default, it uses the Connect protocol
-// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
-// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
-// options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewManualInterventionServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ManualInterventionServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	manualInterventionServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("ManualInterventionService").Methods()
-	return &manualInterventionServiceClient{
-		operateGate: connect.NewClient[v1.OperateGateRequest, v1.OperateGateResponse](
-			httpClient,
-			baseURL+ManualInterventionServiceOperateGateProcedure,
-			connect.WithSchema(manualInterventionServiceMethods.ByName("OperateGate")),
-			connect.WithClientOptions(opts...),
-		),
-		toggleDangerFlag: connect.NewClient[v1.ToggleDangerFlagRequest, v1.ToggleDangerFlagResponse](
-			httpClient,
-			baseURL+ManualInterventionServiceToggleDangerFlagProcedure,
-			connect.WithSchema(manualInterventionServiceMethods.ByName("ToggleDangerFlag")),
-			connect.WithClientOptions(opts...),
-		),
-		registerScheduleEvent: connect.NewClient[v1.RegisterScheduleEventRequest, v1.RegisterScheduleEventResponse](
-			httpClient,
-			baseURL+ManualInterventionServiceRegisterScheduleEventProcedure,
-			connect.WithSchema(manualInterventionServiceMethods.ByName("RegisterScheduleEvent")),
-			connect.WithClientOptions(opts...),
-		),
-		reportCongestion: connect.NewClient[v1.ReportCongestionRequest, v1.ReportCongestionResponse](
-			httpClient,
-			baseURL+ManualInterventionServiceReportCongestionProcedure,
-			connect.WithSchema(manualInterventionServiceMethods.ByName("ReportCongestion")),
-			connect.WithClientOptions(opts...),
-		),
-		correctQueue: connect.NewClient[v1.CorrectQueueRequest, v1.CorrectQueueResponse](
-			httpClient,
-			baseURL+ManualInterventionServiceCorrectQueueProcedure,
-			connect.WithSchema(manualInterventionServiceMethods.ByName("CorrectQueue")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// manualInterventionServiceClient implements ManualInterventionServiceClient.
-type manualInterventionServiceClient struct {
-	operateGate           *connect.Client[v1.OperateGateRequest, v1.OperateGateResponse]
-	toggleDangerFlag      *connect.Client[v1.ToggleDangerFlagRequest, v1.ToggleDangerFlagResponse]
-	registerScheduleEvent *connect.Client[v1.RegisterScheduleEventRequest, v1.RegisterScheduleEventResponse]
-	reportCongestion      *connect.Client[v1.ReportCongestionRequest, v1.ReportCongestionResponse]
-	correctQueue          *connect.Client[v1.CorrectQueueRequest, v1.CorrectQueueResponse]
-}
-
-// OperateGate calls tolo.observation.v1.ManualInterventionService.OperateGate.
-func (c *manualInterventionServiceClient) OperateGate(ctx context.Context, req *connect.Request[v1.OperateGateRequest]) (*connect.Response[v1.OperateGateResponse], error) {
-	return c.operateGate.CallUnary(ctx, req)
-}
-
-// ToggleDangerFlag calls tolo.observation.v1.ManualInterventionService.ToggleDangerFlag.
-func (c *manualInterventionServiceClient) ToggleDangerFlag(ctx context.Context, req *connect.Request[v1.ToggleDangerFlagRequest]) (*connect.Response[v1.ToggleDangerFlagResponse], error) {
-	return c.toggleDangerFlag.CallUnary(ctx, req)
-}
-
-// RegisterScheduleEvent calls tolo.observation.v1.ManualInterventionService.RegisterScheduleEvent.
-func (c *manualInterventionServiceClient) RegisterScheduleEvent(ctx context.Context, req *connect.Request[v1.RegisterScheduleEventRequest]) (*connect.Response[v1.RegisterScheduleEventResponse], error) {
-	return c.registerScheduleEvent.CallUnary(ctx, req)
-}
-
-// ReportCongestion calls tolo.observation.v1.ManualInterventionService.ReportCongestion.
-func (c *manualInterventionServiceClient) ReportCongestion(ctx context.Context, req *connect.Request[v1.ReportCongestionRequest]) (*connect.Response[v1.ReportCongestionResponse], error) {
-	return c.reportCongestion.CallUnary(ctx, req)
-}
-
-// CorrectQueue calls tolo.observation.v1.ManualInterventionService.CorrectQueue.
-func (c *manualInterventionServiceClient) CorrectQueue(ctx context.Context, req *connect.Request[v1.CorrectQueueRequest]) (*connect.Response[v1.CorrectQueueResponse], error) {
-	return c.correctQueue.CallUnary(ctx, req)
+// tolo.observation.v1.ManualInterventionService service. Multiple service clients may share a
+// single connect.Client.
+func NewManualInterventionServiceClient(client *connect.Client) ManualInterventionServiceClient {
+	return &manualInterventionServiceClient{client: client}
 }
 
 // ManualInterventionServiceHandler is an implementation of the
 // tolo.observation.v1.ManualInterventionService service.
 type ManualInterventionServiceHandler interface {
-	OperateGate(context.Context, *connect.Request[v1.OperateGateRequest]) (*connect.Response[v1.OperateGateResponse], error)
-	ToggleDangerFlag(context.Context, *connect.Request[v1.ToggleDangerFlagRequest]) (*connect.Response[v1.ToggleDangerFlagResponse], error)
-	RegisterScheduleEvent(context.Context, *connect.Request[v1.RegisterScheduleEventRequest]) (*connect.Response[v1.RegisterScheduleEventResponse], error)
-	ReportCongestion(context.Context, *connect.Request[v1.ReportCongestionRequest]) (*connect.Response[v1.ReportCongestionResponse], error)
-	CorrectQueue(context.Context, *connect.Request[v1.CorrectQueueRequest]) (*connect.Response[v1.CorrectQueueResponse], error)
+	OperateGate(context.Context, *v1.OperateGateRequest) (*v1.OperateGateResponse, error)
+	ToggleDangerFlag(context.Context, *v1.ToggleDangerFlagRequest) (*v1.ToggleDangerFlagResponse, error)
+	RegisterScheduleEvent(context.Context, *v1.RegisterScheduleEventRequest) (*v1.RegisterScheduleEventResponse, error)
+	ReportCongestion(context.Context, *v1.ReportCongestionRequest) (*v1.ReportCongestionResponse, error)
+	CorrectQueue(context.Context, *v1.CorrectQueueRequest) (*v1.CorrectQueueResponse, error)
 }
 
-// NewManualInterventionServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewManualInterventionServiceHandler(svc ManualInterventionServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	manualInterventionServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("ManualInterventionService").Methods()
-	manualInterventionServiceOperateGateHandler := connect.NewUnaryHandler(
-		ManualInterventionServiceOperateGateProcedure,
-		svc.OperateGate,
-		connect.WithSchema(manualInterventionServiceMethods.ByName("OperateGate")),
-		connect.WithHandlerOptions(opts...),
+// RegisterManualInterventionServiceHandler registers svc as the
+// tolo.observation.v1.ManualInterventionService implementation on server.
+func RegisterManualInterventionServiceHandler(server *connect.Server, svc ManualInterventionServiceHandler) {
+	adapter := manualInterventionServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: manualInterventionServiceOperateGateSpec(), Handler: adapter.operateGate},
+		connect.Method{Spec: manualInterventionServiceToggleDangerFlagSpec(), Handler: adapter.toggleDangerFlag},
+		connect.Method{Spec: manualInterventionServiceRegisterScheduleEventSpec(), Handler: adapter.registerScheduleEvent},
+		connect.Method{Spec: manualInterventionServiceReportCongestionSpec(), Handler: adapter.reportCongestion},
+		connect.Method{Spec: manualInterventionServiceCorrectQueueSpec(), Handler: adapter.correctQueue},
 	)
-	manualInterventionServiceToggleDangerFlagHandler := connect.NewUnaryHandler(
-		ManualInterventionServiceToggleDangerFlagProcedure,
-		svc.ToggleDangerFlag,
-		connect.WithSchema(manualInterventionServiceMethods.ByName("ToggleDangerFlag")),
-		connect.WithHandlerOptions(opts...),
-	)
-	manualInterventionServiceRegisterScheduleEventHandler := connect.NewUnaryHandler(
-		ManualInterventionServiceRegisterScheduleEventProcedure,
-		svc.RegisterScheduleEvent,
-		connect.WithSchema(manualInterventionServiceMethods.ByName("RegisterScheduleEvent")),
-		connect.WithHandlerOptions(opts...),
-	)
-	manualInterventionServiceReportCongestionHandler := connect.NewUnaryHandler(
-		ManualInterventionServiceReportCongestionProcedure,
-		svc.ReportCongestion,
-		connect.WithSchema(manualInterventionServiceMethods.ByName("ReportCongestion")),
-		connect.WithHandlerOptions(opts...),
-	)
-	manualInterventionServiceCorrectQueueHandler := connect.NewUnaryHandler(
-		ManualInterventionServiceCorrectQueueProcedure,
-		svc.CorrectQueue,
-		connect.WithSchema(manualInterventionServiceMethods.ByName("CorrectQueue")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/tolo.observation.v1.ManualInterventionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case ManualInterventionServiceOperateGateProcedure:
-			manualInterventionServiceOperateGateHandler.ServeHTTP(w, r)
-		case ManualInterventionServiceToggleDangerFlagProcedure:
-			manualInterventionServiceToggleDangerFlagHandler.ServeHTTP(w, r)
-		case ManualInterventionServiceRegisterScheduleEventProcedure:
-			manualInterventionServiceRegisterScheduleEventHandler.ServeHTTP(w, r)
-		case ManualInterventionServiceReportCongestionProcedure:
-			manualInterventionServiceReportCongestionHandler.ServeHTTP(w, r)
-		case ManualInterventionServiceCorrectQueueProcedure:
-			manualInterventionServiceCorrectQueueHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedManualInterventionServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedManualInterventionServiceHandler struct{}
 
-func (UnimplementedManualInterventionServiceHandler) OperateGate(context.Context, *connect.Request[v1.OperateGateRequest]) (*connect.Response[v1.OperateGateResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ManualInterventionService.OperateGate is not implemented"))
+func (UnimplementedManualInterventionServiceHandler) OperateGate(context.Context, *v1.OperateGateRequest) (*v1.OperateGateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.ManualInterventionService.OperateGate is not implemented")
 }
 
-func (UnimplementedManualInterventionServiceHandler) ToggleDangerFlag(context.Context, *connect.Request[v1.ToggleDangerFlagRequest]) (*connect.Response[v1.ToggleDangerFlagResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ManualInterventionService.ToggleDangerFlag is not implemented"))
+func (UnimplementedManualInterventionServiceHandler) ToggleDangerFlag(context.Context, *v1.ToggleDangerFlagRequest) (*v1.ToggleDangerFlagResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.ManualInterventionService.ToggleDangerFlag is not implemented")
 }
 
-func (UnimplementedManualInterventionServiceHandler) RegisterScheduleEvent(context.Context, *connect.Request[v1.RegisterScheduleEventRequest]) (*connect.Response[v1.RegisterScheduleEventResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ManualInterventionService.RegisterScheduleEvent is not implemented"))
+func (UnimplementedManualInterventionServiceHandler) RegisterScheduleEvent(context.Context, *v1.RegisterScheduleEventRequest) (*v1.RegisterScheduleEventResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.ManualInterventionService.RegisterScheduleEvent is not implemented")
 }
 
-func (UnimplementedManualInterventionServiceHandler) ReportCongestion(context.Context, *connect.Request[v1.ReportCongestionRequest]) (*connect.Response[v1.ReportCongestionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ManualInterventionService.ReportCongestion is not implemented"))
+func (UnimplementedManualInterventionServiceHandler) ReportCongestion(context.Context, *v1.ReportCongestionRequest) (*v1.ReportCongestionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.ManualInterventionService.ReportCongestion is not implemented")
 }
 
-func (UnimplementedManualInterventionServiceHandler) CorrectQueue(context.Context, *connect.Request[v1.CorrectQueueRequest]) (*connect.Response[v1.CorrectQueueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ManualInterventionService.CorrectQueue is not implemented"))
+func (UnimplementedManualInterventionServiceHandler) CorrectQueue(context.Context, *v1.CorrectQueueRequest) (*v1.CorrectQueueResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.ManualInterventionService.CorrectQueue is not implemented")
 }
+
+type manualInterventionServiceClient struct {
+	client *connect.Client
+}
+
+func (c *manualInterventionServiceClient) OperateGate(ctx context.Context, req *v1.OperateGateRequest) (*v1.OperateGateResponse, error) {
+	var res v1.OperateGateResponse
+	if err := c.client.CallUnary(ctx, manualInterventionServiceOperateGateSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *manualInterventionServiceClient) ToggleDangerFlag(ctx context.Context, req *v1.ToggleDangerFlagRequest) (*v1.ToggleDangerFlagResponse, error) {
+	var res v1.ToggleDangerFlagResponse
+	if err := c.client.CallUnary(ctx, manualInterventionServiceToggleDangerFlagSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *manualInterventionServiceClient) RegisterScheduleEvent(ctx context.Context, req *v1.RegisterScheduleEventRequest) (*v1.RegisterScheduleEventResponse, error) {
+	var res v1.RegisterScheduleEventResponse
+	if err := c.client.CallUnary(ctx, manualInterventionServiceRegisterScheduleEventSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *manualInterventionServiceClient) ReportCongestion(ctx context.Context, req *v1.ReportCongestionRequest) (*v1.ReportCongestionResponse, error) {
+	var res v1.ReportCongestionResponse
+	if err := c.client.CallUnary(ctx, manualInterventionServiceReportCongestionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *manualInterventionServiceClient) CorrectQueue(ctx context.Context, req *v1.CorrectQueueRequest) (*v1.CorrectQueueResponse, error) {
+	var res v1.CorrectQueueResponse
+	if err := c.client.CallUnary(ctx, manualInterventionServiceCorrectQueueSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type manualInterventionServiceHandler struct {
+	svc ManualInterventionServiceHandler
+}
+
+func (h manualInterventionServiceHandler) operateGate(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.OperateGateRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.OperateGate(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h manualInterventionServiceHandler) toggleDangerFlag(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ToggleDangerFlagRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ToggleDangerFlag(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h manualInterventionServiceHandler) registerScheduleEvent(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RegisterScheduleEventRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RegisterScheduleEvent(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h manualInterventionServiceHandler) reportCongestion(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReportCongestionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReportCongestion(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h manualInterventionServiceHandler) correctQueue(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CorrectQueueRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CorrectQueue(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	statusQueryServiceGetEventOverviewSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("StatusQueryService").Methods().ByName("GetEventOverview"),
+			Procedure:  StatusQueryServiceGetEventOverviewProcedure,
+		}
+	})
+)
 
 // StatusQueryServiceClient is a client for the tolo.observation.v1.StatusQueryService service.
 type StatusQueryServiceClient interface {
-	GetEventOverview(context.Context, *connect.Request[v1.GetEventOverviewRequest]) (*connect.Response[v1.GetEventOverviewResponse], error)
+	GetEventOverview(context.Context, *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error)
 }
 
 // NewStatusQueryServiceClient constructs a client for the tolo.observation.v1.StatusQueryService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewStatusQueryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) StatusQueryServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	statusQueryServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("StatusQueryService").Methods()
-	return &statusQueryServiceClient{
-		getEventOverview: connect.NewClient[v1.GetEventOverviewRequest, v1.GetEventOverviewResponse](
-			httpClient,
-			baseURL+StatusQueryServiceGetEventOverviewProcedure,
-			connect.WithSchema(statusQueryServiceMethods.ByName("GetEventOverview")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// statusQueryServiceClient implements StatusQueryServiceClient.
-type statusQueryServiceClient struct {
-	getEventOverview *connect.Client[v1.GetEventOverviewRequest, v1.GetEventOverviewResponse]
-}
-
-// GetEventOverview calls tolo.observation.v1.StatusQueryService.GetEventOverview.
-func (c *statusQueryServiceClient) GetEventOverview(ctx context.Context, req *connect.Request[v1.GetEventOverviewRequest]) (*connect.Response[v1.GetEventOverviewResponse], error) {
-	return c.getEventOverview.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewStatusQueryServiceClient(client *connect.Client) StatusQueryServiceClient {
+	return &statusQueryServiceClient{client: client}
 }
 
 // StatusQueryServiceHandler is an implementation of the tolo.observation.v1.StatusQueryService
 // service.
 type StatusQueryServiceHandler interface {
-	GetEventOverview(context.Context, *connect.Request[v1.GetEventOverviewRequest]) (*connect.Response[v1.GetEventOverviewResponse], error)
+	GetEventOverview(context.Context, *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error)
 }
 
-// NewStatusQueryServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewStatusQueryServiceHandler(svc StatusQueryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	statusQueryServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("StatusQueryService").Methods()
-	statusQueryServiceGetEventOverviewHandler := connect.NewUnaryHandler(
-		StatusQueryServiceGetEventOverviewProcedure,
-		svc.GetEventOverview,
-		connect.WithSchema(statusQueryServiceMethods.ByName("GetEventOverview")),
-		connect.WithHandlerOptions(opts...),
+// RegisterStatusQueryServiceHandler registers svc as the tolo.observation.v1.StatusQueryService
+// implementation on server.
+func RegisterStatusQueryServiceHandler(server *connect.Server, svc StatusQueryServiceHandler) {
+	adapter := statusQueryServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: statusQueryServiceGetEventOverviewSpec(), Handler: adapter.getEventOverview},
 	)
-	return "/tolo.observation.v1.StatusQueryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case StatusQueryServiceGetEventOverviewProcedure:
-			statusQueryServiceGetEventOverviewHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedStatusQueryServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedStatusQueryServiceHandler struct{}
 
-func (UnimplementedStatusQueryServiceHandler) GetEventOverview(context.Context, *connect.Request[v1.GetEventOverviewRequest]) (*connect.Response[v1.GetEventOverviewResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.StatusQueryService.GetEventOverview is not implemented"))
+func (UnimplementedStatusQueryServiceHandler) GetEventOverview(context.Context, *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.StatusQueryService.GetEventOverview is not implemented")
 }
+
+type statusQueryServiceClient struct {
+	client *connect.Client
+}
+
+func (c *statusQueryServiceClient) GetEventOverview(ctx context.Context, req *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error) {
+	var res v1.GetEventOverviewResponse
+	if err := c.client.CallUnary(ctx, statusQueryServiceGetEventOverviewSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type statusQueryServiceHandler struct{ svc StatusQueryServiceHandler }
+
+func (h statusQueryServiceHandler) getEventOverview(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetEventOverviewRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetEventOverview(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	observationSettingsServiceGetObservationSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("ObservationSettingsService").Methods().ByName("GetObservationSettings"),
+			Procedure:  ObservationSettingsServiceGetObservationSettingsProcedure,
+		}
+	})
+	observationSettingsServiceUpdateObservationSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("ObservationSettingsService").Methods().ByName("UpdateObservationSettings"),
+			Procedure:  ObservationSettingsServiceUpdateObservationSettingsProcedure,
+		}
+	})
+)
 
 // ObservationSettingsServiceClient is a client for the
 // tolo.observation.v1.ObservationSettingsService service.
 type ObservationSettingsServiceClient interface {
-	GetObservationSettings(context.Context, *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error)
-	UpdateObservationSettings(context.Context, *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error)
+	GetObservationSettings(context.Context, *v1.GetObservationSettingsRequest) (*v1.GetObservationSettingsResponse, error)
+	UpdateObservationSettings(context.Context, *v1.UpdateObservationSettingsRequest) (*v1.UpdateObservationSettingsResponse, error)
 }
 
 // NewObservationSettingsServiceClient constructs a client for the
-// tolo.observation.v1.ObservationSettingsService service. By default, it uses the Connect protocol
-// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
-// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
-// options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewObservationSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ObservationSettingsServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	observationSettingsServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("ObservationSettingsService").Methods()
-	return &observationSettingsServiceClient{
-		getObservationSettings: connect.NewClient[v1.GetObservationSettingsRequest, v1.GetObservationSettingsResponse](
-			httpClient,
-			baseURL+ObservationSettingsServiceGetObservationSettingsProcedure,
-			connect.WithSchema(observationSettingsServiceMethods.ByName("GetObservationSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateObservationSettings: connect.NewClient[v1.UpdateObservationSettingsRequest, v1.UpdateObservationSettingsResponse](
-			httpClient,
-			baseURL+ObservationSettingsServiceUpdateObservationSettingsProcedure,
-			connect.WithSchema(observationSettingsServiceMethods.ByName("UpdateObservationSettings")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// observationSettingsServiceClient implements ObservationSettingsServiceClient.
-type observationSettingsServiceClient struct {
-	getObservationSettings    *connect.Client[v1.GetObservationSettingsRequest, v1.GetObservationSettingsResponse]
-	updateObservationSettings *connect.Client[v1.UpdateObservationSettingsRequest, v1.UpdateObservationSettingsResponse]
-}
-
-// GetObservationSettings calls
-// tolo.observation.v1.ObservationSettingsService.GetObservationSettings.
-func (c *observationSettingsServiceClient) GetObservationSettings(ctx context.Context, req *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error) {
-	return c.getObservationSettings.CallUnary(ctx, req)
-}
-
-// UpdateObservationSettings calls
-// tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings.
-func (c *observationSettingsServiceClient) UpdateObservationSettings(ctx context.Context, req *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error) {
-	return c.updateObservationSettings.CallUnary(ctx, req)
+// tolo.observation.v1.ObservationSettingsService service. Multiple service clients may share a
+// single connect.Client.
+func NewObservationSettingsServiceClient(client *connect.Client) ObservationSettingsServiceClient {
+	return &observationSettingsServiceClient{client: client}
 }
 
 // ObservationSettingsServiceHandler is an implementation of the
 // tolo.observation.v1.ObservationSettingsService service.
 type ObservationSettingsServiceHandler interface {
-	GetObservationSettings(context.Context, *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error)
-	UpdateObservationSettings(context.Context, *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error)
+	GetObservationSettings(context.Context, *v1.GetObservationSettingsRequest) (*v1.GetObservationSettingsResponse, error)
+	UpdateObservationSettings(context.Context, *v1.UpdateObservationSettingsRequest) (*v1.UpdateObservationSettingsResponse, error)
 }
 
-// NewObservationSettingsServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewObservationSettingsServiceHandler(svc ObservationSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	observationSettingsServiceMethods := v1.File_tolo_observation_v1_observation_proto.Services().ByName("ObservationSettingsService").Methods()
-	observationSettingsServiceGetObservationSettingsHandler := connect.NewUnaryHandler(
-		ObservationSettingsServiceGetObservationSettingsProcedure,
-		svc.GetObservationSettings,
-		connect.WithSchema(observationSettingsServiceMethods.ByName("GetObservationSettings")),
-		connect.WithHandlerOptions(opts...),
+// RegisterObservationSettingsServiceHandler registers svc as the
+// tolo.observation.v1.ObservationSettingsService implementation on server.
+func RegisterObservationSettingsServiceHandler(server *connect.Server, svc ObservationSettingsServiceHandler) {
+	adapter := observationSettingsServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: observationSettingsServiceGetObservationSettingsSpec(), Handler: adapter.getObservationSettings},
+		connect.Method{Spec: observationSettingsServiceUpdateObservationSettingsSpec(), Handler: adapter.updateObservationSettings},
 	)
-	observationSettingsServiceUpdateObservationSettingsHandler := connect.NewUnaryHandler(
-		ObservationSettingsServiceUpdateObservationSettingsProcedure,
-		svc.UpdateObservationSettings,
-		connect.WithSchema(observationSettingsServiceMethods.ByName("UpdateObservationSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/tolo.observation.v1.ObservationSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case ObservationSettingsServiceGetObservationSettingsProcedure:
-			observationSettingsServiceGetObservationSettingsHandler.ServeHTTP(w, r)
-		case ObservationSettingsServiceUpdateObservationSettingsProcedure:
-			observationSettingsServiceUpdateObservationSettingsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedObservationSettingsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedObservationSettingsServiceHandler struct{}
 
-func (UnimplementedObservationSettingsServiceHandler) GetObservationSettings(context.Context, *connect.Request[v1.GetObservationSettingsRequest]) (*connect.Response[v1.GetObservationSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ObservationSettingsService.GetObservationSettings is not implemented"))
+func (UnimplementedObservationSettingsServiceHandler) GetObservationSettings(context.Context, *v1.GetObservationSettingsRequest) (*v1.GetObservationSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.ObservationSettingsService.GetObservationSettings is not implemented")
 }
 
-func (UnimplementedObservationSettingsServiceHandler) UpdateObservationSettings(context.Context, *connect.Request[v1.UpdateObservationSettingsRequest]) (*connect.Response[v1.UpdateObservationSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings is not implemented"))
+func (UnimplementedObservationSettingsServiceHandler) UpdateObservationSettings(context.Context, *v1.UpdateObservationSettingsRequest) (*v1.UpdateObservationSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings is not implemented")
+}
+
+type observationSettingsServiceClient struct {
+	client *connect.Client
+}
+
+func (c *observationSettingsServiceClient) GetObservationSettings(ctx context.Context, req *v1.GetObservationSettingsRequest) (*v1.GetObservationSettingsResponse, error) {
+	var res v1.GetObservationSettingsResponse
+	if err := c.client.CallUnary(ctx, observationSettingsServiceGetObservationSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *observationSettingsServiceClient) UpdateObservationSettings(ctx context.Context, req *v1.UpdateObservationSettingsRequest) (*v1.UpdateObservationSettingsResponse, error) {
+	var res v1.UpdateObservationSettingsResponse
+	if err := c.client.CallUnary(ctx, observationSettingsServiceUpdateObservationSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type observationSettingsServiceHandler struct {
+	svc ObservationSettingsServiceHandler
+}
+
+func (h observationSettingsServiceHandler) getObservationSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetObservationSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetObservationSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h observationSettingsServiceHandler) updateObservationSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateObservationSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateObservationSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

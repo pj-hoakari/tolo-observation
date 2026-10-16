@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -43,16 +43,16 @@ var (
 // service answers an internal failure the same way.
 func InternalError(ctx context.Context, err error) *connectrpc.Error {
 	if errors.Is(err, context.Canceled) {
-		return connectrpc.NewError(connectrpc.CodeCanceled, err)
+		return connectrpc.NewError(connectrpc.CodeCanceled, err.Error()).WithCause(err)
 	}
 
 	if errors.Is(err, context.DeadlineExceeded) {
-		return connectrpc.NewError(connectrpc.CodeDeadlineExceeded, err)
+		return connectrpc.NewError(connectrpc.CodeDeadlineExceeded, err.Error()).WithCause(err)
 	}
 
 	slog.ErrorContext(ctx, "internal error", "error", err)
 
-	return connectrpc.NewError(connectrpc.CodeInternal, errInternal) //nolint:forbidigo // the one place that builds internal errors
+	return connectrpc.NewError(connectrpc.CodeInternal, errInternal.Error()).WithCause(errInternal) //nolint:forbidigo // the one place that builds internal errors
 }
 
 type MeasurementIngestService struct {
@@ -70,9 +70,9 @@ func NewMeasurementIngestService(useCases application.MeasurementIngestUseCases)
 
 func (s *MeasurementIngestService) ReportMeasurements(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.ReportMeasurementsRequest],
-) (*connectrpc.Response[observationv1.ReportMeasurementsResponse], error) {
-	reported := req.Msg.GetMeasurements()
+	req *observationv1.ReportMeasurementsRequest,
+) (*observationv1.ReportMeasurementsResponse, error) {
+	reported := req.GetMeasurements()
 	measurements := make([]application.MeasurementInput, 0, len(reported))
 
 	method := domain.MeasurementMethodCamera
@@ -80,8 +80,8 @@ func (s *MeasurementIngestService) ReportMeasurements(
 		method = domain.MeasurementMethodQR
 	}
 
-	if method == domain.MeasurementMethodQR && req.Msg.GetEdgeDeviceId() != "" {
-		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, errEdgeDeviceNotAllowed)
+	if method == domain.MeasurementMethodQR && req.GetEdgeDeviceId() != "" {
+		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, errEdgeDeviceNotAllowed.Error()).WithCause(errEdgeDeviceNotAllowed)
 	}
 
 	for _, measurement := range reported {
@@ -101,9 +101,9 @@ func (s *MeasurementIngestService) ReportMeasurements(
 	}
 
 	accepted, err := s.useCases.ReportMeasurements(ctx, application.ReportMeasurementsInput{
-		TenantID:     req.Msg.GetTenantId(),
-		EventID:      req.Msg.GetEventId(),
-		EdgeDeviceID: req.Msg.GetEdgeDeviceId(),
+		TenantID:     req.GetTenantId(),
+		EventID:      req.GetEventId(),
+		EdgeDeviceID: req.GetEdgeDeviceId(),
 		Method:       method,
 		Measurements: measurements,
 	})
@@ -111,35 +111,35 @@ func (s *MeasurementIngestService) ReportMeasurements(
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.ReportMeasurementsResponse{AcceptedCount: accepted}), nil
+	return &observationv1.ReportMeasurementsResponse{AcceptedCount: accepted}, nil
 }
 
 func measurementPointID(measurement *observationv1.Measurement, method domain.MeasurementMethod) (string, error) {
 	switch measurement.GetSource() {
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_EDGE:
 		if method != domain.MeasurementMethodCamera {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources)
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources.Error()).WithCause(errMixedMeasurementSources)
 		}
 
 		if measurement.GetQrLocationId() != "" {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errQRLocationNotAllowed)
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errQRLocationNotAllowed.Error()).WithCause(errQRLocationNotAllowed)
 		}
 
 		return measurement.GetObservationPointId(), nil
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_QR:
 		if method != domain.MeasurementMethodQR {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources)
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources.Error()).WithCause(errMixedMeasurementSources)
 		}
 
 		if measurement.GetObservationPointId() != "" {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errObservationPointNotAllowed)
+			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errObservationPointNotAllowed.Error()).WithCause(errObservationPointNotAllowed)
 		}
 
 		return measurement.GetQrLocationId(), nil
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_UNSPECIFIED:
-		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
+		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired.Error()).WithCause(errMeasurementSourceRequired)
 	default:
-		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired)
+		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired.Error()).WithCause(errMeasurementSourceRequired)
 	}
 }
 
@@ -166,47 +166,47 @@ func NewEdgeDeviceService(useCases application.EdgeDeviceUseCases) *EdgeDeviceSe
 
 func (s *EdgeDeviceService) RegisterEdgeDevice(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.RegisterEdgeDeviceRequest],
-) (*connectrpc.Response[observationv1.RegisterEdgeDeviceResponse], error) {
+	req *observationv1.RegisterEdgeDeviceRequest,
+) (*observationv1.RegisterEdgeDeviceResponse, error) {
 	output, err := s.useCases.RegisterEdgeDevice(ctx, application.RegisterEdgeDeviceInput{
-		EventID:               req.Msg.GetEventId(),
-		Name:                  req.Msg.GetName(),
-		ObservationPointNames: req.Msg.GetObservationPointNames(),
+		EventID:               req.GetEventId(),
+		Name:                  req.GetName(),
+		ObservationPointNames: req.GetObservationPointNames(),
 	})
 	if err != nil {
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.RegisterEdgeDeviceResponse{
+	return &observationv1.RegisterEdgeDeviceResponse{
 		Device:             newProtoEdgeDevice(output.Device),
 		ObservationPageUrl: output.ObservationPageURL,
-	}), nil
+	}, nil
 }
 
 func (s *EdgeDeviceService) UnregisterEdgeDevice(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.UnregisterEdgeDeviceRequest],
-) (*connectrpc.Response[observationv1.UnregisterEdgeDeviceResponse], error) {
+	req *observationv1.UnregisterEdgeDeviceRequest,
+) (*observationv1.UnregisterEdgeDeviceResponse, error) {
 	device, err := s.useCases.UnregisterEdgeDevice(ctx, application.UnregisterEdgeDeviceInput{
-		EventID:      req.Msg.GetEventId(),
-		EdgeDeviceID: req.Msg.GetEdgeDeviceId(),
+		EventID:      req.GetEventId(),
+		EdgeDeviceID: req.GetEdgeDeviceId(),
 	})
 	if err != nil {
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.UnregisterEdgeDeviceResponse{
+	return &observationv1.UnregisterEdgeDeviceResponse{
 		Device: newProtoEdgeDevice(device),
-	}), nil
+	}, nil
 }
 
 func (s *EdgeDeviceService) ListEdgeDevices(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.ListEdgeDevicesRequest],
-) (*connectrpc.Response[observationv1.ListEdgeDevicesResponse], error) {
+	req *observationv1.ListEdgeDevicesRequest,
+) (*observationv1.ListEdgeDevicesResponse, error) {
 	devices, err := s.useCases.ListEdgeDevices(ctx, application.ListEdgeDevicesInput{
-		EventID:             req.Msg.GetEventId(),
-		IncludeUnregistered: req.Msg.GetIncludeUnregistered(),
+		EventID:             req.GetEventId(),
+		IncludeUnregistered: req.GetIncludeUnregistered(),
 	})
 	if err != nil {
 		return nil, observationError(ctx, err)
@@ -217,42 +217,42 @@ func (s *EdgeDeviceService) ListEdgeDevices(
 		protoDevices = append(protoDevices, newProtoEdgeDevice(device))
 	}
 
-	return connectrpc.NewResponse(&observationv1.ListEdgeDevicesResponse{Devices: protoDevices}), nil
+	return &observationv1.ListEdgeDevicesResponse{Devices: protoDevices}, nil
 }
 
 func (s *EdgeDeviceService) Heartbeat(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.HeartbeatRequest],
-) (*connectrpc.Response[observationv1.HeartbeatResponse], error) {
+	req *observationv1.HeartbeatRequest,
+) (*observationv1.HeartbeatResponse, error) {
 	err := s.useCases.Heartbeat(ctx, application.HeartbeatInput{
-		EventID:                   req.Msg.GetEventId(),
-		EdgeDeviceID:              req.Msg.GetEdgeDeviceId(),
-		ActiveObservationPointIDs: req.Msg.GetActiveObservationPointIds(),
+		EventID:                   req.GetEventId(),
+		EdgeDeviceID:              req.GetEdgeDeviceId(),
+		ActiveObservationPointIDs: req.GetActiveObservationPointIds(),
 	})
 	if err != nil {
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.HeartbeatResponse{}), nil
+	return &observationv1.HeartbeatResponse{}, nil
 }
 
 func (s *EdgeDeviceService) UpdateObservationPointConfig(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.UpdateObservationPointConfigRequest],
-) (*connectrpc.Response[observationv1.UpdateObservationPointConfigResponse], error) {
+	req *observationv1.UpdateObservationPointConfigRequest,
+) (*observationv1.UpdateObservationPointConfigResponse, error) {
 	point, err := s.useCases.UpdateObservationPointConfig(ctx, application.UpdateObservationPointConfigInput{
-		EventID:            req.Msg.GetEventId(),
-		ObservationPointID: req.Msg.GetObservationPointId(),
-		Name:               req.Msg.GetName(),
-		Enabled:            req.Msg.GetEnabled(),
+		EventID:            req.GetEventId(),
+		ObservationPointID: req.GetObservationPointId(),
+		Name:               req.GetName(),
+		Enabled:            req.GetEnabled(),
 	})
 	if err != nil {
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.UpdateObservationPointConfigResponse{
+	return &observationv1.UpdateObservationPointConfigResponse{
 		Point: newProtoObservationPoint(point),
-	}), nil
+	}, nil
 }
 
 func newProtoEdgeDevice(view application.EdgeDeviceView) *observationv1.EdgeDevice {
@@ -301,18 +301,18 @@ func observationError(ctx context.Context, err error) error {
 		errors.Is(err, domain.ErrInvalidHistoryWindow),
 		errors.Is(err, domain.ErrEventTypeRequired),
 		errors.Is(err, application.ErrEdgeDeviceRequired):
-		return connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
+		return connectrpc.NewError(connectrpc.CodeInvalidArgument, err.Error()).WithCause(err)
 	case errors.Is(err, repository.ErrEdgeDeviceNotFound),
 		errors.Is(err, domain.ErrObservationPointNotFound):
-		return connectrpc.NewError(connectrpc.CodeNotFound, err)
+		return connectrpc.NewError(connectrpc.CodeNotFound, err.Error()).WithCause(err)
 	case errors.Is(err, domain.ErrEdgeDeviceUnregistered):
-		return connectrpc.NewError(connectrpc.CodeFailedPrecondition, err)
+		return connectrpc.NewError(connectrpc.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case errors.Is(err, tenantctx.ErrMissing),
 		errors.Is(err, tenantctx.ErrMismatch),
 		errors.Is(err, tenantctx.ErrEventMissing),
 		errors.Is(err, tenantctx.ErrEventMismatch),
 		errors.Is(err, application.ErrForeignEvent):
-		return connectrpc.NewError(connectrpc.CodePermissionDenied, err)
+		return connectrpc.NewError(connectrpc.CodePermissionDenied, err.Error()).WithCause(err)
 	default:
 		return InternalError(ctx, err)
 	}
@@ -343,20 +343,20 @@ func NewStatusQueryService(useCases application.StatusQueryUseCases) *StatusQuer
 
 func (s *StatusQueryService) GetEventOverview(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.GetEventOverviewRequest],
-) (*connectrpc.Response[observationv1.GetEventOverviewResponse], error) {
-	overview, err := s.useCases.GetEventOverview(ctx, req.Msg.GetEventId())
+	req *observationv1.GetEventOverviewRequest,
+) (*observationv1.GetEventOverviewResponse, error) {
+	overview, err := s.useCases.GetEventOverview(ctx, req.GetEventId())
 	if err != nil {
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.GetEventOverviewResponse{
+	return &observationv1.GetEventOverviewResponse{
 		Overview: &observationv1.EventOverview{
 			Snapshot:    newProtoSnapshot(overview.Snapshot),
 			Risks:       nil,
 			DangerFlags: nil,
 		},
-	}), nil
+	}, nil
 }
 
 func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
@@ -427,34 +427,34 @@ func NewObservationSettingsService(useCases application.ObservationSettingsUseCa
 
 func (s *ObservationSettingsService) GetObservationSettings(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.GetObservationSettingsRequest],
-) (*connectrpc.Response[observationv1.GetObservationSettingsResponse], error) {
-	settings, err := s.useCases.GetObservationSettings(ctx, req.Msg.GetEventId())
+	req *observationv1.GetObservationSettingsRequest,
+) (*observationv1.GetObservationSettingsResponse, error) {
+	settings, err := s.useCases.GetObservationSettings(ctx, req.GetEventId())
 	if err != nil {
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.GetObservationSettingsResponse{
+	return &observationv1.GetObservationSettingsResponse{
 		Settings: newProtoObservationSettings(settings),
-	}), nil
+	}, nil
 }
 
 func (s *ObservationSettingsService) UpdateObservationSettings(
 	ctx context.Context,
-	req *connectrpc.Request[observationv1.UpdateObservationSettingsRequest],
-) (*connectrpc.Response[observationv1.UpdateObservationSettingsResponse], error) {
+	req *observationv1.UpdateObservationSettingsRequest,
+) (*observationv1.UpdateObservationSettingsResponse, error) {
 	settings, err := s.useCases.UpdateObservationSettings(ctx, application.UpdateObservationSettingsInput{
-		EventID:           req.Msg.GetEventId(),
-		HistoryWindowDays: req.Msg.GetSettings().GetHistoryWindowDays(),
-		EventType:         domainEventType(req.Msg.GetSettings().GetEventType()),
+		EventID:           req.GetEventId(),
+		HistoryWindowDays: req.GetSettings().GetHistoryWindowDays(),
+		EventType:         domainEventType(req.GetSettings().GetEventType()),
 	})
 	if err != nil {
 		return nil, observationError(ctx, err)
 	}
 
-	return connectrpc.NewResponse(&observationv1.UpdateObservationSettingsResponse{
+	return &observationv1.UpdateObservationSettingsResponse{
 		Settings: newProtoObservationSettings(settings),
-	}), nil
+	}, nil
 }
 
 func newProtoObservationSettings(settings domain.ObservationSettings) *observationv1.ObservationSettings {

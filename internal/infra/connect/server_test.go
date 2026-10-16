@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	internaljwt "github.com/pj-hoakari/internal-jwt-handling"
 	"github.com/pj-hoakari/internal-jwt-handling/jwks"
@@ -165,13 +166,13 @@ func mintInternalJWTFor(t *testing.T, config jwtgen.Config) (string, internaljwt
 // listEdgeDevicesRequest is the call the authorization tests make. The handler
 // behind it is wired to a fake, so reaching it without an error is the proof
 // that a call passed authorization.
-func listEdgeDevicesRequest(authorization string) *connectrpc.Request[observationv1.ListEdgeDevicesRequest] {
-	req := connectrpc.NewRequest(&observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID})
+func listEdgeDevicesRequest(authorization string) (context.Context, *observationv1.ListEdgeDevicesRequest) {
+	ctx, info := connectrpc.NewClientContext(context.Background())
 	if authorization != "" {
-		req.Header().Set("Authorization", authorization)
+		info.RequestHeader().Set("Authorization", authorization)
 	}
 
-	return req
+	return ctx, &observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID}
 }
 
 func TestRoutesWithJWTSettings(t *testing.T) {
@@ -195,9 +196,9 @@ func TestRoutesWithJWTSettings(t *testing.T) {
 
 		httpServer := httptest.NewServer(mux)
 		t.Cleanup(httpServer.Close)
-		client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+		client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-		if _, err = client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization)); err != nil {
+		if _, err = client.ListEdgeDevices(listEdgeDevicesRequest(authorization)); err != nil {
 			t.Fatalf("ListEdgeDevices() error = %v", err)
 		}
 	})
@@ -221,10 +222,10 @@ func TestEdgeDeviceServiceAuthz(t *testing.T) {
 	authorization, keys := mintEventToken(t, "events.read")
 	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
 	t.Run("rejects missing bearer token", func(t *testing.T) {
-		_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(""))
+		_, err := client.ListEdgeDevices(listEdgeDevicesRequest(""))
 		if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
 			t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 		}
@@ -233,7 +234,7 @@ func TestEdgeDeviceServiceAuthz(t *testing.T) {
 	// Reaching the handler is what the policy admits: an event token granting
 	// events.read passes authorization.
 	t.Run("accepts an event token with the required scope", func(t *testing.T) {
-		if _, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization)); err != nil {
+		if _, err := client.ListEdgeDevices(listEdgeDevicesRequest(authorization)); err != nil {
 			t.Fatalf("ListEdgeDevices() error = %v", err)
 		}
 	})
@@ -251,9 +252,9 @@ func TestEdgeDeviceServiceAuthzRejectsTenantToken(t *testing.T) {
 	})
 	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	_, err := client.ListEdgeDevices(listEdgeDevicesRequest(authorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
 		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
@@ -265,9 +266,9 @@ func TestEdgeDeviceServiceAuthzRejectsServiceToken(t *testing.T) {
 	authorization, keys := mintInternalJWTFor(t, jwtgen.Config{TokenUse: internaljwt.TokenUseService})
 	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	_, err := client.ListEdgeDevices(listEdgeDevicesRequest(authorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
 		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
@@ -281,12 +282,13 @@ func TestMeasurementIngestServiceAuthzAcceptsServiceToken(t *testing.T) {
 	authorization, keys := mintInternalJWTFor(t, jwtgen.Config{TokenUse: internaljwt.TokenUseService})
 	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewMeasurementIngestServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewMeasurementIngestServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-	req := connectrpc.NewRequest(&observationv1.ReportMeasurementsRequest{EventId: testEventPublicID})
-	req.Header().Set("Authorization", authorization)
+	req := &observationv1.ReportMeasurementsRequest{EventId: testEventPublicID}
+	ctx, info := connectrpc.NewClientContext(context.Background())
+	info.RequestHeader().Set("Authorization", authorization)
 
-	if _, err := client.ReportMeasurements(context.Background(), req); err != nil {
+	if _, err := client.ReportMeasurements(ctx, req); err != nil {
 		t.Fatalf("ReportMeasurements() error = %v", err)
 	}
 }
@@ -297,9 +299,9 @@ func TestEdgeDeviceServiceAuthzRejectsMissingScope(t *testing.T) {
 	authorization, keys := mintEventToken(t, "events.manage")
 	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	_, err := client.ListEdgeDevices(listEdgeDevicesRequest(authorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodePermissionDenied; got != want {
 		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
@@ -318,9 +320,9 @@ func TestEdgeDeviceServiceAuthzRejectsUnknownSigningKey(t *testing.T) {
 	foreignAuthorization, _ := mintEventToken(t, "events.read")
 	httpServer := httptest.NewServer(newTestHandler(t, trustedKeys))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(foreignAuthorization))
+	_, err := client.ListEdgeDevices(listEdgeDevicesRequest(foreignAuthorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
 		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
@@ -337,9 +339,9 @@ func TestEdgeDeviceServiceAuthzUnavailableWhenJWKSUnreachable(t *testing.T) {
 	authorization, _ := mintEventToken(t, "events.read")
 	httpServer := httptest.NewServer(newTestHandlerForJWKSURL(t, jwksServer.URL))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	_, err := client.ListEdgeDevices(listEdgeDevicesRequest(authorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnavailable; got != want {
 		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}
@@ -359,9 +361,9 @@ func TestEdgeDeviceServiceAuthzRejectsAudienceMismatch(t *testing.T) {
 	})
 	httpServer := httptest.NewServer(newTestHandler(t, keys))
 	t.Cleanup(httpServer.Close)
-	client := observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL)
+	client := observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL)))
 
-	_, err := client.ListEdgeDevices(context.Background(), listEdgeDevicesRequest(authorization))
+	_, err := client.ListEdgeDevices(listEdgeDevicesRequest(authorization))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
 		t.Fatalf("ListEdgeDevices() error code = %v, want %v", got, want)
 	}

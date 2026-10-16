@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
 
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 )
@@ -18,7 +18,7 @@ func TestObservationSettings(t *testing.T) {
 	get := func(t *testing.T, eventID string) *observationv1.ObservationSettings {
 		t.Helper()
 
-		res, err := flow.settings.GetObservationSettings(ctx, authorized(
+		res, err := flow.settings.GetObservationSettings(authorized(ctx,
 			flow.token(t, eventID, "events.read"),
 			&observationv1.GetObservationSettingsRequest{EventId: eventID},
 		))
@@ -26,11 +26,11 @@ func TestObservationSettings(t *testing.T) {
 			t.Fatalf("GetObservationSettings() error = %v", err)
 		}
 
-		return res.Msg.GetSettings()
+		return res.GetSettings()
 	}
 
 	update := func(eventID string, settings *observationv1.ObservationSettings) (*observationv1.ObservationSettings, error) {
-		res, err := flow.settings.UpdateObservationSettings(ctx, authorized(
+		res, err := flow.settings.UpdateObservationSettings(authorized(ctx,
 			flow.token(t, eventID, "events.manage"),
 			&observationv1.UpdateObservationSettingsRequest{EventId: eventID, Settings: settings},
 		))
@@ -38,7 +38,7 @@ func TestObservationSettings(t *testing.T) {
 			return nil, err
 		}
 
-		return res.Msg.GetSettings(), nil
+		return res.GetSettings(), nil
 	}
 
 	t.Run("answers the defaults for an event without stored settings", func(t *testing.T) {
@@ -92,12 +92,12 @@ func TestObservationSettings(t *testing.T) {
 	t.Run("rejects a token for another event", func(t *testing.T) {
 		foreignToken := flow.token(t, otherEventPublicID, "events.read events.manage")
 
-		_, getErr := flow.settings.GetObservationSettings(ctx, authorized(
+		_, getErr := flow.settings.GetObservationSettings(authorized(ctx,
 			foreignToken,
 			&observationv1.GetObservationSettingsRequest{EventId: settingsEventPublicID},
 		))
 
-		_, updateErr := flow.settings.UpdateObservationSettings(ctx, authorized(
+		_, updateErr := flow.settings.UpdateObservationSettings(authorized(ctx,
 			foreignToken,
 			&observationv1.UpdateObservationSettingsRequest{
 				EventId:  settingsEventPublicID,

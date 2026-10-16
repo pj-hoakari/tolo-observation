@@ -54,7 +54,7 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 	seed(now.Add(-2*time.Hour), "r2", 8, 1, 1)
 	seed(now.Add(-2*time.Hour+time.Second), "r9", 7, 0, 0)
 
-	if _, err := flow.settings.UpdateObservationSettings(ctx, authorized(
+	if _, err := flow.settings.UpdateObservationSettings(authorized(ctx,
 		flow.token(t, arcHistoryEventPublicID, "events.manage"),
 		&observationv1.UpdateObservationSettingsRequest{
 			EventId:  arcHistoryEventPublicID,
@@ -64,7 +64,7 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 		t.Fatalf("UpdateObservationSettings() error = %v", err)
 	}
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, arcHistoryEventPublicID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
 			EventId:               arcHistoryEventPublicID,
@@ -76,13 +76,13 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
-	corridor := registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
+	corridor := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
 	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
 
 	reportToken := flow.token(t, arcHistoryEventPublicID, "events.report")
 
-	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 		EventId:                   arcHistoryEventPublicID,
 		EdgeDeviceId:              deviceID,
 		ActiveObservationPointIds: []string{corridor},
@@ -92,7 +92,7 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 
 	before := time.Now()
 
-	if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+	if _, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
 		EventId:      arcHistoryEventPublicID,
 		EdgeDeviceId: deviceID,
 		Measurements: []*observationv1.Measurement{edgeMeasurement(corridor, flow.observedStart)},

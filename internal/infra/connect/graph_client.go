@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	graphv1 "github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1"
 	"github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1/graphv1connect"
@@ -17,28 +18,28 @@ type GraphSupplyClient struct {
 	client graphv1connect.GraphSupplyServiceClient
 }
 
-func NewGraphSupplyClient(httpClient connectrpc.HTTPClient, baseURL string) *GraphSupplyClient {
+func NewGraphSupplyClient(httpClient connecthttp.HTTPClient, baseURL string) *GraphSupplyClient {
 	return &GraphSupplyClient{
 		client: graphv1connect.NewGraphSupplyServiceClient(
-			httpClient, baseURL, connectrpc.WithInterceptors(forwardAuthorization()),
+			connectrpc.NewClient(connecthttp.NewTransport(httpClient, baseURL), forwardAuthorization()),
 		),
 	}
 }
 
 func (c *GraphSupplyClient) CurrentGraph(ctx context.Context, eventID string) (domain.Graph, error) {
-	res, err := c.client.GetCurrentRevision(ctx, connectrpc.NewRequest(&graphv1.GetCurrentRevisionRequest{EventId: eventID}))
+	res, err := c.client.GetCurrentRevision(ctx, &graphv1.GetCurrentRevisionRequest{EventId: eventID})
 	if err != nil {
 		return domain.Graph{}, fmt.Errorf("call GetCurrentRevision: %w", err)
 	}
 
 	graph := domain.Graph{
-		EventID:    res.Msg.GetEventId(),
-		RevisionID: res.Msg.GetRevisionId(),
-		Points:     make([]domain.Point, 0, len(res.Msg.GetPoints())),
-		Routes:     make([]domain.Route, 0, len(res.Msg.GetRoutes())),
+		EventID:    res.GetEventId(),
+		RevisionID: res.GetRevisionId(),
+		Points:     make([]domain.Point, 0, len(res.GetPoints())),
+		Routes:     make([]domain.Route, 0, len(res.GetRoutes())),
 	}
 
-	for _, point := range res.Msg.GetPoints() {
+	for _, point := range res.GetPoints() {
 		var boundary *domain.Boundary
 		if point.GetBoundary() != nil {
 			boundary = &domain.Boundary{
@@ -54,7 +55,7 @@ func (c *GraphSupplyClient) CurrentGraph(ctx context.Context, eventID string) (d
 		})
 	}
 
-	for _, route := range res.Msg.GetRoutes() {
+	for _, route := range res.GetRoutes() {
 		graph.Routes = append(graph.Routes, domain.Route{
 			ID:           route.GetRouteId(),
 			FromPointID:  route.GetFromPointId(),
@@ -71,13 +72,13 @@ func (c *GraphSupplyClient) ObservationPointMappings(
 	ctx context.Context,
 	eventID, revisionID string,
 ) ([]domain.ObservationPointMapping, error) {
-	res, err := c.client.GetObservationPointMappings(ctx, connectrpc.NewRequest(&graphv1.GetMappingsRequest{EventId: eventID, RevisionId: revisionID}))
+	res, err := c.client.GetObservationPointMappings(ctx, &graphv1.GetMappingsRequest{EventId: eventID, RevisionId: revisionID})
 	if err != nil {
 		return nil, fmt.Errorf("call GetObservationPointMappings: %w", err)
 	}
 
-	mappings := make([]domain.ObservationPointMapping, 0, len(res.Msg.GetMappings()))
-	for _, mapping := range res.Msg.GetMappings() {
+	mappings := make([]domain.ObservationPointMapping, 0, len(res.GetMappings()))
+	for _, mapping := range res.GetMappings() {
 		mappings = append(mappings, domain.ObservationPointMapping{
 			ObservationPointID: domain.ObservationPointID(mapping.GetObservationPointId()),
 			Anchor: domain.GraphAnchor{
@@ -95,9 +96,9 @@ func (c *GraphSupplyClient) QrLocations(
 	ctx context.Context,
 	tenantPublicID, eventID, revisionID string,
 ) ([]domain.ObservationPointMapping, error) {
-	res, err := c.client.GetQrLocations(ctx, connectrpc.NewRequest(&graphv1.GetQrLocationsRequest{
+	res, err := c.client.GetQrLocations(ctx, &graphv1.GetQrLocationsRequest{
 		EventId: eventID, RevisionId: revisionID, TenantId: tenantPublicID,
-	}))
+	})
 	if connectrpc.CodeOf(err) == connectrpc.CodePermissionDenied {
 		return nil, fmt.Errorf("call GetQrLocations: %w: %w", application.ErrForeignEvent, err)
 	}
@@ -106,8 +107,8 @@ func (c *GraphSupplyClient) QrLocations(
 		return nil, fmt.Errorf("call GetQrLocations: %w", err)
 	}
 
-	mappings := make([]domain.ObservationPointMapping, 0, len(res.Msg.GetQrLocations()))
-	for _, location := range res.Msg.GetQrLocations() {
+	mappings := make([]domain.ObservationPointMapping, 0, len(res.GetQrLocations()))
+	for _, location := range res.GetQrLocations() {
 		mappings = append(mappings, domain.ObservationPointMapping{
 			ObservationPointID: domain.ObservationPointID(location.GetQrLocationId()),
 			Anchor: domain.GraphAnchor{

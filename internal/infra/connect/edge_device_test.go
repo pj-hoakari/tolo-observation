@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
@@ -70,19 +71,20 @@ func newEdgeDeviceClient(
 	httpServer := httptest.NewServer(newTestHandlerWithEdgeDevices(t, keys, useCases))
 	t.Cleanup(httpServer.Close)
 
-	return observationv1connect.NewEdgeDeviceServiceClient(
-		httpServer.Client(),
-		httpServer.URL,
-		connectrpc.WithInterceptors(authorizationInterceptor(authorization)),
-	)
+	return observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(
+		connecthttp.NewTransport(httpServer.Client(), httpServer.URL),
+		authorizationInterceptor(authorization),
+	))
 }
 
-func authorizationInterceptor(authorization string) connectrpc.UnaryInterceptorFunc {
-	return func(next connectrpc.UnaryFunc) connectrpc.UnaryFunc {
-		return func(ctx context.Context, req connectrpc.AnyRequest) (connectrpc.AnyResponse, error) {
-			req.Header().Set("Authorization", authorization)
+func authorizationInterceptor(authorization string) connectrpc.ClientInterceptor {
+	return func(next connectrpc.ClientFunc) connectrpc.ClientFunc {
+		return func(ctx context.Context, spec connectrpc.Spec) (connectrpc.ClientStream, error) {
+			if info, ok := connectrpc.CallInfoForClientContext(ctx); ok {
+				info.RequestHeader().Set("Authorization", authorization)
+			}
 
-			return next(ctx, req)
+			return next(ctx, spec)
 		}
 	}
 }
@@ -109,22 +111,20 @@ func TestRegisterEdgeDevice(t *testing.T) {
 
 	client := newEdgeDeviceClient(t, "events.manage", useCases)
 
-	res, err := client.RegisterEdgeDevice(context.Background(), connectrpc.NewRequest(
-		&observationv1.RegisterEdgeDeviceRequest{
-			EventId:               testEventPublicID,
-			Name:                  "gate-1",
-			ObservationPointNames: []string{"north"},
-		},
-	))
+	res, err := client.RegisterEdgeDevice(context.Background(), &observationv1.RegisterEdgeDeviceRequest{
+		EventId:               testEventPublicID,
+		Name:                  "gate-1",
+		ObservationPointNames: []string{"north"},
+	})
 	if err != nil {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	if got, want := res.Msg.GetObservationPageUrl(), useCases.registerOutput.ObservationPageURL; got != want {
+	if got, want := res.GetObservationPageUrl(), useCases.registerOutput.ObservationPageURL; got != want {
 		t.Errorf("observation_page_url = %q, want %q", got, want)
 	}
 
-	device := res.Msg.GetDevice()
+	device := res.GetDevice()
 	if got, want := device.GetEdgeDeviceId(), testEdgeDeviceID; got != want {
 		t.Errorf("edge_device_id = %q, want %q", got, want)
 	}
@@ -192,14 +192,12 @@ func TestListEdgeDevicesReportsLiveness(t *testing.T) {
 				devices: []application.EdgeDeviceView{tt.view},
 			})
 
-			res, err := client.ListEdgeDevices(context.Background(), connectrpc.NewRequest(
-				&observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID, IncludeUnregistered: true},
-			))
+			res, err := client.ListEdgeDevices(context.Background(), &observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID, IncludeUnregistered: true})
 			if err != nil {
 				t.Fatalf("ListEdgeDevices() error = %v", err)
 			}
 
-			devices := res.Msg.GetDevices()
+			devices := res.GetDevices()
 			if len(devices) != 1 {
 				t.Fatalf("devices = %v, want one device", devices)
 			}
@@ -239,12 +237,10 @@ func TestEdgeDeviceErrorMapping(t *testing.T) {
 
 			client := newEdgeDeviceClient(t, "events.manage", &fakeEdgeDeviceUseCases{err: tt.err})
 
-			_, err := client.UnregisterEdgeDevice(context.Background(), connectrpc.NewRequest(
-				&observationv1.UnregisterEdgeDeviceRequest{
-					EventId:      testEventPublicID,
-					EdgeDeviceId: testEdgeDeviceID,
-				},
-			))
+			_, err := client.UnregisterEdgeDevice(context.Background(), &observationv1.UnregisterEdgeDeviceRequest{
+				EventId:      testEventPublicID,
+				EdgeDeviceId: testEdgeDeviceID,
+			})
 			if got := connectrpc.CodeOf(err); got != tt.want {
 				t.Fatalf("UnregisterEdgeDevice() error code = %v (%v), want %v", got, err, tt.want)
 			}

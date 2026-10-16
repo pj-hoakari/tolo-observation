@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/jmoiron/sqlx"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -173,10 +174,10 @@ func newObservationFlow(t *testing.T) observationFlow {
 
 	return observationFlow{
 		generator:     generator,
-		edgeDevices:   observationv1connect.NewEdgeDeviceServiceClient(httpServer.Client(), httpServer.URL),
-		measurements:  observationv1connect.NewMeasurementIngestServiceClient(httpServer.Client(), httpServer.URL),
-		statusQueries: observationv1connect.NewStatusQueryServiceClient(httpServer.Client(), httpServer.URL),
-		settings:      observationv1connect.NewObservationSettingsServiceClient(httpServer.Client(), httpServer.URL),
+		edgeDevices:   observationv1connect.NewEdgeDeviceServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL))),
+		measurements:  observationv1connect.NewMeasurementIngestServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL))),
+		statusQueries: observationv1connect.NewStatusQueryServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL))),
+		settings:      observationv1connect.NewObservationSettingsServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL))),
 		graph:         graph,
 		flow:          flow,
 		observedStart: time.Now().Add(-time.Minute),
@@ -221,18 +222,18 @@ func (f observationFlow) serviceToken(t *testing.T, originSub, tenantPublicID st
 	return "Bearer " + output.Token
 }
 
-func authorized[T any](authorization string, message *T) *connectrpc.Request[T] {
-	req := connectrpc.NewRequest(message)
-	req.Header().Set("Authorization", authorization)
+func authorized[T any](ctx context.Context, authorization string, message *T) (context.Context, *T) {
+	ctx, info := connectrpc.NewClientContext(ctx)
+	info.RequestHeader().Set("Authorization", authorization)
 
-	return req
+	return ctx, message
 }
 
 func TestObservationFlow(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, testEventPublicID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
 			EventId:               testEventPublicID,
@@ -244,14 +245,14 @@ func TestObservationFlow(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
 
-	if registered.Msg.GetDevice().GetOnline() || registered.Msg.GetDevice().GetLastHeartbeatAt() != nil {
-		t.Errorf("registered device = %v, want offline without last_heartbeat_at", registered.Msg.GetDevice())
+	if registered.GetDevice().GetOnline() || registered.GetDevice().GetLastHeartbeatAt() != nil {
+		t.Errorf("registered device = %v, want offline without last_heartbeat_at", registered.GetDevice())
 	}
 
 	pointIDs := make([]string, 0, 2)
-	for _, point := range registered.Msg.GetDevice().GetObservationPoints() {
+	for _, point := range registered.GetDevice().GetObservationPoints() {
 		pointIDs = append(pointIDs, point.GetObservationPointId())
 	}
 
@@ -261,7 +262,7 @@ func TestObservationFlow(t *testing.T) {
 
 	reportToken := flow.token(t, testEventPublicID, "events.report")
 
-	if _, err = flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+	if _, err = flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 		EventId:                   testEventPublicID,
 		EdgeDeviceId:              deviceID,
 		ActiveObservationPointIds: pointIDs,
@@ -269,7 +270,7 @@ func TestObservationFlow(t *testing.T) {
 		t.Fatalf("Heartbeat() error = %v", err)
 	}
 
-	reported, err := flow.measurements.ReportMeasurements(ctx, authorized(
+	reported, err := flow.measurements.ReportMeasurements(authorized(ctx,
 		reportToken,
 		&observationv1.ReportMeasurementsRequest{
 			EventId:      testEventPublicID,
@@ -284,11 +285,11 @@ func TestObservationFlow(t *testing.T) {
 		t.Fatalf("ReportMeasurements() error = %v", err)
 	}
 
-	if got, want := reported.Msg.GetAcceptedCount(), int32(2); got != want {
+	if got, want := reported.GetAcceptedCount(), int32(2); got != want {
 		t.Errorf("accepted_count = %d, want %d", got, want)
 	}
 
-	listed, err := flow.edgeDevices.ListEdgeDevices(ctx, authorized(
+	listed, err := flow.edgeDevices.ListEdgeDevices(authorized(ctx,
 		flow.token(t, testEventPublicID, "events.read"),
 		&observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID, IncludeUnregistered: false},
 	))
@@ -296,7 +297,7 @@ func TestObservationFlow(t *testing.T) {
 		t.Fatalf("ListEdgeDevices() error = %v", err)
 	}
 
-	devices := listed.Msg.GetDevices()
+	devices := listed.GetDevices()
 	if len(devices) != 1 {
 		t.Fatalf("devices = %v, want one device", devices)
 	}
@@ -316,7 +317,7 @@ func TestObservationFlow(t *testing.T) {
 	}
 
 	t.Run("refuses a token minted for another event", func(t *testing.T) {
-		_, err := flow.edgeDevices.Heartbeat(ctx, authorized(
+		_, err := flow.edgeDevices.Heartbeat(authorized(ctx,
 			flow.token(t, otherEventPublicID, "events.report"),
 			&observationv1.HeartbeatRequest{
 				EventId:                   testEventPublicID,
@@ -330,7 +331,7 @@ func TestObservationFlow(t *testing.T) {
 	})
 
 	t.Run("refuses a request naming another event", func(t *testing.T) {
-		_, err := flow.edgeDevices.UnregisterEdgeDevice(ctx, authorized(
+		_, err := flow.edgeDevices.UnregisterEdgeDevice(authorized(ctx,
 			flow.token(t, testEventPublicID, "events.manage"),
 			&observationv1.UnregisterEdgeDeviceRequest{
 				EventId:      otherEventPublicID,
@@ -346,7 +347,7 @@ func TestObservationFlow(t *testing.T) {
 		measurement := edgeMeasurement(pointIDs[0], flow.observedStart)
 		measurement.WindowEnd = measurement.GetWindowStart()
 
-		_, err := flow.measurements.ReportMeasurements(ctx, authorized(
+		_, err := flow.measurements.ReportMeasurements(authorized(ctx,
 			reportToken,
 			&observationv1.ReportMeasurementsRequest{
 				EventId:      testEventPublicID,
@@ -365,7 +366,7 @@ func TestObservationFlow(t *testing.T) {
 		qr.ObservationPointId = ""
 		qr.QrLocationId = "qr-location-1"
 
-		_, err := flow.measurements.ReportMeasurements(ctx, authorized(
+		_, err := flow.measurements.ReportMeasurements(authorized(ctx,
 			reportToken,
 			&observationv1.ReportMeasurementsRequest{
 				EventId:      testEventPublicID,
@@ -382,7 +383,7 @@ func TestObservationFlow(t *testing.T) {
 	})
 
 	t.Run("refuses measurements from an unregistered device", func(t *testing.T) {
-		unregistered, err := flow.edgeDevices.UnregisterEdgeDevice(ctx, authorized(
+		unregistered, err := flow.edgeDevices.UnregisterEdgeDevice(authorized(ctx,
 			flow.token(t, testEventPublicID, "events.manage"),
 			&observationv1.UnregisterEdgeDeviceRequest{EventId: testEventPublicID, EdgeDeviceId: deviceID},
 		))
@@ -390,11 +391,11 @@ func TestObservationFlow(t *testing.T) {
 			t.Fatalf("UnregisterEdgeDevice() error = %v", err)
 		}
 
-		if unregistered.Msg.GetDevice().GetOnline() {
+		if unregistered.GetDevice().GetOnline() {
 			t.Errorf("online = true, want false for an unregistered device")
 		}
 
-		_, err = flow.measurements.ReportMeasurements(ctx, authorized(
+		_, err = flow.measurements.ReportMeasurements(authorized(ctx,
 			reportToken,
 			&observationv1.ReportMeasurementsRequest{
 				EventId:      testEventPublicID,

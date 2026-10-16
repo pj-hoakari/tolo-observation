@@ -3,7 +3,7 @@ module github.com/pj-hoakari/tolo-observation
 go 1.27.2
 
 tool (
-	connectrpc.com/connect/cmd/protoc-gen-connect-go
+	connectrpc.com/connect/v2/cmd/protoc-gen-connect-go
 	github.com/pj-hoakari/internal-jwt-handling/cmd/jwtgen
 	github.com/pj-hoakari/protoc-gen-authz-go/cmd/protoc-gen-authz-go
 	github.com/pj-hoakari/tolo-kernel-proto/cmd/tolo-kernel-proto
@@ -12,16 +12,16 @@ tool (
 )
 
 require (
-	connectrpc.com/connect v1.21.0
-	connectrpc.com/otelconnect v0.10.0
+	connectrpc.com/connect/v2 v2.0.1
+	connectrpc.com/otelconnect v0.12.0
 	github.com/XSAM/otelsql v0.44.0
 	github.com/go-logr/logr v1.4.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/pj-hoakari/internal-jwt-handling v0.2.0
+	github.com/pj-hoakari/internal-jwt-handling v0.3.0
 	github.com/pj-hoakari/protoc-gen-authz-go v0.3.0
-	github.com/pj-hoakari/tolo-graph-authoring v0.1.0-rc.1.0.20261014130411-75998d149228
+	github.com/pj-hoakari/tolo-graph-authoring v0.2.0-rc.0.20261016022610-0fb78cdf9234
 	github.com/pj-hoakari/tolo-kernel-proto v0.4.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
@@ -34,6 +34,7 @@ require (
 )
 
 require (
+	connectrpc.com/connect v1.21.0 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -91,7 +92,7 @@ require (
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/tools v0.50.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/grpc v1.83.2 // indirect
