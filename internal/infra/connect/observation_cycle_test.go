@@ -2,7 +2,6 @@ package connect
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -13,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"google.golang.org/protobuf/proto"
 
 	graphv1 "github.com/pj-hoakari/tolo-graph-authoring/gen/tolo/graph/v1"
@@ -42,7 +42,9 @@ func startGraphStub(t *testing.T) (*graphStub, string) {
 
 	stub := &graphStub{}
 	mux := http.NewServeMux()
-	mux.Handle(graphv1connect.NewGraphSupplyServiceHandler(stub))
+	srv := connectrpc.NewServer()
+	graphv1connect.RegisterGraphSupplyServiceHandler(srv, stub)
+	connecthttp.Mount(mux, srv)
 
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
@@ -67,15 +69,16 @@ func (s *graphStub) unmap(observationPointID string) {
 }
 
 func (s *graphStub) GetCurrentRevision(
-	_ context.Context,
-	req *connectrpc.Request[graphv1.GetCurrentRevisionRequest],
-) (*connectrpc.Response[kernelv1.Graph], error) {
+	ctx context.Context,
+	req *graphv1.GetCurrentRevisionRequest,
+) (*kernelv1.Graph, error) {
 	s.mu.Lock()
-	s.authorizations = append(s.authorizations, req.Header().Get("Authorization"))
+	info, _ := connectrpc.CallInfoForServerContext(ctx)
+	s.authorizations = append(s.authorizations, info.RequestHeader().Get("Authorization"))
 	s.mu.Unlock()
 
-	return connectrpc.NewResponse(&kernelv1.Graph{
-		EventId:    req.Msg.GetEventId(),
+	return &kernelv1.Graph{
+		EventId:    req.GetEventId(),
 		RevisionId: "rev-1",
 		Points: []*kernelv1.Point{
 			{PointId: "p1", Type: kernelv1.PointType_POINT_TYPE_GOAL},
@@ -88,21 +91,21 @@ func (s *graphStub) GetCurrentRevision(
 			{RouteId: "r1", FromPointId: "p1", ToPointId: "p2", Direction: kernelv1.DirectionAttribute_DIRECTION_ATTRIBUTE_BOTH_WAYS},
 			{RouteId: "r2", FromPointId: "p2", ToPointId: "p3", Direction: kernelv1.DirectionAttribute_DIRECTION_ATTRIBUTE_BOTH_WAYS},
 		},
-	}), nil
+	}, nil
 }
 
 func (s *graphStub) GetObservationPointMappings(
 	_ context.Context,
-	req *connectrpc.Request[graphv1.GetMappingsRequest],
-) (*connectrpc.Response[graphv1.GetMappingsResponse], error) {
+	req *graphv1.GetMappingsRequest,
+) (*graphv1.GetMappingsResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if req.Msg.GetRevisionId() != "rev-1" {
-		return nil, connectrpc.NewError(connectrpc.CodeNotFound, errors.New("revision not found"))
+	if req.GetRevisionId() != "rev-1" {
+		return nil, connectrpc.NewError(connectrpc.CodeNotFound, "revision not found")
 	}
 
-	return connectrpc.NewResponse(&graphv1.GetMappingsResponse{RevisionId: "rev-1", Mappings: s.mappings}), nil
+	return &graphv1.GetMappingsResponse{RevisionId: "rev-1", Mappings: s.mappings}, nil
 }
 
 func (s *graphStub) placeQr(qrLocationID string, anchor *kernelv1.GraphAnchor) {
@@ -114,22 +117,22 @@ func (s *graphStub) placeQr(qrLocationID string, anchor *kernelv1.GraphAnchor) {
 
 func (s *graphStub) GetQrLocations(
 	_ context.Context,
-	req *connectrpc.Request[graphv1.GetQrLocationsRequest],
-) (*connectrpc.Response[graphv1.GetQrLocationsResponse], error) {
+	req *graphv1.GetQrLocationsRequest,
+) (*graphv1.GetQrLocationsResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.qrTenantIDs = append(s.qrTenantIDs, req.Msg.GetTenantId())
+	s.qrTenantIDs = append(s.qrTenantIDs, req.GetTenantId())
 
-	if tenantID := req.Msg.GetTenantId(); tenantID != "" && tenantID != testTenantPublicID {
-		return nil, connectrpc.NewError(connectrpc.CodePermissionDenied, errors.New("revision belongs to another tenant"))
+	if tenantID := req.GetTenantId(); tenantID != "" && tenantID != testTenantPublicID {
+		return nil, connectrpc.NewError(connectrpc.CodePermissionDenied, "revision belongs to another tenant")
 	}
 
-	if req.Msg.GetRevisionId() != "rev-1" {
-		return nil, connectrpc.NewError(connectrpc.CodeNotFound, errors.New("revision not found"))
+	if req.GetRevisionId() != "rev-1" {
+		return nil, connectrpc.NewError(connectrpc.CodeNotFound, "revision not found")
 	}
 
-	return connectrpc.NewResponse(&graphv1.GetQrLocationsResponse{RevisionId: "rev-1", QrLocations: s.qrLocations}), nil
+	return &graphv1.GetQrLocationsResponse{RevisionId: "rev-1", QrLocations: s.qrLocations}, nil
 }
 
 func (s *graphStub) receivedQrTenantIDs() []string {
@@ -153,7 +156,9 @@ func startFlowStub(t *testing.T) (*flowStub, string) {
 
 	stub := &flowStub{}
 	mux := http.NewServeMux()
-	mux.Handle(flowv1connect.NewFlowControlServiceHandler(stub))
+	srv := connectrpc.NewServer()
+	flowv1connect.RegisterFlowControlServiceHandler(srv, stub)
+	connecthttp.Mount(mux, srv)
 
 	server := httptest.NewUnstartedServer(mux)
 	server.Config.Protocols = new(http.Protocols)
@@ -165,30 +170,31 @@ func startFlowStub(t *testing.T) (*flowStub, string) {
 }
 
 func (s *flowStub) Optimize(
-	_ context.Context,
-	req *connectrpc.Request[flowv1.OptimizeRequest],
-) (*connectrpc.Response[flowv1.OptimizeResponse], error) {
+	ctx context.Context,
+	req *flowv1.OptimizeRequest,
+) (*flowv1.OptimizeResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.unavailable {
-		return nil, connectrpc.NewError(connectrpc.CodeUnavailable, errors.New("flow control is down"))
+		return nil, connectrpc.NewError(connectrpc.CodeUnavailable, "flow control is down")
 	}
 
-	if req.Peer().Protocol != connectrpc.ProtocolGRPC {
-		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, errors.New("flow control serves gRPC only"))
+	info, _ := connectrpc.CallInfoForServerContext(ctx)
+	if info.Protocol != connectrpc.ProtocolNameGRPC {
+		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, "flow control serves gRPC only")
 	}
 
-	s.requests = append(s.requests, req.Msg)
-	s.authorizations = append(s.authorizations, req.Header().Get("Authorization"))
+	s.requests = append(s.requests, req)
+	s.authorizations = append(s.authorizations, info.RequestHeader().Get("Authorization"))
 
-	return connectrpc.NewResponse(&flowv1.OptimizeResponse{
-		RequestId: proto.String(req.Msg.GetRequestId()),
+	return &flowv1.OptimizeResponse{
+		RequestId: proto.String(req.GetRequestId()),
 		Verdict:   flowv1.Verdict_VERDICT_SKIPPED_NO_TRIGGER.Enum(),
 		UpdatedDetectionState: &flowv1.DetectionState{
 			ConsecutiveSkipCount: int32(len(s.requests)),
 		},
-	}), nil
+	}, nil
 }
 
 func (s *flowStub) setUnavailable(unavailable bool) {
@@ -209,7 +215,7 @@ func TestObservationCycle(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, cycleEventPublicID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
 			EventId:               cycleEventPublicID,
@@ -221,16 +227,16 @@ func TestObservationCycle(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
-	corridor := registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
-	hall := registered.Msg.GetDevice().GetObservationPoints()[1].GetObservationPointId()
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
+	corridor := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	hall := registered.GetDevice().GetObservationPoints()[1].GetObservationPointId()
 
 	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
 	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
 
 	reportToken := flow.token(t, cycleEventPublicID, "events.report")
 
-	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 		EventId:                   cycleEventPublicID,
 		EdgeDeviceId:              deviceID,
 		ActiveObservationPointIds: []string{corridor, hall},
@@ -241,7 +247,7 @@ func TestObservationCycle(t *testing.T) {
 	report := func(t *testing.T) {
 		t.Helper()
 
-		reported, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+		reported, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
 			EventId:      cycleEventPublicID,
 			EdgeDeviceId: deviceID,
 			Measurements: []*observationv1.Measurement{
@@ -253,7 +259,7 @@ func TestObservationCycle(t *testing.T) {
 			t.Fatalf("ReportMeasurements() error = %v", err)
 		}
 
-		if got, want := reported.Msg.GetAcceptedCount(), int32(2); got != want {
+		if got, want := reported.GetAcceptedCount(), int32(2); got != want {
 			t.Fatalf("accepted_count = %d, want %d", got, want)
 		}
 	}
@@ -344,7 +350,7 @@ func TestObservationCycle(t *testing.T) {
 		t.Errorf("GetCurrentRevision carried Authorization %q, want the received token", graphAuthorization)
 	}
 
-	overview, err := flow.statusQueries.GetEventOverview(ctx, authorized(
+	overview, err := flow.statusQueries.GetEventOverview(authorized(ctx,
 		flow.token(t, cycleEventPublicID, "events.read"),
 		&observationv1.GetEventOverviewRequest{EventId: cycleEventPublicID},
 	))
@@ -352,7 +358,7 @@ func TestObservationCycle(t *testing.T) {
 		t.Fatalf("GetEventOverview() error = %v", err)
 	}
 
-	snapshot := overview.Msg.GetOverview().GetSnapshot()
+	snapshot := overview.GetOverview().GetSnapshot()
 	if snapshot.GetSnapshotId() != optimize.GetObservations().GetSnapshotRef() {
 		t.Errorf("overview snapshot = %q, want the one sent to Optimize (%q)",
 			snapshot.GetSnapshotId(), optimize.GetObservations().GetSnapshotRef())
@@ -403,7 +409,7 @@ func TestObservationCycle(t *testing.T) {
 	})
 
 	t.Run("answers an event without snapshots with an empty overview", func(t *testing.T) {
-		overview, err := flow.statusQueries.GetEventOverview(ctx, authorized(
+		overview, err := flow.statusQueries.GetEventOverview(authorized(ctx,
 			flow.token(t, otherEventPublicID, "events.read"),
 			&observationv1.GetEventOverviewRequest{EventId: otherEventPublicID},
 		))
@@ -411,13 +417,13 @@ func TestObservationCycle(t *testing.T) {
 			t.Fatalf("GetEventOverview() error = %v", err)
 		}
 
-		if overview.Msg.GetOverview().GetSnapshot() != nil {
-			t.Errorf("snapshot = %v, want none", overview.Msg.GetOverview().GetSnapshot())
+		if overview.GetOverview().GetSnapshot() != nil {
+			t.Errorf("snapshot = %v, want none", overview.GetOverview().GetSnapshot())
 		}
 	})
 
 	t.Run("sends the long-term category once the event is set to long-term", func(t *testing.T) {
-		if _, err := flow.settings.UpdateObservationSettings(ctx, authorized(
+		if _, err := flow.settings.UpdateObservationSettings(authorized(ctx,
 			flow.token(t, cycleEventPublicID, "events.manage"),
 			&observationv1.UpdateObservationSettingsRequest{
 				EventId:  cycleEventPublicID,
@@ -442,7 +448,7 @@ func TestObservationCycleConfidenceFlags(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
 			EventId:               eventID,
@@ -454,16 +460,16 @@ func TestObservationCycleConfidenceFlags(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
-	corridor := registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
-	hall := registered.Msg.GetDevice().GetObservationPoints()[1].GetObservationPointId()
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
+	corridor := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	hall := registered.GetDevice().GetObservationPoints()[1].GetObservationPointId()
 
 	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
 	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
 
 	reportToken := flow.token(t, eventID, "events.report")
 
-	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 		EventId:                   eventID,
 		EdgeDeviceId:              deviceID,
 		ActiveObservationPointIds: []string{corridor, hall},
@@ -484,7 +490,7 @@ func TestObservationCycleConfidenceFlags(t *testing.T) {
 			measurements = append(measurements, corridorMeasurement)
 		}
 
-		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+		if _, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
 			EventId:      eventID,
 			EdgeDeviceId: deviceID,
 			Measurements: measurements,
@@ -584,7 +590,7 @@ func TestObservationCycleConfidenceFlags(t *testing.T) {
 	})
 
 	t.Run("marks the anchors of an unregistered device INVALID", func(t *testing.T) {
-		other, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+		other, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 			flow.token(t, eventID, "events.manage"),
 			&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-2", ObservationPointNames: []string{"lobby"}},
 		))
@@ -592,24 +598,24 @@ func TestObservationCycleConfidenceFlags(t *testing.T) {
 			t.Fatalf("RegisterEdgeDevice() error = %v", err)
 		}
 
-		otherID := other.Msg.GetDevice().GetEdgeDeviceId()
-		lobby := other.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+		otherID := other.GetDevice().GetEdgeDeviceId()
+		lobby := other.GetDevice().GetObservationPoints()[0].GetObservationPointId()
 		flow.graph.mapTo(lobby, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p1"}})
 
-		if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+		if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 			EventId: eventID, EdgeDeviceId: otherID, ActiveObservationPointIds: []string{lobby},
 		})); err != nil {
 			t.Fatalf("Heartbeat() error = %v", err)
 		}
 
-		if _, err := flow.edgeDevices.UnregisterEdgeDevice(ctx, authorized(
+		if _, err := flow.edgeDevices.UnregisterEdgeDevice(authorized(ctx,
 			flow.token(t, eventID, "events.manage"),
 			&observationv1.UnregisterEdgeDeviceRequest{EventId: eventID, EdgeDeviceId: deviceID},
 		)); err != nil {
 			t.Fatalf("UnregisterEdgeDevice() error = %v", err)
 		}
 
-		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+		if _, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
 			EventId:      eventID,
 			EdgeDeviceId: otherID,
 			Measurements: []*observationv1.Measurement{edgeMeasurement(lobby, time.Now().Add(-time.Minute))},
@@ -646,7 +652,7 @@ func TestObservationCycleSensorSetChanges(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
 			EventId:               eventID,
@@ -658,8 +664,8 @@ func TestObservationCycleSensorSetChanges(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
-	points := registered.Msg.GetDevice().GetObservationPoints()
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
+	points := registered.GetDevice().GetObservationPoints()
 	corridor, aisle, hall := points[0].GetObservationPointId(), points[1].GetObservationPointId(), points[2].GetObservationPointId()
 	r1 := &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}}
 
@@ -669,7 +675,7 @@ func TestObservationCycleSensorSetChanges(t *testing.T) {
 
 	reportToken := flow.token(t, eventID, "events.report")
 
-	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 		EventId:                   eventID,
 		EdgeDeviceId:              deviceID,
 		ActiveObservationPointIds: []string{corridor, aisle, hall},
@@ -680,7 +686,7 @@ func TestObservationCycleSensorSetChanges(t *testing.T) {
 	report := func(t *testing.T, windowStart time.Time) {
 		t.Helper()
 
-		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+		if _, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
 			EventId:      eventID,
 			EdgeDeviceId: deviceID,
 			Measurements: []*observationv1.Measurement{
@@ -797,7 +803,7 @@ func TestObservationCycleSensorSetChanges(t *testing.T) {
 		setEnabled := func(t *testing.T, enabled bool) {
 			t.Helper()
 
-			if _, err := flow.edgeDevices.UpdateObservationPointConfig(ctx, authorized(
+			if _, err := flow.edgeDevices.UpdateObservationPointConfig(authorized(ctx,
 				flow.token(t, eventID, "events.operate"),
 				&observationv1.UpdateObservationPointConfigRequest{
 					EventId: eventID, ObservationPointId: corridor, Name: "corridor", Enabled: enabled,
@@ -851,7 +857,7 @@ func TestObservationCycleQRObservationPoints(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-1", ObservationPointNames: []string{"corridor"}},
 	))
@@ -859,8 +865,8 @@ func TestObservationCycleQRObservationPoints(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
-	corridor := registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
+	corridor := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
 	r2 := &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r2"}}
 
 	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
@@ -868,7 +874,7 @@ func TestObservationCycleQRObservationPoints(t *testing.T) {
 
 	reportToken := flow.token(t, eventID, "events.report")
 
-	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 		EventId: eventID, EdgeDeviceId: deviceID, ActiveObservationPointIds: []string{corridor},
 	})); err != nil {
 		t.Fatalf("Heartbeat() error = %v", err)
@@ -877,7 +883,7 @@ func TestObservationCycleQRObservationPoints(t *testing.T) {
 	cycle := func(t *testing.T) *flowv1.OptimizeRequest {
 		t.Helper()
 
-		if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+		if _, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
 			EventId:      eventID,
 			EdgeDeviceId: deviceID,
 			Measurements: []*observationv1.Measurement{edgeMeasurement(corridor, time.Now().Add(-time.Minute))},
@@ -944,7 +950,7 @@ func TestObservationCycleOfflineObservationPoints(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-offline", ObservationPointNames: []string{"hall", "lobby", "gate"}},
 	))
@@ -952,7 +958,7 @@ func TestObservationCycleOfflineObservationPoints(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	points := registered.Msg.GetDevice().GetObservationPoints()
+	points := registered.GetDevice().GetObservationPoints()
 	hall := points[0].GetObservationPointId()
 	lobby := points[1].GetObservationPointId()
 	gate := points[2].GetObservationPointId()
@@ -961,18 +967,18 @@ func TestObservationCycleOfflineObservationPoints(t *testing.T) {
 	flow.graph.mapTo(lobby, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
 	flow.graph.mapTo(gate, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p3"}})
 
-	if _, err := flow.edgeDevices.UpdateObservationPointConfig(ctx, authorized(
+	if _, err := flow.edgeDevices.UpdateObservationPointConfig(authorized(ctx,
 		flow.token(t, eventID, "events.operate"),
 		&observationv1.UpdateObservationPointConfigRequest{EventId: eventID, ObservationPointId: gate, Name: "gate", Enabled: false},
 	)); err != nil {
 		t.Fatalf("UpdateObservationPointConfig() error = %v", err)
 	}
 
-	if _, err := flow.measurements.ReportMeasurements(ctx, authorized(
+	if _, err := flow.measurements.ReportMeasurements(authorized(ctx,
 		flow.token(t, eventID, "events.report"),
 		&observationv1.ReportMeasurementsRequest{
 			EventId:      eventID,
-			EdgeDeviceId: registered.Msg.GetDevice().GetEdgeDeviceId(),
+			EdgeDeviceId: registered.GetDevice().GetEdgeDeviceId(),
 			Measurements: []*observationv1.Measurement{
 				edgeMeasurement(hall, time.Now().Add(-11*time.Minute)),
 				edgeMeasurement(lobby, time.Now().Add(-17*time.Minute)),
@@ -1008,7 +1014,7 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
 			EventId: eventID, Name: "gate-gaps", ObservationPointNames: []string{"door", "window", "hall", "lobby"},
@@ -1018,8 +1024,8 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	deviceID := registered.Msg.GetDevice().GetEdgeDeviceId()
-	points := registered.Msg.GetDevice().GetObservationPoints()
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
+	points := registered.GetDevice().GetObservationPoints()
 	door := points[0].GetObservationPointId()
 	window := points[1].GetObservationPointId()
 	hall := points[2].GetObservationPointId()
@@ -1032,13 +1038,13 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 
 	reportToken := flow.token(t, eventID, "events.report")
 
-	if _, err := flow.edgeDevices.Heartbeat(ctx, authorized(reportToken, &observationv1.HeartbeatRequest{
+	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
 		EventId: eventID, EdgeDeviceId: deviceID, ActiveObservationPointIds: []string{door, window, hall, lobby},
 	})); err != nil {
 		t.Fatalf("Heartbeat() error = %v", err)
 	}
 
-	if _, err := flow.measurements.ReportMeasurements(ctx, authorized(reportToken, &observationv1.ReportMeasurementsRequest{
+	if _, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
 		EventId:      eventID,
 		EdgeDeviceId: deviceID,
 		Measurements: []*observationv1.Measurement{
@@ -1051,7 +1057,7 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 		t.Fatalf("ReportMeasurements() error = %v", err)
 	}
 
-	overview, err := flow.statusQueries.GetEventOverview(ctx, authorized(
+	overview, err := flow.statusQueries.GetEventOverview(authorized(ctx,
 		flow.token(t, eventID, "events.read"),
 		&observationv1.GetEventOverviewRequest{EventId: eventID},
 	))
@@ -1059,7 +1065,7 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 		t.Fatalf("GetEventOverview() error = %v", err)
 	}
 
-	snapshot := overview.Msg.GetOverview().GetSnapshot()
+	snapshot := overview.GetOverview().GetSnapshot()
 
 	routes := map[string]*kernelv1.RouteScore{}
 	for _, route := range snapshot.GetRouteScores() {
@@ -1110,7 +1116,7 @@ func TestReportQRMeasurements(t *testing.T) {
 	}
 
 	report := func(authorization string, request *observationv1.ReportMeasurementsRequest) error {
-		_, err := flow.measurements.ReportMeasurements(ctx, authorized(authorization, request))
+		_, err := flow.measurements.ReportMeasurements(authorized(ctx, authorization, request))
 
 		return err
 	}
@@ -1135,7 +1141,7 @@ func TestReportQRMeasurements(t *testing.T) {
 			t.Errorf("flow observations = %v, want QR scores kept out of Flow Control", observations)
 		}
 
-		overview, err := flow.statusQueries.GetEventOverview(ctx, authorized(
+		overview, err := flow.statusQueries.GetEventOverview(authorized(ctx,
 			flow.token(t, eventID, "events.read"),
 			&observationv1.GetEventOverviewRequest{EventId: eventID},
 		))
@@ -1143,7 +1149,7 @@ func TestReportQRMeasurements(t *testing.T) {
 			t.Fatalf("GetEventOverview() error = %v", err)
 		}
 
-		snapshot := overview.Msg.GetOverview().GetSnapshot()
+		snapshot := overview.GetOverview().GetSnapshot()
 
 		var got []string
 		for _, route := range snapshot.GetRouteScores() {
@@ -1249,7 +1255,7 @@ func TestReportEdgeMeasurementsChecksTheTenant(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
 
-	registered, err := flow.edgeDevices.RegisterEdgeDevice(ctx, authorized(
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-1", ObservationPointNames: []string{"corridor"}},
 	))
@@ -1258,14 +1264,14 @@ func TestReportEdgeMeasurementsChecksTheTenant(t *testing.T) {
 	}
 
 	report := func(tenantID string) error {
-		_, err := flow.measurements.ReportMeasurements(ctx, authorized(
+		_, err := flow.measurements.ReportMeasurements(authorized(ctx,
 			flow.token(t, eventID, "events.report"),
 			&observationv1.ReportMeasurementsRequest{
 				TenantId:     tenantID,
 				EventId:      eventID,
-				EdgeDeviceId: registered.Msg.GetDevice().GetEdgeDeviceId(),
+				EdgeDeviceId: registered.GetDevice().GetEdgeDeviceId(),
 				Measurements: []*observationv1.Measurement{
-					edgeMeasurement(registered.Msg.GetDevice().GetObservationPoints()[0].GetObservationPointId(), time.Now().Add(-time.Minute)),
+					edgeMeasurement(registered.GetDevice().GetObservationPoints()[0].GetObservationPointId(), time.Now().Add(-time.Minute)),
 				},
 			},
 		))

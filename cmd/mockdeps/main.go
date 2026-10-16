@@ -11,7 +11,8 @@ import (
 	"os"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pj-hoakari/internal-jwt-handling/jwtgen"
@@ -62,19 +63,20 @@ func run() error {
 }
 
 func newHandler(generator *jwtgen.Generator) http.Handler {
-	logCalls := connectrpc.WithInterceptors(connectrpc.UnaryInterceptorFunc(
-		func(next connectrpc.UnaryFunc) connectrpc.UnaryFunc {
-			return func(ctx context.Context, req connectrpc.AnyRequest) (connectrpc.AnyResponse, error) {
-				slog.InfoContext(ctx, "rpc called", "procedure", req.Spec().Procedure)
+	logCalls := connectrpc.ServerInterceptor(func(next connectrpc.ServerFunc) connectrpc.ServerFunc {
+		return func(ctx context.Context, spec connectrpc.Spec, stream connectrpc.ServerStream) error {
+			slog.InfoContext(ctx, "rpc called", "procedure", spec.Procedure)
 
-				return next(ctx, req)
-			}
-		},
-	))
+			return next(ctx, spec, stream)
+		}
+	})
 
 	mux := http.NewServeMux()
-	mux.Handle(graphv1connect.NewGraphSupplyServiceHandler(new(graphSupply), logCalls))
-	mux.Handle(flowv1connect.NewFlowControlServiceHandler(flowControl{}, logCalls))
+	server := connectrpc.NewServer(logCalls)
+	graphv1connect.RegisterGraphSupplyServiceHandler(server, new(graphSupply))
+	flowv1connect.RegisterFlowControlServiceHandler(server, flowControl{})
+	connecthttp.Mount(mux, server)
+
 	mux.HandleFunc("GET /.well-known/jwks.json", func(w http.ResponseWriter, _ *http.Request) {
 		jwks, err := generator.JWKS()
 		if err != nil {
@@ -162,10 +164,10 @@ type graphSupply struct {
 
 func (graphSupply) GetCurrentRevision(
 	_ context.Context,
-	req *connectrpc.Request[graphv1.GetCurrentRevisionRequest],
-) (*connectrpc.Response[kernelv1.Graph], error) {
-	return connectrpc.NewResponse(&kernelv1.Graph{
-		EventId:    req.Msg.GetEventId(),
+	req *graphv1.GetCurrentRevisionRequest,
+) (*kernelv1.Graph, error) {
+	return &kernelv1.Graph{
+		EventId:    req.GetEventId(),
 		RevisionId: revisionID,
 		Points: []*kernelv1.Point{
 			{PointId: "point-entrance", Type: kernelv1.PointType_POINT_TYPE_TRANSIT_ONLY, Boundary: nil},
@@ -178,21 +180,19 @@ func (graphSupply) GetCurrentRevision(
 			Direction:    kernelv1.DirectionAttribute_DIRECTION_ATTRIBUTE_BOTH_WAYS,
 			CapacityHint: nil,
 		}},
-	}), nil
+	}, nil
 }
 
 func (graphSupply) GetObservationPointMappings(
-	context.Context,
-	*connectrpc.Request[graphv1.GetMappingsRequest],
-) (*connectrpc.Response[graphv1.GetMappingsResponse], error) {
-	return connectrpc.NewResponse(&graphv1.GetMappingsResponse{RevisionId: revisionID, Mappings: nil}), nil
+	context.Context, *graphv1.GetMappingsRequest,
+) (*graphv1.GetMappingsResponse, error) {
+	return &graphv1.GetMappingsResponse{RevisionId: revisionID, Mappings: nil}, nil
 }
 
 func (graphSupply) GetQrLocations(
-	context.Context,
-	*connectrpc.Request[graphv1.GetQrLocationsRequest],
-) (*connectrpc.Response[graphv1.GetQrLocationsResponse], error) {
-	return connectrpc.NewResponse(&graphv1.GetQrLocationsResponse{
+	context.Context, *graphv1.GetQrLocationsRequest,
+) (*graphv1.GetQrLocationsResponse, error) {
+	return &graphv1.GetQrLocationsResponse{
 		RevisionId: revisionID,
 		QrLocations: []*graphv1.QrLocation{{
 			QrLocationId: qrLocationID,
@@ -203,22 +203,22 @@ func (graphSupply) GetQrLocations(
 				RoutePosition: nil,
 			},
 		}},
-	}), nil
+	}, nil
 }
 
 type flowControl struct{}
 
 func (flowControl) Optimize(
 	_ context.Context,
-	req *connectrpc.Request[flowv1.OptimizeRequest],
-) (*connectrpc.Response[flowv1.OptimizeResponse], error) {
-	return connectrpc.NewResponse(&flowv1.OptimizeResponse{
-		RequestId:             proto.String(req.Msg.GetRequestId()),
+	req *flowv1.OptimizeRequest,
+) (*flowv1.OptimizeResponse, error) {
+	return &flowv1.OptimizeResponse{
+		RequestId:             proto.String(req.GetRequestId()),
 		Verdict:               flowv1.Verdict_VERDICT_SKIPPED_NO_TRIGGER.Enum(),
 		UpdatedDetectionState: new(flowv1.DetectionState),
 		FeedbackValues:        nil,
 		Diagnostics:           nil,
 		OptimizationResult:    nil,
 		ElapsedMs:             0,
-	}), nil
+	}, nil
 }

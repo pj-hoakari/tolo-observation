@@ -8,7 +8,8 @@ import (
 	"slices"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -36,7 +37,7 @@ func NewFlowControlClient(baseURL string) *FlowControlClient {
 	httpClient := &http.Client{Transport: &http.Transport{Protocols: protocols}}
 
 	return &FlowControlClient{
-		client: flowv1connect.NewFlowControlServiceClient(httpClient, baseURL, connectrpc.WithGRPC()),
+		client: flowv1connect.NewFlowControlServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpClient, baseURL, connecthttp.WithGRPC()))),
 	}
 }
 
@@ -49,12 +50,12 @@ func (c *FlowControlClient) Optimize(
 		return domain.OptimizationOutcome{}, err
 	}
 
-	res, err := c.client.Optimize(ctx, connectrpc.NewRequest(req))
+	res, err := c.client.Optimize(ctx, req)
 	if err != nil {
 		return domain.OptimizationOutcome{}, fmt.Errorf("call Optimize: %w", err)
 	}
 
-	detectionState, err := protojson.Marshal(res.Msg.GetUpdatedDetectionState())
+	detectionState, err := protojson.Marshal(res.GetUpdatedDetectionState())
 	if err != nil {
 		return domain.OptimizationOutcome{}, fmt.Errorf("encode detection state: %w", err)
 	}
@@ -62,13 +63,13 @@ func (c *FlowControlClient) Optimize(
 	outcome := domain.OptimizationOutcome{
 		SnapshotID:         input.Snapshot.ID,
 		ServerTime:         input.ServerTime,
-		Verdict:            res.Msg.GetVerdict().String(),
+		Verdict:            res.GetVerdict().String(),
 		DetectionState:     detectionState,
 		OptimizationResult: nil,
 	}
 
-	if res.Msg.OptimizationResult != nil {
-		outcome.OptimizationResult, err = protojson.Marshal(res.Msg.GetOptimizationResult())
+	if res.OptimizationResult != nil {
+		outcome.OptimizationResult, err = protojson.Marshal(res.GetOptimizationResult())
 		if err != nil {
 			return domain.OptimizationOutcome{}, fmt.Errorf("encode optimization result: %w", err)
 		}

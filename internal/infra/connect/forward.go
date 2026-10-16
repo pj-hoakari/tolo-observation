@@ -3,23 +3,24 @@ package connect
 import (
 	"context"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
 )
 
-type authorizationKey struct{}
-
-func forwardAuthorization() connectrpc.UnaryInterceptorFunc {
-	return func(next connectrpc.UnaryFunc) connectrpc.UnaryFunc {
-		return func(ctx context.Context, req connectrpc.AnyRequest) (connectrpc.AnyResponse, error) {
-			if !req.Spec().IsClient {
-				return next(context.WithValue(ctx, authorizationKey{}, req.Header().Get("Authorization")), req)
+func forwardAuthorization() connectrpc.ClientInterceptor {
+	return func(next connectrpc.ClientFunc) connectrpc.ClientFunc {
+		return func(ctx context.Context, spec connectrpc.Spec) (connectrpc.ClientStream, error) {
+			server, ok := connectrpc.CallInfoForServerContext(ctx)
+			if !ok {
+				return next(ctx, spec)
 			}
 
-			if authorization, ok := ctx.Value(authorizationKey{}).(string); ok && authorization != "" {
-				req.Header().Set("Authorization", authorization)
+			if authorization := server.RequestHeader().Get("Authorization"); authorization != "" {
+				if client, ok := connectrpc.CallInfoForClientContext(ctx); ok {
+					client.RequestHeader().Set("Authorization", authorization)
+				}
 			}
 
-			return next(ctx, req)
+			return next(ctx, spec)
 		}
 	}
 }

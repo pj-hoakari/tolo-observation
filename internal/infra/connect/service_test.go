@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	connectrpc "connectrpc.com/connect"
+	connectrpc "connectrpc.com/connect/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
