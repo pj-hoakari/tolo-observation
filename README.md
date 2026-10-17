@@ -51,7 +51,8 @@ Compose は依存先の代わりに開発専用のモック `mockdeps`（`cmd/mo
   - QR 設置場所は `a1b2c3d4e5f60718` の 1 件で、`route-entrance-hall` に紐づく
   - 観測点の ID は端末の登録時に本サービスが採番するため、モックからは事前に分からない。そのため `GetObservationPointMappings` は空のマッピングを返し、エッジ端末の計測値はスナップショットのグラフに載らない
   - `GetDisplayNames` と `GetGatePoints` は本サービスが呼ばないので、`unimplemented` を返す
-- FlowControlService の `Optimize`。常に `VERDICT_SKIPPED_NO_TRIGGER` と空の検知状態を返す
+- FlowControlService の `Optimize`。常に `VERDICT_SKIPPED_NO_TRIGGER` と空の検知状態を返す。最適化結果には `route-entrance-hall` の重要度を 1 件だけ載せ、`solved_at` は要求の `server_time` とする
+- DeliveryCoordinationService の `RequestProposalDelivery`。受け取ったテナント、イベント、ルート重要度の件数をログに出し、配信数として `realtime_count` に 1 を返す
 - `GET /.well-known/jwks.json` と `POST /token`。起動時に生成した ES256 鍵の公開鍵を配り、その鍵で内部 JWT を発行する（「内部 JWT」を参照）
 
 `mockdeps` は呼ばれた RPC の procedure をログに出すので、`docker compose logs mockdeps` で依存先への呼び出しを確かめられる  
