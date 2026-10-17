@@ -35,6 +35,8 @@ linters:
                 # its request context.
                 - pattern: '^log\.[A-Z]\w*$'
                   msg: "use log/slog (internal/logging) instead of the standard log package"
+                - pattern: '^connectrpc\.NewError$'
+                  msg: "map errors with clientError(ctx, err) in internal/infra/connect/errors.go instead of connectrpc.NewError"
         exhaustruct_v5:
             ignore-patterns:
                 - 'crypto/tls\.Config'
@@ -57,3 +59,7 @@ linters:
                   - staticcheck
                   - fatcontext
                   - containedctx
+            - path: internal/infra/connect/errors\.go
+              text: connectrpc\.NewError
+              linters:
+                  - forbidigo

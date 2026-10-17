@@ -2,11 +2,8 @@ package connect
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 	"time"
 
-	connectrpc "connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -15,45 +12,7 @@ import (
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
 	"github.com/pj-hoakari/tolo-observation/internal/application"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
-	"github.com/pj-hoakari/tolo-observation/internal/repository"
-	"github.com/pj-hoakari/tolo-observation/internal/tenantctx"
 )
-
-// errInternal is the only detail a client learns about an internal failure.
-var errInternal = errors.New("internal error")
-
-var (
-	errMeasurementSourceRequired  = errors.New("measurement source is required")
-	errQRLocationNotAllowed       = errors.New("qr_location_id is not allowed for edge measurements")
-	errObservationPointNotAllowed = errors.New("observation_point_id is not allowed for QR measurements")
-	errEdgeDeviceNotAllowed       = errors.New("edge_device_id is not allowed for QR measurements")
-	errMixedMeasurementSources    = errors.New("measurements of one request must share a source")
-)
-
-// InternalError reports a failure the client can do nothing about. The cause is
-// written to the server log and replaced by a fixed message, so that no
-// internal detail leaves the service. The log handler names the trace of the
-// request context on the record, so an operator can find the failure in the
-// trace it belongs to.
-//
-// A cancelled or timed-out request is the client going away rather than a
-// server fault, so it keeps its own code and is not logged.
-//
-// It is exported for the other transports of this process, so that every
-// service answers an internal failure the same way.
-func InternalError(ctx context.Context, err error) *connectrpc.Error {
-	if errors.Is(err, context.Canceled) {
-		return connectrpc.NewError(connectrpc.CodeCanceled, err.Error()).WithCause(err)
-	}
-
-	if errors.Is(err, context.DeadlineExceeded) {
-		return connectrpc.NewError(connectrpc.CodeDeadlineExceeded, err.Error()).WithCause(err)
-	}
-
-	slog.ErrorContext(ctx, "internal error", "error", err)
-
-	return connectrpc.NewError(connectrpc.CodeInternal, errInternal.Error()).WithCause(errInternal) //nolint:forbidigo // the one place that builds internal errors
-}
 
 type MeasurementIngestService struct {
 	observationv1connect.UnimplementedMeasurementIngestServiceHandler
@@ -81,13 +40,13 @@ func (s *MeasurementIngestService) ReportMeasurements(
 	}
 
 	if method == domain.MeasurementMethodQR && req.GetEdgeDeviceId() != "" {
-		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, errEdgeDeviceNotAllowed.Error()).WithCause(errEdgeDeviceNotAllowed)
+		return nil, clientError(ctx, errEdgeDeviceNotAllowed)
 	}
 
 	for _, measurement := range reported {
 		pointID, err := measurementPointID(measurement, method)
 		if err != nil {
-			return nil, err
+			return nil, clientError(ctx, err)
 		}
 
 		measurements = append(measurements, application.MeasurementInput{
@@ -108,7 +67,7 @@ func (s *MeasurementIngestService) ReportMeasurements(
 		Measurements: measurements,
 	})
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.ReportMeasurementsResponse{AcceptedCount: accepted}, nil
@@ -118,28 +77,28 @@ func measurementPointID(measurement *observationv1.Measurement, method domain.Me
 	switch measurement.GetSource() {
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_EDGE:
 		if method != domain.MeasurementMethodCamera {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources.Error()).WithCause(errMixedMeasurementSources)
+			return "", errMixedMeasurementSources
 		}
 
 		if measurement.GetQrLocationId() != "" {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errQRLocationNotAllowed.Error()).WithCause(errQRLocationNotAllowed)
+			return "", errQRLocationNotAllowed
 		}
 
 		return measurement.GetObservationPointId(), nil
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_QR:
 		if method != domain.MeasurementMethodQR {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMixedMeasurementSources.Error()).WithCause(errMixedMeasurementSources)
+			return "", errMixedMeasurementSources
 		}
 
 		if measurement.GetObservationPointId() != "" {
-			return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errObservationPointNotAllowed.Error()).WithCause(errObservationPointNotAllowed)
+			return "", errObservationPointNotAllowed
 		}
 
 		return measurement.GetQrLocationId(), nil
 	case observationv1.MeasurementSource_MEASUREMENT_SOURCE_UNSPECIFIED:
-		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired.Error()).WithCause(errMeasurementSourceRequired)
+		return "", errMeasurementSourceRequired
 	default:
-		return "", connectrpc.NewError(connectrpc.CodeInvalidArgument, errMeasurementSourceRequired.Error()).WithCause(errMeasurementSourceRequired)
+		return "", errMeasurementSourceRequired
 	}
 }
 
@@ -174,7 +133,7 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(
 		ObservationPointNames: req.GetObservationPointNames(),
 	})
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.RegisterEdgeDeviceResponse{
@@ -192,7 +151,7 @@ func (s *EdgeDeviceService) UnregisterEdgeDevice(
 		EdgeDeviceID: req.GetEdgeDeviceId(),
 	})
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.UnregisterEdgeDeviceResponse{
@@ -209,7 +168,7 @@ func (s *EdgeDeviceService) ListEdgeDevices(
 		IncludeUnregistered: req.GetIncludeUnregistered(),
 	})
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	protoDevices := make([]*observationv1.EdgeDevice, 0, len(devices))
@@ -230,7 +189,7 @@ func (s *EdgeDeviceService) Heartbeat(
 		ActiveObservationPointIDs: req.GetActiveObservationPointIds(),
 	})
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.HeartbeatResponse{}, nil
@@ -247,7 +206,7 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(
 		Enabled:            req.GetEnabled(),
 	})
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.UpdateObservationPointConfigResponse{
@@ -288,36 +247,6 @@ func newProtoObservationPoint(point domain.ObservationPoint) *observationv1.Obse
 	}
 }
 
-func observationError(ctx context.Context, err error) error {
-	switch {
-	case errors.Is(err, domain.ErrInvalidPublicID),
-		errors.Is(err, domain.ErrTenantRequired),
-		errors.Is(err, domain.ErrEventRequired),
-		errors.Is(err, domain.ErrEdgeDeviceNameRequired),
-		errors.Is(err, domain.ErrObservationPointNameRequired),
-		errors.Is(err, domain.ErrInvalidMeasurementWindow),
-		errors.Is(err, domain.ErrNegativeCount),
-		errors.Is(err, domain.ErrInvalidDetectedPeople),
-		errors.Is(err, domain.ErrInvalidHistoryWindow),
-		errors.Is(err, domain.ErrEventTypeRequired),
-		errors.Is(err, application.ErrEdgeDeviceRequired):
-		return connectrpc.NewError(connectrpc.CodeInvalidArgument, err.Error()).WithCause(err)
-	case errors.Is(err, repository.ErrEdgeDeviceNotFound),
-		errors.Is(err, domain.ErrObservationPointNotFound):
-		return connectrpc.NewError(connectrpc.CodeNotFound, err.Error()).WithCause(err)
-	case errors.Is(err, domain.ErrEdgeDeviceUnregistered):
-		return connectrpc.NewError(connectrpc.CodeFailedPrecondition, err.Error()).WithCause(err)
-	case errors.Is(err, tenantctx.ErrMissing),
-		errors.Is(err, tenantctx.ErrMismatch),
-		errors.Is(err, tenantctx.ErrEventMissing),
-		errors.Is(err, tenantctx.ErrEventMismatch),
-		errors.Is(err, application.ErrForeignEvent):
-		return connectrpc.NewError(connectrpc.CodePermissionDenied, err.Error()).WithCause(err)
-	default:
-		return InternalError(ctx, err)
-	}
-}
-
 type ManualInterventionService struct {
 	observationv1connect.UnimplementedManualInterventionServiceHandler
 }
@@ -347,7 +276,7 @@ func (s *StatusQueryService) GetEventOverview(
 ) (*observationv1.GetEventOverviewResponse, error) {
 	overview, err := s.useCases.GetEventOverview(ctx, req.GetEventId())
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.GetEventOverviewResponse{
@@ -431,7 +360,7 @@ func (s *ObservationSettingsService) GetObservationSettings(
 ) (*observationv1.GetObservationSettingsResponse, error) {
 	settings, err := s.useCases.GetObservationSettings(ctx, req.GetEventId())
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.GetObservationSettingsResponse{
@@ -449,7 +378,7 @@ func (s *ObservationSettingsService) UpdateObservationSettings(
 		EventType:         domainEventType(req.GetSettings().GetEventType()),
 	})
 	if err != nil {
-		return nil, observationError(ctx, err)
+		return nil, clientError(ctx, err)
 	}
 
 	return &observationv1.UpdateObservationSettingsResponse{
