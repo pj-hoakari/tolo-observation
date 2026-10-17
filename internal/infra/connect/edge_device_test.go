@@ -2,6 +2,8 @@ package connect
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -243,6 +245,76 @@ func TestEdgeDeviceErrorMapping(t *testing.T) {
 			})
 			if got := connectrpc.CodeOf(err); got != tt.want {
 				t.Fatalf("UnregisterEdgeDevice() error code = %v (%v), want %v", got, err, tt.want)
+			}
+		})
+	}
+}
+
+func TestEdgeDeviceErrorsAnswerFixedMessages(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		err         error
+		wantCode    connectrpc.Code
+		wantMessage string
+	}{
+		{
+			name:        "sentinel wrapped by the application",
+			err:         fmt.Errorf("find edge device: %w", repository.ErrEdgeDeviceNotFound),
+			wantCode:    connectrpc.CodeNotFound,
+			wantMessage: "edge device not found",
+		},
+		{
+			name: "sentinel wrapped with a downstream error",
+			err: fmt.Errorf("call GetQrLocations: %w: %w", application.ErrForeignEvent,
+				connectrpc.NewError(connectrpc.CodePermissionDenied, "graph revision 42 belongs to tenant acme")),
+			wantCode:    connectrpc.CodePermissionDenied,
+			wantMessage: "resource belongs to another event",
+		},
+		{
+			name: "sentinel joined with a database error",
+			err: fmt.Errorf("unregister edge device: %w", errors.Join(
+				errors.New(`ERROR: relation "edge_devices" is locked (SQLSTATE 55P03)`), domain.ErrEdgeDeviceUnregistered)),
+			wantCode:    connectrpc.CodeFailedPrecondition,
+			wantMessage: "edge device is unregistered",
+		},
+		{
+			name:        "canceled request",
+			err:         fmt.Errorf("find edge device: %w", context.Canceled),
+			wantCode:    connectrpc.CodeCanceled,
+			wantMessage: "canceled",
+		},
+		{
+			name:        "timed out request",
+			err:         fmt.Errorf("find edge device: %w", context.DeadlineExceeded),
+			wantCode:    connectrpc.CodeDeadlineExceeded,
+			wantMessage: "deadline exceeded",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := newEdgeDeviceClient(t, "events.manage", &fakeEdgeDeviceUseCases{err: tt.err})
+
+			_, err := client.UnregisterEdgeDevice(context.Background(), &observationv1.UnregisterEdgeDeviceRequest{
+				EventId:      testEventPublicID,
+				EdgeDeviceId: testEdgeDeviceID,
+			})
+
+			var connectErr *connectrpc.Error
+			if !errors.As(err, &connectErr) {
+				t.Fatalf("UnregisterEdgeDevice() error = %v, want a connect error", err)
+			}
+
+			if got := connectErr.Code(); got != tt.wantCode {
+				t.Errorf("Code() = %v, want %v", got, tt.wantCode)
+			}
+
+			if got := connectErr.Message(); got != tt.wantMessage {
+				t.Errorf("Message() = %q, want %q", got, tt.wantMessage)
 			}
 		})
 	}
