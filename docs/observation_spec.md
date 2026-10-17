@@ -57,7 +57,7 @@ package: `tolo.observation.v1`
 | Graph Authoring | GetCurrentRevision／GetObservationPointMappings／GetGatePoints | グラフ・紐づけ・設計時ゲート指定の取得。紐づけは GetCurrentRevision で得た `revision_id` を指定して読み、グラフと同じ版にそろえる | — |
 | Flow Control | Optimize | 観測スナップショット確定等を契機に最適化要求（検知状態・手動介入を同梱） | OptimizationRequested／OptimizationResultPersisted |
 | Line Control | GuideQueues | 行列把握・案内・形状最適化の要求 | 同上 |
-| Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う）。Flow／Line の応答を Operation の型へ変換して渡す | — |
+| Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う）。Flow／Line の応答を Operation の型へ変換して渡す。イベントの所属テナントを `tenant_id` に入れる | — |
 | Guest Service | （PubSub: `guest-status` へ publish） | スナップショット確定・行列状態更新のたびにゲスト向け状況（混雑・行列。`tolo.guest.v1.GuestStatus`。ID と数値のみ）を publish。誘導提案・表示名は含めない（提案はスタッフ向け、表示名の付与は Guest Service） | （ゲスト側 GuestViewUpdated の源） |
 | Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用）。Operation の型へ変換して渡す。イベントの所属テナントを `tenant_id` に入れる | — |
 | Reference Aggregation | GetReferenceValues | コールドスタート用参照値の取得（短期イベント等）。Flow の型へ変換して `OptimizeRequest.references` に同梱する | — |
