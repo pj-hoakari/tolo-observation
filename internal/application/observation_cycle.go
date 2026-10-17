@@ -40,6 +40,7 @@ type FlowControl interface {
 
 type Operation interface {
 	RequestProposalDelivery(ctx context.Context, tenantPublicID, eventID string, outcome domain.OptimizationOutcome) error
+	RecordFeedbackValues(ctx context.Context, tenantPublicID, eventID string, outcome domain.OptimizationOutcome) error
 }
 
 type ObservationCycleRunner interface {
@@ -221,6 +222,7 @@ func (c *ObservationCycle) deliverToOperation(
 ) {
 	calls := map[string]func(context.Context, string, string, domain.OptimizationOutcome) error{
 		"RequestProposalDelivery": c.operation.RequestProposalDelivery,
+		"RecordFeedbackValues":    c.operation.RecordFeedbackValues,
 	}
 
 	var wg sync.WaitGroup

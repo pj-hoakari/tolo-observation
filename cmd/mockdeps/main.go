@@ -219,8 +219,22 @@ func (flowControl) Optimize(
 		RequestId:             proto.String(req.GetRequestId()),
 		Verdict:               flowv1.Verdict_VERDICT_SKIPPED_NO_TRIGGER.Enum(),
 		UpdatedDetectionState: new(flowv1.DetectionState),
-		FeedbackValues:        nil,
-		Diagnostics:           nil,
+		FeedbackValues: &flowv1.FeedbackValues{
+			SchemaVersion:          "",
+			ComputeMeta:            nil,
+			ObjectiveValues:        &flowv1.FeedbackObjectiveValues{TauStar: 1, Throughput: nil},
+			PerTagObservations:     nil,
+			PredictionActualDiff:   nil,
+			ReferenceUsage:         nil,
+			QualityMetrics:         nil,
+			DetourMetrics:          nil,
+			RestrictionMetrics:     nil,
+			DirectionChangeSummary: nil,
+			AbDiff:                 nil,
+			ForecastSummary:        nil,
+			Warnings:               nil,
+		},
+		Diagnostics: nil,
 		OptimizationResult: &flowv1.OptimizationResult{
 			RouteImportance: []*flowv1.RouteImportance{{
 				EdgeId:                routeID,
@@ -259,4 +273,14 @@ func (deliveryCoordination) RequestProposalDelivery(
 		RealtimeCount:     1,
 		NotificationCount: 0,
 	}, nil
+}
+
+func (deliveryCoordination) RecordFeedbackValues(
+	ctx context.Context,
+	req *operationv1.RecordFeedbackValuesRequest,
+) (*operationv1.RecordFeedbackValuesResponse, error) {
+	slog.InfoContext(ctx, "feedback values recorded",
+		"tenant_id", req.GetTenantId(), "event_id", req.GetEventId(), "entries", len(req.GetValues().GetEntries()))
+
+	return &operationv1.RecordFeedbackValuesResponse{}, nil
 }

@@ -3,10 +3,12 @@ package connect
 import (
 	"context"
 	"fmt"
+	"time"
 
 	connectrpc "connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	flowv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/flow/v1"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -54,6 +56,53 @@ func (c *OperationClient) RequestProposalDelivery(
 	}
 
 	return nil
+}
+
+func (c *OperationClient) RecordFeedbackValues(
+	ctx context.Context,
+	tenantPublicID, eventID string,
+	outcome domain.OptimizationOutcome,
+) error {
+	if outcome.FeedbackValues == nil {
+		return nil
+	}
+
+	values := new(flowv1.FeedbackValues)
+	if err := protojson.Unmarshal(outcome.FeedbackValues, values); err != nil {
+		return fmt.Errorf("decode feedback values: %w", err)
+	}
+
+	if _, err := c.client.RecordFeedbackValues(ctx, &operationv1.RecordFeedbackValuesRequest{
+		EventId:  eventID,
+		Values:   operationFeedbackValues(values, outcome.ServerTime),
+		TenantId: tenantPublicID,
+	}); err != nil {
+		return fmt.Errorf("call RecordFeedbackValues: %w", err)
+	}
+
+	return nil
+}
+
+func operationFeedbackValues(values *flowv1.FeedbackValues, computedAt time.Time) *operationv1.FeedbackValues {
+	entries := make([]*operationv1.FeedbackEntry, 0, 2+len(values.GetPerTagObservations()))
+
+	if objective := values.GetObjectiveValues(); objective != nil {
+		entries = append(entries, &operationv1.FeedbackEntry{AttributeTag: "", Kind: "tau_star", Value: objective.GetTauStar()})
+
+		if objective.Throughput != nil {
+			entries = append(entries, &operationv1.FeedbackEntry{AttributeTag: "", Kind: "throughput", Value: objective.GetThroughput()})
+		}
+	}
+
+	for _, observation := range values.GetPerTagObservations() {
+		entries = append(entries, &operationv1.FeedbackEntry{
+			AttributeTag: observation.GetAttributeTag(),
+			Kind:         "eta_estimate",
+			Value:        observation.GetEtaEstimate(),
+		})
+	}
+
+	return &operationv1.FeedbackValues{Entries: entries, ComputedAt: timestamppb.New(computedAt)}
 }
 
 func operationFlowProposals(result *flowv1.OptimizationResult) (*operationv1.FlowProposals, bool) {

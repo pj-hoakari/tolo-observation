@@ -66,12 +66,20 @@ func (c *FlowControlClient) Optimize(
 		Verdict:            res.GetVerdict().String(),
 		DetectionState:     detectionState,
 		OptimizationResult: nil,
+		FeedbackValues:     nil,
 	}
 
 	if res.OptimizationResult != nil {
 		outcome.OptimizationResult, err = protojson.Marshal(res.GetOptimizationResult())
 		if err != nil {
 			return domain.OptimizationOutcome{}, fmt.Errorf("encode optimization result: %w", err)
+		}
+	}
+
+	if res.FeedbackValues != nil {
+		outcome.FeedbackValues, err = protojson.Marshal(res.GetFeedbackValues())
+		if err != nil {
+			return domain.OptimizationOutcome{}, fmt.Errorf("encode feedback values: %w", err)
 		}
 	}
 

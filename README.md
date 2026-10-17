@@ -51,8 +51,9 @@ Compose は依存先の代わりに開発専用のモック `mockdeps`（`cmd/mo
   - QR 設置場所は `a1b2c3d4e5f60718` の 1 件で、`route-entrance-hall` に紐づく
   - 観測点の ID は端末の登録時に本サービスが採番するため、モックからは事前に分からない。そのため `GetObservationPointMappings` は空のマッピングを返し、エッジ端末の計測値はスナップショットのグラフに載らない
   - `GetDisplayNames` と `GetGatePoints` は本サービスが呼ばないので、`unimplemented` を返す
-- FlowControlService の `Optimize`。常に `VERDICT_SKIPPED_NO_TRIGGER` と空の検知状態を返す。最適化結果には `route-entrance-hall` の重要度を 1 件だけ載せ、`solved_at` は要求の `server_time` とする
+- FlowControlService の `Optimize`。常に `VERDICT_SKIPPED_NO_TRIGGER` と空の検知状態を返す。最適化結果には `route-entrance-hall` の重要度を 1 件だけ載せ、`solved_at` は要求の `server_time` とする。フィードバック値には `tau_star` だけを載せる
 - DeliveryCoordinationService の `RequestProposalDelivery`。受け取ったテナント、イベント、ルート重要度の件数をログに出し、配信数として `realtime_count` に 1 を返す
+- DeliveryCoordinationService の `RecordFeedbackValues`。受け取ったテナント、イベント、エントリの件数をログに出し、空の応答を返す
 - `GET /.well-known/jwks.json` と `POST /token`。起動時に生成した ES256 鍵の公開鍵を配り、その鍵で内部 JWT を発行する（「内部 JWT」を参照）
 
 `mockdeps` は呼ばれた RPC の procedure をログに出すので、`docker compose logs mockdeps` で依存先への呼び出しを確かめられる  
@@ -127,7 +128,7 @@ Compose で起動したときは、`mockdeps` の `POST /token` でトークン�
 TOKEN=$(curl -s -X POST localhost:8089/token \
   -d '{"tenant_id":"0123456789abcdef","event_id":"fedcba9876543210","scope":"events.report"}' | jq -r .token)
 
-# QR の計測値を報告すると、GraphSupplyService と Optimize の呼び出しを経て optimization_results に 1 行残る
+# QR の計測値を報告すると、GraphSupplyService と Optimize の呼び出しを経て optimization_results に 1 行残り、続いて Operation の RequestProposalDelivery と RecordFeedbackValues が呼ばれる
 curl -s -X POST localhost:8080/tolo.observation.v1.MeasurementIngestService/ReportMeasurements \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d "{\"eventId\":\"fedcba9876543210\",\"tenantId\":\"0123456789abcdef\",\"measurements\":[{\"source\":\"MEASUREMENT_SOURCE_QR\",\"qrLocationId\":\"a1b2c3d4e5f60718\",\"windowStart\":\"$(date -u -v-1M +%FT%TZ)\",\"windowEnd\":\"$(date -u +%FT%TZ)\",\"countIn\":3,\"countOut\":1}]}"

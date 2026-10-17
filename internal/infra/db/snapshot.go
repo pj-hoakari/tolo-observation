@@ -361,7 +361,14 @@ func (r *PostgresSnapshotRepository) LatestOptimizationOutcome(
 		return domain.OptimizationOutcome{}, fmt.Errorf("select optimization result: %w", err)
 	}
 
-	return domain.OptimizationOutcome(row), nil
+	return domain.OptimizationOutcome{
+		SnapshotID:         row.SnapshotID,
+		ServerTime:         row.ServerTime,
+		Verdict:            row.Verdict,
+		DetectionState:     row.DetectionState,
+		OptimizationResult: row.OptimizationResult,
+		FeedbackValues:     nil,
+	}, nil
 }
 
 type sensorSetRow struct {

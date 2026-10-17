@@ -248,3 +248,50 @@ func enumKeys[K ~int32, V any](m map[K]V) map[protoreflect.EnumNumber]bool {
 
 	return keys
 }
+
+func TestOperationFeedbackValues(t *testing.T) {
+	computedAt := time.Date(2026, 10, 17, 9, 31, 0, 0, time.UTC)
+
+	tests := []struct {
+		name   string
+		values *flowv1.FeedbackValues
+		want   []*operationv1.FeedbackEntry
+	}{
+		{
+			name: "objective values and per-tag eta estimates",
+			values: &flowv1.FeedbackValues{
+				ObjectiveValues: &flowv1.FeedbackObjectiveValues{TauStar: 3.5, Throughput: proto.Float64(120)},
+				PerTagObservations: []*flowv1.TagObservation{
+					{AttributeTag: "stage", EtaEstimate: 0.4, EdgeCount: 2, ObservationSpanMin: 30},
+					{AttributeTag: "food", EtaEstimate: 0.7},
+				},
+				QualityMetrics: new(flowv1.QualityMetrics),
+			},
+			want: []*operationv1.FeedbackEntry{
+				{AttributeTag: "", Kind: "tau_star", Value: 3.5},
+				{AttributeTag: "", Kind: "throughput", Value: 120},
+				{AttributeTag: "stage", Kind: "eta_estimate", Value: 0.4},
+				{AttributeTag: "food", Kind: "eta_estimate", Value: 0.7},
+			},
+		},
+		{
+			name:   "throughput is sent only when Flow sets it",
+			values: &flowv1.FeedbackValues{ObjectiveValues: &flowv1.FeedbackObjectiveValues{TauStar: 0}},
+			want:   []*operationv1.FeedbackEntry{{AttributeTag: "", Kind: "tau_star", Value: 0}},
+		},
+		{
+			name:   "no objective values",
+			values: &flowv1.FeedbackValues{PerTagObservations: []*flowv1.TagObservation{{AttributeTag: "stage", EtaEstimate: 0.4}}},
+			want:   []*operationv1.FeedbackEntry{{AttributeTag: "stage", Kind: "eta_estimate", Value: 0.4}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			want := &operationv1.FeedbackValues{Entries: tt.want, ComputedAt: timestamppb.New(computedAt)}
+			if got := operationFeedbackValues(tt.values, computedAt); !proto.Equal(got, want) {
+				t.Errorf("operationFeedbackValues() = %v, want %v", got, want)
+			}
+		})
+	}
+}

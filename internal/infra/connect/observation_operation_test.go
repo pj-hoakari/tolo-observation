@@ -27,6 +27,7 @@ type operationCall struct {
 	procedure     string
 	authorization string
 	request       proto.Message
+	at            time.Time
 }
 
 type operationStub struct {
@@ -57,7 +58,7 @@ func (s *operationStub) record(ctx context.Context, procedure string, request pr
 	info, _ := connectrpc.CallInfoForServerContext(ctx)
 
 	s.mu.Lock()
-	s.calls = append(s.calls, operationCall{procedure, info.RequestHeader().Get("Authorization"), request})
+	s.calls = append(s.calls, operationCall{procedure, info.RequestHeader().Get("Authorization"), request, time.Now()})
 	failing, hanging := s.failing[procedure], s.hanging[procedure]
 	s.mu.Unlock()
 
@@ -83,6 +84,17 @@ func (s *operationStub) RequestProposalDelivery(
 	}
 
 	return &operationv1.RequestProposalDeliveryResponse{DeliveryId: "delivery-1", RealtimeCount: 1, NotificationCount: 0}, nil
+}
+
+func (s *operationStub) RecordFeedbackValues(
+	ctx context.Context,
+	req *operationv1.RecordFeedbackValuesRequest,
+) (*operationv1.RecordFeedbackValuesResponse, error) {
+	if err := s.record(ctx, "RecordFeedbackValues", req); err != nil {
+		return nil, err
+	}
+
+	return &operationv1.RecordFeedbackValuesResponse{}, nil
 }
 
 func (s *operationStub) fail(procedure string) {
@@ -126,6 +138,13 @@ func operationTestResult() *flowv1.OptimizationResult {
 	}
 }
 
+func operationTestFeedback() *flowv1.FeedbackValues {
+	return &flowv1.FeedbackValues{
+		ObjectiveValues:    &flowv1.FeedbackObjectiveValues{TauStar: 3.5},
+		PerTagObservations: []*flowv1.TagObservation{{AttributeTag: "stage", EtaEstimate: 0.4, EdgeCount: 2}},
+	}
+}
+
 func reportForOperation(t *testing.T, flow observationFlow, eventID string) (string, time.Duration) {
 	t.Helper()
 
@@ -160,7 +179,7 @@ func TestObservationCycleRequestsProposalDelivery(t *testing.T) {
 	const eventID = "0be7a71000000001"
 
 	flow := newObservationFlow(t)
-	flow.flow.respondWith(operationTestResult())
+	flow.flow.respondWith(operationTestResult(), operationTestFeedback())
 
 	authorization, _ := reportForOperation(t, flow, eventID)
 
@@ -192,11 +211,63 @@ func TestObservationCycleRequestsProposalDelivery(t *testing.T) {
 	}
 }
 
+func TestObservationCycleRecordsFeedbackValues(t *testing.T) {
+	const eventID = "0be7a71000000005"
+
+	flow := newObservationFlow(t)
+	flow.flow.respondWith(nil, operationTestFeedback())
+
+	authorization, _ := reportForOperation(t, flow, eventID)
+
+	calls := flow.operation.received("RecordFeedbackValues")
+	if len(calls) != 1 {
+		t.Fatalf("RecordFeedbackValues received %d calls, want 1", len(calls))
+	}
+
+	if calls[0].authorization != authorization {
+		t.Errorf("RecordFeedbackValues Authorization = %q, want the token that reported the measurements", calls[0].authorization)
+	}
+
+	req, _ := calls[0].request.(*operationv1.RecordFeedbackValuesRequest)
+	if req.GetTenantId() != testTenantPublicID || req.GetEventId() != eventID {
+		t.Errorf("RecordFeedbackValues tenant/event = %q/%q, want %q/%q", req.GetTenantId(), req.GetEventId(), testTenantPublicID, eventID)
+	}
+
+	want := []*operationv1.FeedbackEntry{
+		{AttributeTag: "", Kind: "tau_star", Value: 3.5},
+		{AttributeTag: "stage", Kind: "eta_estimate", Value: 0.4},
+	}
+	if got := req.GetValues().GetEntries(); len(got) != len(want) || !proto.Equal(got[0], want[0]) || !proto.Equal(got[1], want[1]) {
+		t.Errorf("RecordFeedbackValues entries = %v, want %v", got, want)
+	}
+
+	if req.GetValues().GetComputedAt() == nil {
+		t.Error("RecordFeedbackValues computed_at is unset, want the cycle's server time")
+	}
+
+	if calls := flow.operation.received("RequestProposalDelivery"); len(calls) != 0 {
+		t.Errorf("RequestProposalDelivery received %d calls without an optimization result, want 0", len(calls))
+	}
+}
+
+func TestObservationCycleSkipsFeedbackValuesWhenFlowSendsNone(t *testing.T) {
+	const eventID = "0be7a71000000006"
+
+	flow := newObservationFlow(t)
+	flow.flow.respondWith(operationTestResult(), nil)
+
+	reportForOperation(t, flow, eventID)
+
+	if calls := flow.operation.received("RecordFeedbackValues"); len(calls) != 0 {
+		t.Errorf("RecordFeedbackValues received %d calls without feedback values, want 0", len(calls))
+	}
+}
+
 func TestObservationCycleSkipsProposalDeliveryWithoutProposals(t *testing.T) {
 	const eventID = "0be7a71000000002"
 
 	flow := newObservationFlow(t)
-	flow.flow.respondWith(&flowv1.OptimizationResult{SolvedAt: timestamppb.Now()})
+	flow.flow.respondWith(&flowv1.OptimizationResult{SolvedAt: timestamppb.Now()}, nil)
 
 	reportForOperation(t, flow, eventID)
 
@@ -218,7 +289,7 @@ func TestObservationCycleKeepsGoingWhenOperationFails(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			flow := newObservationFlow(t)
-			flow.flow.respondWith(operationTestResult())
+			flow.flow.respondWith(operationTestResult(), operationTestFeedback())
 			tt.break_(flow.operation, "RequestProposalDelivery")
 
 			_, elapsed := reportForOperation(t, flow, tt.eventID)
@@ -227,8 +298,15 @@ func TestObservationCycleKeepsGoingWhenOperationFails(t *testing.T) {
 				t.Errorf("ReportMeasurements took %s, want it bounded by the operation timeout %s", elapsed, operationTestTimeout)
 			}
 
-			if calls := flow.operation.received("RequestProposalDelivery"); len(calls) != 1 {
-				t.Errorf("RequestProposalDelivery received %d calls, want 1", len(calls))
+			deliveries := flow.operation.received("RequestProposalDelivery")
+			feedbacks := flow.operation.received("RecordFeedbackValues")
+
+			if len(deliveries) != 1 || len(feedbacks) != 1 {
+				t.Fatalf("Operation received %d deliveries and %d feedback calls, want 1 each", len(deliveries), len(feedbacks))
+			}
+
+			if wait := feedbacks[0].at.Sub(deliveries[0].at); wait > operationTestTimeout/2 {
+				t.Errorf("RecordFeedbackValues started %s after RequestProposalDelivery, want it not to wait for the broken call", wait)
 			}
 
 			outcome, err := dbinfra.NewPostgresSnapshotRepository(testDB).LatestOptimizationOutcome(context.Background(), tt.eventID)

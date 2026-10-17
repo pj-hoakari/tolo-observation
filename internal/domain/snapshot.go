@@ -390,4 +390,5 @@ type OptimizationOutcome struct {
 	Verdict            string
 	DetectionState     []byte
 	OptimizationResult []byte
+	FeedbackValues     []byte
 }
