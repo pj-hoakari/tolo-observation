@@ -59,7 +59,7 @@ package: `tolo.observation.v1`
 | Line Control | GuideQueues | 行列把握・案内・形状最適化の要求 | 同上 |
 | Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う）。Flow／Line の応答を Operation の型へ変換して渡す | — |
 | Guest Service | （PubSub: `guest-status` へ publish） | スナップショット確定・行列状態更新のたびにゲスト向け状況（混雑・行列。`tolo.guest.v1.GuestStatus`。ID と数値のみ）を publish。誘導提案・表示名は含めない（提案はスタッフ向け、表示名の付与は Guest Service） | （ゲスト側 GuestViewUpdated の源） |
-| Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用）。Operation の型へ変換して渡す | — |
+| Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用）。Operation の型へ変換して渡す。イベントの所属テナントを `tenant_id` に入れる | — |
 | Reference Aggregation | GetReferenceValues | コールドスタート用参照値の取得（短期イベント等）。Flow の型へ変換して `OptimizeRequest.references` に同梱する | — |
 | Graph Authoring | GetQrLocations | QR 設置箇所の取得（QR 方式の観測点として扱う）。GetCurrentRevision で得た `revision_id` を指定する。QR 由来計上の受け付けではリクエストの `tenant_id`、観測サイクルではイベントの所属テナントを `tenant_id` に入れる | — |
 
