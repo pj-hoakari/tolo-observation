@@ -28,6 +28,7 @@ const (
 	defaultHeartbeatTimeout  = 30 * time.Second
 	defaultObservationWindow = time.Minute
 	defaultOptimizeTimeout   = 30 * time.Second
+	defaultOperationTimeout  = 5 * time.Second
 	defaultHoldThreshold     = 0.8
 	defaultHoldMinDevices    = 10
 	defaultHoldMaxDuration   = 5 * time.Minute
@@ -88,6 +89,11 @@ func run() error {
 		return errors.New("FLOW_CONTROL_URL is required")
 	}
 
+	operationURL := os.Getenv("OPERATION_URL")
+	if operationURL == "" {
+		return errors.New("OPERATION_URL is required")
+	}
+
 	observationWindow, err := time.ParseDuration(getenv("OBSERVATION_WINDOW", defaultObservationWindow.String()))
 	if err != nil {
 		return fmt.Errorf("read OBSERVATION_WINDOW: %w", err)
@@ -96,6 +102,11 @@ func run() error {
 	optimizeTimeout, err := time.ParseDuration(getenv("OPTIMIZE_TIMEOUT", defaultOptimizeTimeout.String()))
 	if err != nil {
 		return fmt.Errorf("read OPTIMIZE_TIMEOUT: %w", err)
+	}
+
+	operationTimeout, err := time.ParseDuration(getenv("OPERATION_TIMEOUT", defaultOperationTimeout.String()))
+	if err != nil {
+		return fmt.Errorf("read OPERATION_TIMEOUT: %w", err)
 	}
 
 	holdPolicy, err := heartbeatLossHoldPolicy(heartbeatTimeout)
@@ -145,15 +156,17 @@ func run() error {
 	cycle := application.NewObservationCycle(
 		graphs,
 		connectinfra.NewFlowControlClient(flowControlURL),
+		connectinfra.NewOperationClient(http.DefaultClient, operationURL),
 		edgeDeviceRepository,
 		holds,
 		measurementRepository,
 		snapshots,
 		observationSettings,
 		application.ObservationCycleConfig{
-			Window:          observationWindow,
-			OptimizeTimeout: optimizeTimeout,
-			Now:             nil,
+			Window:           observationWindow,
+			OptimizeTimeout:  optimizeTimeout,
+			OperationTimeout: operationTimeout,
+			Now:              nil,
 		},
 	)
 

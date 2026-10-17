@@ -105,6 +105,7 @@ type observationFlow struct {
 	settings      observationv1connect.ObservationSettingsServiceClient
 	graph         *graphStub
 	flow          *flowStub
+	operation     *operationStub
 	observedStart time.Time
 }
 
@@ -133,21 +134,24 @@ func newObservationFlow(t *testing.T) observationFlow {
 	settings := dbinfra.NewPostgresObservationSettingsRepository(testDB)
 	graph, graphURL := startGraphStub(t)
 	flow, flowURL := startFlowStub(t)
+	operation, operationURL := startOperationStub(t)
 
 	graphs := NewGraphSupplyClient(http.DefaultClient, graphURL)
 
 	cycle := application.NewObservationCycle(
 		graphs,
 		NewFlowControlClient(flowURL),
+		NewOperationClient(http.DefaultClient, operationURL),
 		devices,
 		holds,
 		measurements,
 		snapshots,
 		settings,
 		application.ObservationCycleConfig{
-			Window:          time.Minute,
-			OptimizeTimeout: 5 * time.Second,
-			Now:             func() time.Time { return time.Now().Add(123 * time.Nanosecond) },
+			Window:           time.Minute,
+			OptimizeTimeout:  5 * time.Second,
+			OperationTimeout: operationTestTimeout,
+			Now:              func() time.Time { return time.Now().Add(123 * time.Nanosecond) },
 		},
 	)
 
@@ -180,6 +184,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 		settings:      observationv1connect.NewObservationSettingsServiceClient(connectrpc.NewClient(connecthttp.NewTransport(httpServer.Client(), httpServer.URL))),
 		graph:         graph,
 		flow:          flow,
+		operation:     operation,
 		observedStart: time.Now().Add(-time.Minute),
 	}
 }
