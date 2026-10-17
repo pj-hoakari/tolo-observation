@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -36,19 +38,26 @@ type FlowControl interface {
 	Optimize(ctx context.Context, input OptimizeInput) (domain.OptimizationOutcome, error)
 }
 
+type Operation interface {
+	RequestProposalDelivery(ctx context.Context, tenantPublicID, eventID string, outcome domain.OptimizationOutcome) error
+	RecordFeedbackValues(ctx context.Context, tenantPublicID, eventID string, outcome domain.OptimizationOutcome) error
+}
+
 type ObservationCycleRunner interface {
 	Run(ctx context.Context, tenantPublicID, eventID string) error
 }
 
 type ObservationCycleConfig struct {
-	Window          time.Duration
-	OptimizeTimeout time.Duration
-	Now             func() time.Time
+	Window           time.Duration
+	OptimizeTimeout  time.Duration
+	OperationTimeout time.Duration
+	Now              func() time.Time
 }
 
 type ObservationCycle struct {
 	graphs       GraphSupply
 	flow         FlowControl
+	operation    Operation
 	devices      repository.EdgeDeviceRepository
 	holds        *HeartbeatLossHolds
 	measurements repository.MeasurementRepository
@@ -60,6 +69,7 @@ type ObservationCycle struct {
 func NewObservationCycle(
 	graphs GraphSupply,
 	flow FlowControl,
+	operation Operation,
 	devices repository.EdgeDeviceRepository,
 	holds *HeartbeatLossHolds,
 	measurements repository.MeasurementRepository,
@@ -74,6 +84,7 @@ func NewObservationCycle(
 	return &ObservationCycle{
 		graphs:       graphs,
 		flow:         flow,
+		operation:    operation,
 		devices:      devices,
 		holds:        holds,
 		measurements: measurements,
@@ -199,7 +210,35 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("save optimization outcome: %w", err)
 	}
 
+	c.deliverToOperation(ctx, tenantPublicID, eventID, outcome)
+
 	return nil
+}
+
+func (c *ObservationCycle) deliverToOperation(
+	ctx context.Context,
+	tenantPublicID, eventID string,
+	outcome domain.OptimizationOutcome,
+) {
+	calls := map[string]func(context.Context, string, string, domain.OptimizationOutcome) error{
+		"RequestProposalDelivery": c.operation.RequestProposalDelivery,
+		"RecordFeedbackValues":    c.operation.RecordFeedbackValues,
+	}
+
+	var wg sync.WaitGroup
+
+	for procedure, call := range calls {
+		wg.Go(func() {
+			callCtx, cancel := context.WithTimeout(ctx, c.config.OperationTimeout)
+			defer cancel()
+
+			if err := call(callCtx, tenantPublicID, eventID, outcome); err != nil {
+				slog.WarnContext(ctx, "operation call failed", "procedure", procedure, "event_id", eventID, "error", err)
+			}
+		})
+	}
+
+	wg.Wait()
 }
 
 func (c *ObservationCycle) availableHistory(ctx context.Context, eventID string, now time.Time) (time.Duration, error) {

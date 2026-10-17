@@ -117,6 +117,8 @@ github.com/pj-hoakari/tolo-graph-authoring v0.2.0-rc.0.20261016022610-0fb78cdf92
 github.com/pj-hoakari/tolo-graph-authoring v0.2.0-rc.0.20261016022610-0fb78cdf9234/go.mod h1:einVZDSv6zTBAxjtmhWo9k8YQBU1lt72rATJsIhEk/U=
 github.com/pj-hoakari/tolo-kernel-proto v0.4.0 h1:yEO6kFq3HubbZRXv9Ed2sIG7VGRm8WZ7O4tlwFROMDU=
 github.com/pj-hoakari/tolo-kernel-proto v0.4.0/go.mod h1:dH46KE1uBX0a+aL4VYDFYvdkuNPTmbFWcB6B/xjvekQ=
+github.com/pj-hoakari/tolo-operation v0.0.0-20261017035148-4bc5234f5136 h1:VEqYX0zlOShsWtdXO7c+bS8Py3CCpjOe2TCPMLpFSTI=
+github.com/pj-hoakari/tolo-operation v0.0.0-20261017035148-4bc5234f5136/go.mod h1:TKkLDa96n7hg0TBqX6H1sqCR0J7foAZbbePUPYgIgbQ=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 h1:o4JXh1EVt9k/+g42oCprj/FisM4qX9L3sZB3upGN2ZU=
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=

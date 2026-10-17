@@ -149,6 +149,8 @@ type flowStub struct {
 	requests       []*flowv1.OptimizeRequest
 	authorizations []string
 	unavailable    bool
+	result         *flowv1.OptimizationResult
+	feedback       *flowv1.FeedbackValues
 }
 
 func startFlowStub(t *testing.T) (*flowStub, string) {
@@ -194,7 +196,17 @@ func (s *flowStub) Optimize(
 		UpdatedDetectionState: &flowv1.DetectionState{
 			ConsecutiveSkipCount: int32(len(s.requests)),
 		},
+		OptimizationResult: s.result,
+		FeedbackValues:     s.feedback,
 	}, nil
+}
+
+func (s *flowStub) respondWith(result *flowv1.OptimizationResult, feedback *flowv1.FeedbackValues) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.result = result
+	s.feedback = feedback
 }
 
 func (s *flowStub) setUnavailable(unavailable bool) {

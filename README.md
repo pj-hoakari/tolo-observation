@@ -43,7 +43,7 @@ task up:build
 Compose の `migrate` サービスは `Dockerfile` の `migrate` ターゲットをビルドして起動するため、`migrations/` を追加・変更したあとは `--build` 付き（`docker compose up --build` または `task up:build`）で起動し直す  
 `task up` はイメージを再ビルドしないので、古いマイグレーションのままになる  
 Compose は依存先の代わりに開発専用のモック `mockdeps`（`cmd/mockdeps`）を起動する。ホストからは `http://localhost:8089` で届く  
-`server` の `GRAPH_AUTHORING_URL`、`FLOW_CONTROL_URL`、`INTERNAL_JWKS_URL` はすべて `mockdeps` を指す  
+`server` の `GRAPH_AUTHORING_URL`、`FLOW_CONTROL_URL`、`OPERATION_URL`、`INTERNAL_JWKS_URL` はすべて `mockdeps` を指す  
 `mockdeps` は 1 つのポートで次を提供する
 
 - GraphSupplyService の `GetCurrentRevision`、`GetObservationPointMappings`、`GetQrLocations`。リクエストの内容と認証によらず、固定のグラフを返す
@@ -51,7 +51,9 @@ Compose は依存先の代わりに開発専用のモック `mockdeps`（`cmd/mo
   - QR 設置場所は `a1b2c3d4e5f60718` の 1 件で、`route-entrance-hall` に紐づく
   - 観測点の ID は端末の登録時に本サービスが採番するため、モックからは事前に分からない。そのため `GetObservationPointMappings` は空のマッピングを返し、エッジ端末の計測値はスナップショットのグラフに載らない
   - `GetDisplayNames` と `GetGatePoints` は本サービスが呼ばないので、`unimplemented` を返す
-- FlowControlService の `Optimize`。常に `VERDICT_SKIPPED_NO_TRIGGER` と空の検知状態を返す
+- FlowControlService の `Optimize`。常に `VERDICT_SKIPPED_NO_TRIGGER` と空の検知状態を返す。最適化結果には `route-entrance-hall` の重要度を 1 件だけ載せ、`solved_at` は要求の `server_time` とする。フィードバック値には `tau_star` だけを載せる
+- DeliveryCoordinationService の `RequestProposalDelivery`。受け取ったテナント、イベント、ルート重要度の件数をログに出し、配信数として `realtime_count` に 1 を返す
+- DeliveryCoordinationService の `RecordFeedbackValues`。受け取ったテナント、イベント、エントリの件数をログに出し、空の応答を返す
 - `GET /.well-known/jwks.json` と `POST /token`。起動時に生成した ES256 鍵の公開鍵を配り、その鍵で内部 JWT を発行する（「内部 JWT」を参照）
 
 `mockdeps` は呼ばれた RPC の procedure をログに出すので、`docker compose logs mockdeps` で依存先への呼び出しを確かめられる  
@@ -70,8 +72,10 @@ Compose は依存先の代わりに開発専用のモック `mockdeps`（`cmd/mo
 | `HEARTBEAT_LOSS_HOLD_MAX_DURATION` | `5m` | 保留の上限時間。保留の開始からこの時間を過ぎたら、途絶が続く端末を通常どおり切断する |
 | `GRAPH_AUTHORING_URL` | なし（必須） | GraphSupplyService の呼び出し先。Service Gateway の internal listener（compose では `mockdeps` の `http://mockdeps:8080`）を指す。public listener は GraphSupplyService を拒否する。受領した内部 JWT をそのまま `Authorization` に載せて呼ぶ |
 | `FLOW_CONTROL_URL` | なし（必須） | FlowControlService の呼び出し先（compose では `http://mockdeps:8080`）。gRPC で、認証情報を付けずに呼ぶ |
+| `OPERATION_URL` | なし（必須） | DeliveryCoordinationService の呼び出し先。Service Gateway の internal listener（compose では `mockdeps` の `http://mockdeps:8080`）を指す。`GRAPH_AUTHORING_URL` と同じく、受領した内部 JWT をそのまま `Authorization` に載せて呼ぶ |
 | `OBSERVATION_WINDOW` | `1m` | スナップショットに含める計測値の期間（`window_end` がこの期間内のもの） |
 | `OPTIMIZE_TIMEOUT` | `30s` | Optimize 呼び出しのタイムアウト。超過や失敗はログに残し、計測値の受け入れは成功させる |
+| `OPERATION_TIMEOUT` | `5s` | Operation 呼び出しのタイムアウト。Optimize の後に呼び、超過や失敗はログに残して観測サイクルを続ける |
 | `INTERNAL_JWKS_URL` | `http://gateway:8080/.well-known/jwks.json` | 内部 JWT の検証に使う JWKS の取得先（compose では `http://mockdeps:8080/.well-known/jwks.json`） |
 | `INTERNAL_JWT_ISSUER` | `service-gateway` | 内部 JWT に期待する `iss` |
 | `INTERNAL_JWT_AUDIENCE` | `tolo-observation` | 内部 JWT に期待する `aud` |
@@ -124,7 +128,7 @@ Compose で起動したときは、`mockdeps` の `POST /token` でトークン�
 TOKEN=$(curl -s -X POST localhost:8089/token \
   -d '{"tenant_id":"0123456789abcdef","event_id":"fedcba9876543210","scope":"events.report"}' | jq -r .token)
 
-# QR の計測値を報告すると、GraphSupplyService と Optimize の呼び出しを経て optimization_results に 1 行残る
+# QR の計測値を報告すると、GraphSupplyService と Optimize の呼び出しを経て optimization_results に 1 行残り、続いて Operation の RequestProposalDelivery と RecordFeedbackValues が呼ばれる
 curl -s -X POST localhost:8080/tolo.observation.v1.MeasurementIngestService/ReportMeasurements \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d "{\"eventId\":\"fedcba9876543210\",\"tenantId\":\"0123456789abcdef\",\"measurements\":[{\"source\":\"MEASUREMENT_SOURCE_QR\",\"qrLocationId\":\"a1b2c3d4e5f60718\",\"windowStart\":\"$(date -u -v-1M +%FT%TZ)\",\"windowEnd\":\"$(date -u +%FT%TZ)\",\"countIn\":3,\"countOut\":1}]}"

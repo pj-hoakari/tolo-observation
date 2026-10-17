@@ -21,6 +21,8 @@ import (
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
 	flowv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/flow/v1"
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/flow/v1/flowv1connect"
+	operationv1 "github.com/pj-hoakari/tolo-operation/gen/tolo/operation/v1"
+	"github.com/pj-hoakari/tolo-operation/gen/tolo/operation/v1/operationv1connect"
 )
 
 const (
@@ -75,6 +77,7 @@ func newHandler(generator *jwtgen.Generator) http.Handler {
 	server := connectrpc.NewServer(logCalls)
 	graphv1connect.RegisterGraphSupplyServiceHandler(server, new(graphSupply))
 	flowv1connect.RegisterFlowControlServiceHandler(server, flowControl{})
+	operationv1connect.RegisterDeliveryCoordinationServiceHandler(server, new(deliveryCoordination))
 	connecthttp.Mount(mux, server)
 
 	mux.HandleFunc("GET /.well-known/jwks.json", func(w http.ResponseWriter, _ *http.Request) {
@@ -216,9 +219,68 @@ func (flowControl) Optimize(
 		RequestId:             proto.String(req.GetRequestId()),
 		Verdict:               flowv1.Verdict_VERDICT_SKIPPED_NO_TRIGGER.Enum(),
 		UpdatedDetectionState: new(flowv1.DetectionState),
-		FeedbackValues:        nil,
-		Diagnostics:           nil,
-		OptimizationResult:    nil,
-		ElapsedMs:             0,
+		FeedbackValues: &flowv1.FeedbackValues{
+			SchemaVersion:          "",
+			ComputeMeta:            nil,
+			ObjectiveValues:        &flowv1.FeedbackObjectiveValues{TauStar: 1, Throughput: nil},
+			PerTagObservations:     nil,
+			PredictionActualDiff:   nil,
+			ReferenceUsage:         nil,
+			QualityMetrics:         nil,
+			DetourMetrics:          nil,
+			RestrictionMetrics:     nil,
+			DirectionChangeSummary: nil,
+			AbDiff:                 nil,
+			ForecastSummary:        nil,
+			Warnings:               nil,
+		},
+		Diagnostics: nil,
+		OptimizationResult: &flowv1.OptimizationResult{
+			RouteImportance: []*flowv1.RouteImportance{{
+				EdgeId:                routeID,
+				Direction:             flowv1.ImportanceDirection_IMPORTANCE_DIRECTION_A_TO_B,
+				Importance:            1,
+				ValidUntilNextTrigger: false,
+			}},
+			DirectionProposal:   nil,
+			RestrictionProposal: nil,
+			DetourPaths:         nil,
+			BoundaryControl:     nil,
+			ObjectiveValues:     nil,
+			SolverStatus:        flowv1.SolverStatus_SOLVER_STATUS_UNSPECIFIED,
+			SolvedAt:            req.GetServerTime(),
+			Seed:                0,
+		},
+		ElapsedMs: 0,
 	}, nil
+}
+
+type deliveryCoordination struct {
+	operationv1connect.UnimplementedDeliveryCoordinationServiceHandler
+}
+
+func (deliveryCoordination) RequestProposalDelivery(
+	ctx context.Context,
+	req *operationv1.RequestProposalDeliveryRequest,
+) (*operationv1.RequestProposalDeliveryResponse, error) {
+	proposals := req.GetFlowProposals()
+	slog.InfoContext(ctx, "proposal delivery requested",
+		"tenant_id", req.GetTenantId(), "event_id", req.GetEventId(),
+		"route_importances", len(proposals.GetRouteImportances()))
+
+	return &operationv1.RequestProposalDeliveryResponse{
+		DeliveryId:        "mock-delivery",
+		RealtimeCount:     1,
+		NotificationCount: 0,
+	}, nil
+}
+
+func (deliveryCoordination) RecordFeedbackValues(
+	ctx context.Context,
+	req *operationv1.RecordFeedbackValuesRequest,
+) (*operationv1.RecordFeedbackValuesResponse, error) {
+	slog.InfoContext(ctx, "feedback values recorded",
+		"tenant_id", req.GetTenantId(), "event_id", req.GetEventId(), "entries", len(req.GetValues().GetEntries()))
+
+	return &operationv1.RecordFeedbackValuesResponse{}, nil
 }
