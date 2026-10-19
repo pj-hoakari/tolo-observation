@@ -168,7 +168,9 @@ message RegisterEdgeDeviceRequest {
 }
 message RegisterEdgeDeviceResponse {
   EdgeDevice device = 1;
-  string observation_page_url = 2;  // 観測ページの発行 URL（edge_device_id を含む固定 URL）
+  string observation_page_path = 3;  // 観測ページの発行 URL のパス（edge_device_id を含む）。ホストは管理 UI が付ける
+  reserved 2;
+  reserved "observation_page_url";
 }
 message UnregisterEdgeDeviceRequest {
   string event_id = 1;
@@ -384,7 +386,7 @@ message UpdateObservationSettingsResponse {
 - エッジ端末の認証・認可は IdP 発行トークン（`event_access`）による。観測ページはブラウザで動くが、BFF の背後の confidential client であり、OIDC の認証、Token Exchange、トークンの更新は BFF が行う
 - 観測ページは BFF を経由して Service Gateway を呼ぶ。外部トークンはブラウザへ渡さない（ADR-0087）
 - どの端末からの計測かは、観測ページの発行 URL に含まれる `edge_device_id` で示す
-  RegisterEdgeDevice 応答で端末ごとの固定 URL を返し、現場ではこれをキオスクの起動 URL やブックマークに設定する
+  RegisterEdgeDevice 応答で端末ごとの固定 URL のパスを返す。管理 UI がテナントのサブドメイン名のホストを付けて固定 URL とし（ADR-0104）、現場ではこれをキオスクの起動 URL やブックマークに設定する
   端末側のストレージに識別子を保持しない。ブラウザデータの消去・ITP によるストレージ削除・キオスクのクリーン起動で識別子を失わないための規約である
   機材を入れ替える場合は、新しい機材に同じ URL を設定すれば同一のエッジ端末として続く
   URL は秘密ではない。提示しても権限は生じず、計測値の送信には別途 `event_access` を要する
