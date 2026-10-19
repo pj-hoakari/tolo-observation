@@ -179,7 +179,9 @@ message RegisterEdgeDeviceRequest {
 
 message RegisterEdgeDeviceResponse {
   EdgeDevice device = 1;
-  string observation_page_url = 2;
+  string observation_page_path = 3;
+  reserved 2;
+  reserved "observation_page_url";
 }
 
 message UnregisterEdgeDeviceRequest {

@@ -40,10 +40,10 @@ var testHoldPolicy = domain.HeartbeatLossHoldPolicy{
 	MaxDuration:      5 * time.Minute,
 }
 
-func newService(t *testing.T, template string) (*application.EdgeDeviceService, *MockEdgeDeviceRepository) {
+func newService(t *testing.T) (*application.EdgeDeviceService, *MockEdgeDeviceRepository) {
 	t.Helper()
 
-	service, devices, holds := newServiceWithHolds(t, template)
+	service, devices, holds := newServiceWithHolds(t)
 	holds.EXPECT().FindOpen(gomock.Any()).Return(time.Time{}, false, nil).AnyTimes()
 	holds.EXPECT().CountAcrossTenants(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.HeartbeatLossCount{}, nil).AnyTimes()
@@ -53,7 +53,6 @@ func newService(t *testing.T, template string) (*application.EdgeDeviceService, 
 
 func newServiceWithHolds(
 	t *testing.T,
-	template string,
 ) (*application.EdgeDeviceService, *MockEdgeDeviceRepository, *MockHeartbeatLossHoldRepository) {
 	t.Helper()
 
@@ -65,17 +64,16 @@ func newServiceWithHolds(
 		devices,
 		application.NewHeartbeatLossHolds(holds, testHoldPolicy),
 		application.EdgeDeviceConfig{
-			ObservationPageURLTemplate: template,
-			HeartbeatTimeout:           testHoldPolicy.HeartbeatTimeout,
-			Now:                        func() time.Time { return testNow },
+			HeartbeatTimeout: testHoldPolicy.HeartbeatTimeout,
+			Now:              func() time.Time { return testNow },
 		},
 	), devices, holds
 }
 
-func TestRegisterEdgeDeviceBuildsObservationPageURL(t *testing.T) {
+func TestRegisterEdgeDeviceBuildsObservationPagePath(t *testing.T) {
 	t.Parallel()
 
-	service, devices := newService(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+	service, devices := newService(t)
 	devices.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
 	output, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), application.RegisterEdgeDeviceInput{
@@ -87,8 +85,8 @@ func TestRegisterEdgeDeviceBuildsObservationPageURL(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	if got, want := output.ObservationPageURL, "https://"+testTenantPublicID+".example.test/event/"+testEventPublicID+"/observation/"+string(output.Device.Device.ID); got != want {
-		t.Errorf("ObservationPageURL = %q, want %q", got, want)
+	if got, want := output.ObservationPagePath, "/event/"+testEventPublicID+"/observation/"+string(output.Device.Device.ID); got != want {
+		t.Errorf("ObservationPagePath = %q, want %q", got, want)
 	}
 
 	if got, want := output.Device.Device.TenantPublicID, testTenantPublicID; got != want {
@@ -99,7 +97,7 @@ func TestRegisterEdgeDeviceBuildsObservationPageURL(t *testing.T) {
 func TestRegisterEdgeDeviceRejectsAnotherEventsToken(t *testing.T) {
 	t.Parallel()
 
-	service, _ := newService(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+	service, _ := newService(t)
 
 	_, err := service.RegisterEdgeDevice(withEventToken(otherEventPublicID), application.RegisterEdgeDeviceInput{
 		EventID:               testEventPublicID,
@@ -114,7 +112,7 @@ func TestRegisterEdgeDeviceRejectsAnotherEventsToken(t *testing.T) {
 func TestUnregisterEdgeDeviceRejectsAnotherEventsDevice(t *testing.T) {
 	t.Parallel()
 
-	service, devices := newService(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+	service, devices := newService(t)
 	devices.EXPECT().
 		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
 		Return(domain.EdgeDevice{EventID: otherEventPublicID}, nil)
@@ -148,7 +146,7 @@ func TestListEdgeDevicesDerivesLivenessFromHeartbeat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			service, devices := newService(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+			service, devices := newService(t)
 			devices.EXPECT().
 				ListByEvent(gomock.Any(), testEventPublicID, false).
 				Return([]domain.EdgeDevice{{
@@ -187,7 +185,7 @@ func TestListEdgeDevicesDerivesLivenessFromHeartbeat(t *testing.T) {
 func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 	t.Parallel()
 
-	service, devices := newService(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+	service, devices := newService(t)
 	devices.EXPECT().
 		FindByObservationPointID(gomock.Any(), domain.ObservationPointID("99aabbccddeeff00")).
 		Return(domain.EdgeDevice{
@@ -227,7 +225,7 @@ func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 func TestHeartbeatMarksTheDeviceAndItsActivePoints(t *testing.T) {
 	t.Parallel()
 
-	service, devices := newService(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+	service, devices := newService(t)
 	devices.EXPECT().
 		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
 		Return(domain.EdgeDevice{
@@ -274,7 +272,7 @@ func TestHeartbeatMarksTheDeviceAndItsActivePoints(t *testing.T) {
 func TestHeartbeatRejectsAnotherEventsDevice(t *testing.T) {
 	t.Parallel()
 
-	service, devices := newService(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+	service, devices := newService(t)
 	devices.EXPECT().
 		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
 		Return(domain.EdgeDevice{EventID: otherEventPublicID}, nil)

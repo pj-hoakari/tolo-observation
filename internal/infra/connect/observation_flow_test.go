@@ -158,9 +158,8 @@ func newObservationFlow(t *testing.T) observationFlow {
 	routes, err := RoutesWithVerifier(
 		newTestVerifier(t, keys),
 		application.NewEdgeDeviceService(devices, holds, application.EdgeDeviceConfig{
-			ObservationPageURLTemplate: "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}",
-			HeartbeatTimeout:           time.Hour,
-			Now:                        time.Now,
+			HeartbeatTimeout: time.Hour,
+			Now:              time.Now,
 		}),
 		application.NewMeasurementIngestService(devices, measurements, graphs, cycle),
 		application.NewStatusQueryService(snapshots),
@@ -251,6 +250,10 @@ func TestObservationFlow(t *testing.T) {
 	}
 
 	deviceID := registered.GetDevice().GetEdgeDeviceId()
+
+	if got, want := registered.GetObservationPagePath(), "/event/"+testEventPublicID+"/observation/"+deviceID; got != want {
+		t.Errorf("observation_page_path = %q, want %q", got, want)
+	}
 
 	if registered.GetDevice().GetOnline() || registered.GetDevice().GetLastHeartbeatAt() != nil {
 		t.Errorf("registered device = %v, want offline without last_heartbeat_at", registered.GetDevice())

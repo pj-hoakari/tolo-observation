@@ -81,7 +81,7 @@ func TestListEdgeDevicesHoldsDisconnectionDuringSimultaneousHeartbeatLoss(t *tes
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			service, devices, holds := newServiceWithHolds(t, "https://{tenant_id}.example.test/event/{event_id}/observation/{edge_device_id}")
+			service, devices, holds := newServiceWithHolds(t)
 
 			devices.EXPECT().
 				ListByEvent(gomock.Any(), testEventPublicID, false).
