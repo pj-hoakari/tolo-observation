@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -28,8 +27,8 @@ type EdgeDeviceView struct {
 }
 
 type RegisterEdgeDeviceOutput struct {
-	Device             EdgeDeviceView
-	ObservationPageURL string
+	Device              EdgeDeviceView
+	ObservationPagePath string
 }
 
 type UnregisterEdgeDeviceInput struct {
@@ -64,9 +63,8 @@ type EdgeDeviceUseCases interface {
 }
 
 type EdgeDeviceConfig struct {
-	ObservationPageURLTemplate string
-	HeartbeatTimeout           time.Duration
-	Now                        func() time.Time
+	HeartbeatTimeout time.Duration
+	Now              func() time.Time
 }
 
 type EdgeDeviceService struct {
@@ -107,12 +105,8 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 	}
 
 	return RegisterEdgeDeviceOutput{
-		Device: s.view(device),
-		ObservationPageURL: strings.NewReplacer(
-			"{tenant_id}", device.TenantPublicID,
-			"{event_id}", device.EventID,
-			"{edge_device_id}", string(device.ID),
-		).Replace(s.config.ObservationPageURLTemplate),
+		Device:              s.view(device),
+		ObservationPagePath: "/event/" + device.EventID + "/observation/" + string(device.ID),
 	}, nil
 }
 

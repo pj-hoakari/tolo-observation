@@ -656,11 +656,11 @@ func (x *RegisterEdgeDeviceRequest) GetObservationPointNames() []string {
 }
 
 type RegisterEdgeDeviceResponse struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Device             *EdgeDevice            `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
-	ObservationPageUrl string                 `protobuf:"bytes,2,opt,name=observation_page_url,json=observationPageUrl,proto3" json:"observation_page_url,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Device              *EdgeDevice            `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	ObservationPagePath string                 `protobuf:"bytes,3,opt,name=observation_page_path,json=observationPagePath,proto3" json:"observation_page_path,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RegisterEdgeDeviceResponse) Reset() {
@@ -700,9 +700,9 @@ func (x *RegisterEdgeDeviceResponse) GetDevice() *EdgeDevice {
 	return nil
 }
 
-func (x *RegisterEdgeDeviceResponse) GetObservationPageUrl() string {
+func (x *RegisterEdgeDeviceResponse) GetObservationPagePath() string {
 	if x != nil {
-		return x.ObservationPageUrl
+		return x.ObservationPagePath
 	}
 	return ""
 }
@@ -2065,10 +2065,10 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\x19RegisterEdgeDeviceRequest\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x126\n" +
-	"\x17observation_point_names\x18\x03 \x03(\tR\x15observationPointNames\"\x87\x01\n" +
+	"\x17observation_point_names\x18\x03 \x03(\tR\x15observationPointNames\"\xa5\x01\n" +
 	"\x1aRegisterEdgeDeviceResponse\x127\n" +
-	"\x06device\x18\x01 \x01(\v2\x1f.tolo.observation.v1.EdgeDeviceR\x06device\x120\n" +
-	"\x14observation_page_url\x18\x02 \x01(\tR\x12observationPageUrl\"^\n" +
+	"\x06device\x18\x01 \x01(\v2\x1f.tolo.observation.v1.EdgeDeviceR\x06device\x122\n" +
+	"\x15observation_page_path\x18\x03 \x01(\tR\x13observationPagePathJ\x04\b\x02\x10\x03R\x14observation_page_url\"^\n" +
 	"\x1bUnregisterEdgeDeviceRequest\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12$\n" +
 	"\x0eedge_device_id\x18\x02 \x01(\tR\fedgeDeviceId\"W\n" +

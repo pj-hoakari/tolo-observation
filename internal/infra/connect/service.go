@@ -137,8 +137,8 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(
 	}
 
 	return &observationv1.RegisterEdgeDeviceResponse{
-		Device:             newProtoEdgeDevice(output.Device),
-		ObservationPageUrl: output.ObservationPageURL,
+		Device:              newProtoEdgeDevice(output.Device),
+		ObservationPagePath: output.ObservationPagePath,
 	}, nil
 }
 

@@ -107,7 +107,7 @@ func TestRegisterEdgeDevice(t *testing.T) {
 				},
 				Online: false,
 			},
-			ObservationPageURL: "https://example.test/observe/" + testEdgeDeviceID,
+			ObservationPagePath: "/event/" + testEventPublicID + "/observation/" + testEdgeDeviceID,
 		},
 	}
 
@@ -122,8 +122,8 @@ func TestRegisterEdgeDevice(t *testing.T) {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	if got, want := res.GetObservationPageUrl(), useCases.registerOutput.ObservationPageURL; got != want {
-		t.Errorf("observation_page_url = %q, want %q", got, want)
+	if got, want := res.GetObservationPagePath(), "/event/"+testEventPublicID+"/observation/"+testEdgeDeviceID; got != want {
+		t.Errorf("observation_page_path = %q, want %q", got, want)
 	}
 
 	device := res.GetDevice()

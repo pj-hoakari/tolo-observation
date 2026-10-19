@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -65,13 +64,6 @@ func run() error {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		return errors.New("DATABASE_URL is required")
-	}
-
-	observationPageURLTemplate := os.Getenv("OBSERVATION_PAGE_URL_TEMPLATE")
-	for _, placeholder := range []string{"{tenant_id}", "{event_id}", "{edge_device_id}"} {
-		if !strings.Contains(observationPageURLTemplate, placeholder) {
-			return fmt.Errorf("OBSERVATION_PAGE_URL_TEMPLATE must contain %s", placeholder)
-		}
 	}
 
 	heartbeatTimeout, err := time.ParseDuration(getenv("HEARTBEAT_TIMEOUT", defaultHeartbeatTimeout.String()))
@@ -141,9 +133,8 @@ func run() error {
 		edgeDeviceRepository,
 		holds,
 		application.EdgeDeviceConfig{
-			ObservationPageURLTemplate: observationPageURLTemplate,
-			HeartbeatTimeout:           heartbeatTimeout,
-			Now:                        nil,
+			HeartbeatTimeout: heartbeatTimeout,
+			Now:              nil,
 		},
 	)
 
