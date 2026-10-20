@@ -23,6 +23,7 @@ package: `tolo.observation.v1`
 | RegisterEdgeDevice | エッジ端末を登録する。登録は実質的に観測点登録を兼ねる | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered |
 | UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。配下観測点は観測不能化する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled |
 | ListEdgeDevices | イベント配下のエッジ端末と観測点の一覧を、エッジ端末の稼働状態とあわせて返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
+| ListEdgeDeviceObservationPoints | 指定したエッジ端末の観測点をすべて返す。観測ページが、検知ラインと観測点を対応させるために使う（ADR-0105） | エッジ端末 | `event_access` + events.report | （参照のみ） |
 | Heartbeat | エッジ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する | エッジ端末 | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
 
@@ -80,6 +81,7 @@ service EdgeDeviceService {
   rpc RegisterEdgeDevice(RegisterEdgeDeviceRequest) returns (RegisterEdgeDeviceResponse);
   rpc UnregisterEdgeDevice(UnregisterEdgeDeviceRequest) returns (EdgeDevice);
   rpc ListEdgeDevices(ListEdgeDevicesRequest) returns (ListEdgeDevicesResponse);
+  rpc ListEdgeDeviceObservationPoints(ListEdgeDeviceObservationPointsRequest) returns (ListEdgeDeviceObservationPointsResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
   rpc UpdateObservationPointConfig(UpdateObservationPointConfigRequest) returns (ObservationPoint);
 }
@@ -182,6 +184,13 @@ message ListEdgeDevicesRequest {
 }
 message ListEdgeDevicesResponse {
   repeated EdgeDevice devices = 1;  // 観測点（enabled 含む）を内包
+}
+message ListEdgeDeviceObservationPointsRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+}
+message ListEdgeDeviceObservationPointsResponse {
+  repeated ObservationPoint observation_points = 1;
 }
 message HeartbeatRequest {
   string event_id = 1;
@@ -333,7 +342,7 @@ message UpdateObservationSettingsResponse {
   Guest Service はアクセス時に本サービスへ問い合わせない（復旧時の GetGuestSnapshot を除く）
   publish の失敗は再試行不要（sequence による冪等性があるため、次回の publish で回復する。配信の再試行はブローカーに任せる）
   publish にはイベント単位の順序キーを付与する（トピック規約。spec-base/README.md）
-- 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、UnregisterEdgeDevice、UpdateObservationPointConfig）も例外としない
+- 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、ListEdgeDeviceObservationPoints、UnregisterEdgeDevice、UpdateObservationPointConfig）も例外としない
   内部 JWT に `event_id` クレームがあればリクエストの `event_id` と突合し、不一致は `permission_denied` を返す
   リクエストが指す子資源（`edge_device_id`、`observation_point_id`、`Measurement.qr_location_id`）がリクエストの `event_id` に属さない場合も `permission_denied` を返す
   Guest Service からの QR 由来計上はマシン起点の `token_use=service` でクレームを持たないため、リクエストの `tenant_id` と `event_id` で対象テナント・イベントを受け取る（ADR-0093）
@@ -374,7 +383,7 @@ message UpdateObservationSettingsResponse {
 - 登録解除の取り消しは設けない。撤去した端末を再び使う場合は新規登録とし、グラフ紐づけをやり直す
   機材の入れ替えは登録解除を伴わない。新しい機材に同じ観測ページ URL を設定すれば同一のエッジ端末として続く
   ただし、計測の水準が変わる機材の入れ替えとラインの増減では、観測点を登録し直す運用とする。本サービスはライン設定を持たず、同じ観測点のままではこれらの変化を検知できないため
-- 登録解除済みのエッジ端末の扱い: `ReportMeasurements`／`Heartbeat` は `failed_precondition` を返す
+- 登録解除済みのエッジ端末の扱い: `ReportMeasurements`／`Heartbeat`／`ListEdgeDeviceObservationPoints` は `failed_precondition` を返す
   発行済みの観測ページ URL は無効となり、開いても計測値を送れない
   `ListEdgeDevices` は既定で解除済みを返さず、`include_unregistered` の指定時のみ含める
   既に受信済みの計測値と観測スナップショットは削除しない
