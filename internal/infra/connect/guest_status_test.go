@@ -6,13 +6,16 @@ import (
 	"time"
 
 	connectrpc "connectrpc.com/connect/v2"
+	"google.golang.org/protobuf/proto"
 
+	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
 	observationv1 "github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
+	"github.com/pj-hoakari/tolo-observation/internal/infra/pubsub"
 )
 
-const guestEventPublicID = "0a1b2c3d4e5f6071"
+const guestEventPublicID = "9e57a7e500000001"
 
 func TestGetGuestSnapshot(t *testing.T) {
 	flow := newObservationFlow(t)
@@ -67,5 +70,122 @@ func TestGetGuestSnapshot(t *testing.T) {
 		&observationv1.GetGuestSnapshotRequest{EventId: guestEventPublicID}))
 	if got, want := connectrpc.CodeOf(err), connectrpc.CodeUnauthenticated; got != want {
 		t.Errorf("GetGuestSnapshot with an event access token error code = %v, want %v", got, want)
+	}
+}
+
+func TestObservationCyclePublishesGuestStatus(t *testing.T) {
+	const eventID = "5eed5eed5eed5eed"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	published, err := flow.guestStatuses.Subscribe(ctx, pubsub.GuestStatusTopic)
+	if err != nil {
+		t.Fatalf("Subscribe() error = %v", err)
+	}
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-guest", ObservationPointNames: []string{"hall"}},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	hall := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p1"}})
+
+	report := func(t *testing.T) {
+		t.Helper()
+
+		if _, err := flow.measurements.ReportMeasurements(authorized(ctx,
+			flow.token(t, eventID, "events.report"),
+			&observationv1.ReportMeasurementsRequest{
+				EventId:      eventID,
+				EdgeDeviceId: registered.GetDevice().GetEdgeDeviceId(),
+				Measurements: []*observationv1.Measurement{edgeMeasurement(hall, flow.observedStart)},
+			},
+		)); err != nil {
+			t.Fatalf("ReportMeasurements() error = %v", err)
+		}
+	}
+
+	next := func(t *testing.T) *observationv1.GuestStatus {
+		t.Helper()
+
+		select {
+		case msg := <-published:
+			msg.Ack()
+
+			if got := msg.Metadata.Get(pubsub.EventIDMetadataKey); got != eventID {
+				t.Errorf("ordering metadata %s = %q, want %q", pubsub.EventIDMetadataKey, got, eventID)
+			}
+
+			var status observationv1.GuestStatus
+			if err := proto.Unmarshal(msg.Payload, &status); err != nil {
+				t.Fatalf("decode published guest status: %v", err)
+			}
+
+			return &status
+		case <-time.After(5 * time.Second):
+			t.Fatal("no guest status was published")
+
+			return nil
+		}
+	}
+
+	report(t)
+	first := next(t)
+
+	flow.flow.setUnavailable(true)
+	report(t)
+	second := next(t)
+
+	if first.GetEventId() != eventID || first.GetTakenAt() == nil || len(first.GetCrowd()) != 0 || len(first.GetQueues()) != 0 {
+		t.Errorf("first guest status = %v, want event %s with taken_at and no crowd or queues", first, eventID)
+	}
+
+	if second.GetSequence() != first.GetSequence()+1 {
+		t.Errorf("sequence after a cycle whose optimization failed = %d, want %d", second.GetSequence(), first.GetSequence()+1)
+	}
+
+	if second.GetTakenAt().AsTime().Before(first.GetTakenAt().AsTime()) {
+		t.Errorf("taken_at went back from %v to %v", first.GetTakenAt().AsTime(), second.GetTakenAt().AsTime())
+	}
+
+	snapshot, err := flow.statusQueries.GetGuestSnapshot(authorized(ctx,
+		flow.serviceToken(t, "tolo-guest-service", testTenantPublicID),
+		&observationv1.GetGuestSnapshotRequest{EventId: eventID}))
+	if err != nil {
+		t.Fatalf("GetGuestSnapshot() error = %v", err)
+	}
+
+	if !proto.Equal(snapshot.GetStatus(), second) {
+		t.Errorf("GetGuestSnapshot() = %v, want the last published %v", snapshot.GetStatus(), second)
+	}
+
+	flow.flow.setUnavailable(false)
+
+	if err := flow.guestStatuses.Close(); err != nil {
+		t.Fatalf("close guest status broker: %v", err)
+	}
+
+	requestsBefore, _ := flow.flow.received()
+
+	report(t)
+
+	if requests, _ := flow.flow.received(); len(requests) != len(requestsBefore)+1 {
+		t.Errorf("Optimize requests after a failed publish = %d, want %d", len(requests), len(requestsBefore)+1)
+	}
+
+	afterFailure, err := flow.statusQueries.GetGuestSnapshot(authorized(ctx,
+		flow.serviceToken(t, "tolo-guest-service", testTenantPublicID),
+		&observationv1.GetGuestSnapshotRequest{EventId: eventID}))
+	if err != nil {
+		t.Fatalf("GetGuestSnapshot() after a failed publish error = %v", err)
+	}
+
+	if got, want := afterFailure.GetStatus().GetSequence(), second.GetSequence()+1; got != want {
+		t.Errorf("sequence after a failed publish = %d, want %d", got, want)
 	}
 }

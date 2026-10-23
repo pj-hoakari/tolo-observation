@@ -12,11 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message"
+
 	"github.com/pj-hoakari/tolo-observation/internal/application"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 	connectinfra "github.com/pj-hoakari/tolo-observation/internal/infra/connect"
 	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
 	"github.com/pj-hoakari/tolo-observation/internal/infra/httpapi"
+	pubsubinfra "github.com/pj-hoakari/tolo-observation/internal/infra/pubsub"
 	"github.com/pj-hoakari/tolo-observation/internal/logging"
 	"github.com/pj-hoakari/tolo-observation/internal/telemetry"
 )
@@ -126,6 +129,16 @@ func run() error {
 		}
 	}()
 
+	publisher, err := newGuestStatusPublisher(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := publisher.Close(); err != nil {
+			slog.Error("close guest status publisher failed", "error", err)
+		}
+	}()
+
 	edgeDeviceRepository := dbinfra.NewPostgresEdgeDeviceRepository(db)
 	holds := application.NewHeartbeatLossHolds(dbinfra.NewPostgresHeartbeatLossHoldRepository(db), holdPolicy)
 
@@ -141,6 +154,7 @@ func run() error {
 	measurementRepository := dbinfra.NewPostgresMeasurementRepository(db)
 	snapshots := dbinfra.NewPostgresSnapshotRepository(db)
 	observationSettings := dbinfra.NewPostgresObservationSettingsRepository(db)
+	guestStatuses := dbinfra.NewPostgresGuestStatusRepository(db)
 
 	graphs := connectinfra.NewGraphSupplyClient(http.DefaultClient, graphAuthoringURL)
 
@@ -153,6 +167,8 @@ func run() error {
 		measurementRepository,
 		snapshots,
 		observationSettings,
+		guestStatuses,
+		pubsubinfra.NewGuestStatusPublisher(publisher),
 		application.ObservationCycleConfig{
 			Window:           observationWindow,
 			OptimizeTimeout:  optimizeTimeout,
@@ -172,7 +188,7 @@ func run() error {
 		jwtSettings,
 		edgeDevices,
 		measurements,
-		application.NewStatusQueryService(snapshots, dbinfra.NewPostgresGuestStatusRepository(db)),
+		application.NewStatusQueryService(snapshots, guestStatuses),
 		application.NewObservationSettingsService(observationSettings),
 	)
 	if err != nil {
@@ -218,6 +234,22 @@ func run() error {
 		defer cancel()
 
 		return httpServer.Shutdown(shutdownCtx)
+	}
+}
+
+func newGuestStatusPublisher(ctx context.Context) (message.Publisher, error) {
+	natsURL := os.Getenv("NATS_URL")
+	projectID := os.Getenv("PUBSUB_PROJECT_ID")
+
+	switch {
+	case natsURL != "" && projectID != "":
+		return nil, errors.New("set only one of NATS_URL and PUBSUB_PROJECT_ID")
+	case natsURL != "":
+		return pubsubinfra.NewNATSPublisher(ctx, natsURL)
+	case projectID != "":
+		return pubsubinfra.NewGooglePublisher(projectID)
+	default:
+		return nil, errors.New("NATS_URL or PUBSUB_PROJECT_ID is required")
 	}
 }
 
