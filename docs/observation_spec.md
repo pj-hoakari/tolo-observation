@@ -59,7 +59,7 @@ package: `tolo.observation.v1`
 | Flow Control | Optimize | 観測スナップショット確定等を契機に最適化要求（検知状態・手動介入を同梱） | OptimizationRequested／OptimizationResultPersisted |
 | Line Control | GuideQueues | 行列把握・案内・形状最適化の要求 | 同上 |
 | Operation | RequestProposalDelivery | 提案の配信依頼（配送の振り分けはスタッフ間コミュニケーションが担う）。Flow／Line の応答を Operation の型へ変換して渡す。イベントの所属テナントを `tenant_id` に入れる | — |
-| Guest Service | （PubSub: `guest-status` へ publish） | スナップショット確定・行列状態更新のたびにゲスト向け状況（混雑・行列。`tolo.guest.v1.GuestStatus`。ID と数値のみ）を publish。誘導提案・表示名は含めない（提案はスタッフ向け、表示名の付与は Guest Service） | （ゲスト側 GuestViewUpdated の源） |
+| Guest Service | （PubSub: `guest-status` へ publish） | スナップショット確定・行列状態更新のたびにゲスト向け状況（混雑・行列。`GuestStatus`。ID と数値のみ）を publish。誘導提案・表示名は含めない（提案はスタッフ向け、表示名の付与は Guest Service） | （ゲスト側 GuestViewUpdated の源） |
 | Operation | RecordFeedbackValues | Flow が出力したフィードバック値の引き渡し（テナント内蓄積用）。Operation の型へ変換して渡す。イベントの所属テナントを `tenant_id` に入れる | — |
 | Reference Aggregation | GetReferenceValues | コールドスタート用参照値の取得（短期イベント等）。Flow の型へ変換して `OptimizeRequest.references` に同梱する | — |
 | Graph Authoring | GetQrLocations | QR 設置箇所の取得（QR 方式の観測点として扱う）。GetCurrentRevision で得た `revision_id` を指定する。QR 由来計上の受け付けではリクエストの `tenant_id`、観測サイクルではイベントの所属テナントを `tenant_id` に入れる | — |
@@ -71,7 +71,6 @@ syntax = "proto3";
 package tolo.observation.v1;
 import "google/protobuf/timestamp.proto";
 import "tolo/kernel/v1/kernel.proto";
-import "tolo/guest/v1/guest.proto";
 
 service MeasurementIngestService {
   rpc ReportMeasurements(ReportMeasurementsRequest) returns (ReportMeasurementsResponse);
@@ -95,8 +94,8 @@ service ManualInterventionService {
 }
 
 service StatusQueryService {
-  // ゲスト向け状況の型は tolo.guest.v1 が正本（受信側の公開言語）。復旧・突き合わせ用
-  rpc GetGuestSnapshot(GetGuestSnapshotRequest) returns (tolo.guest.v1.GuestStatus);
+  // ゲスト向け状況（guest-status トピックのペイロードと同じ型）。復旧・突き合わせ用
+  rpc GetGuestSnapshot(GetGuestSnapshotRequest) returns (GuestStatus);
   rpc GetEventOverview(GetEventOverviewRequest) returns (EventOverview);
 }
 
@@ -263,9 +262,39 @@ message GetGuestSnapshotRequest {
   string event_id = 1;
 }
 
-// ゲスト向け状況（GuestStatus・CrowdStatus・QueueStatus）は
-// tolo.guest.v1 で定義（import "tolo/guest/v1/guest.proto"）。本サービスが生成し guest-status トピックへ publish する（PubSub）
-// 誘導提案・表示名は含めない（表示名の付与とゲスト向け文言化は Guest Service）
+// ゲスト向け状況: レベル化した混雑・行列状況と集約案内のみ（生スコア・誘導提案・表示名は含まない。表示名の付与とゲスト向け文言化は Guest Service）
+// guest-status トピックのペイロード（publish 元: 本サービス。購読: Guest Service）。GetGuestSnapshot の応答にも使う
+message GuestStatus {
+  string event_id = 1;
+  uint64 sequence = 2;  // push ごとに単調増加（契機はスナップショット確定・行列状態更新）。新旧判定に使用
+  google.protobuf.Timestamp taken_at = 3;
+  repeated CrowdStatus crowd = 4;   // 混雑状況
+  repeated QueueStatus queues = 5;  // 行列状況（どの行列がなんの行列か・折り返し・待ち時間・並び先案内）
+}
+
+message CrowdStatus {
+  oneof target {
+    string point_id = 1;
+    string route_id = 2;
+  }
+  CrowdLevel level = 3;
+  bool danger = 4;  // 危険箇所・危険フラグの表示
+}
+// ゲスト向け表示レベル。入力用の CongestionLevel とは別の型（ゲストに露出する表示言語）
+enum CrowdLevel {
+  CROWD_LEVEL_UNSPECIFIED = 0;
+  CROWD_LEVEL_LOW = 1;
+  CROWD_LEVEL_MID = 2;
+  CROWD_LEVEL_HIGH = 3;
+}
+
+message QueueStatus {
+  string queue_id = 1;
+  repeated string gate_point_ids = 2;  // 行列が属するゲート。「なんの行列か」の表示名は Guest Service が導出して付与
+  double wait_time_minutes = 3;  // 待ち時間
+  int32 turnaround_count = 4;    // 折り返し
+  repeated string recommended_gate_point_ids = 5;  // 並び先案内（集約案内のみ）
+}
 
 message GetEventOverviewRequest {
   string event_id = 1;
@@ -342,6 +371,7 @@ message UpdateObservationSettingsResponse {
   Guest Service はアクセス時に本サービスへ問い合わせない（復旧時の GetGuestSnapshot を除く）
   publish の失敗は再試行不要（sequence による冪等性があるため、次回の publish で回復する。配信の再試行はブローカーに任せる）
   publish にはイベント単位の順序キーを付与する（トピック規約。spec-base/README.md）
+  ペイロードの型（`GuestStatus`）は本サービスの package が定義し、Guest Service は本サービスの Go モジュールを import して復号する（ADR-0106）
 - 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、ListEdgeDeviceObservationPoints、UnregisterEdgeDevice、UpdateObservationPointConfig）も例外としない
   内部 JWT に `event_id` クレームがあればリクエストの `event_id` と突合し、不一致は `permission_denied` を返す
   リクエストが指す子資源（`edge_device_id`、`observation_point_id`、`Measurement.qr_location_id`）がリクエストの `event_id` に属さない場合も `permission_denied` を返す
@@ -391,7 +421,7 @@ message UpdateObservationSettingsResponse {
   開閉とサービスレート設定値は本サービスの OperateGate（スタッフアプリが直接呼ぶ）で上書きする
 - 検知状態（Flow 所有）と行列状態（Line 所有）は本サービスが解釈せず永続化し、次回要求で返送する
   行列状態は Operation への配信のため `tolo.operation.v1.QueueSummary` へ機械的に写すが、本サービスの判断には用いない
-  ゲスト向けの行列数値は Line の案内ダイジェスト（`GuideQueuesResponse.guest_digest`）をそのまま `tolo.guest.v1.QueueStatus` へ写して publish し、QueueState の中身には依存しない
+  ゲスト向けの行列数値は Line の案内ダイジェスト（`GuideQueuesResponse.guest_digest`）をそのまま `QueueStatus` へ写して publish し、QueueState の中身には依存しない
 - エッジ端末の認証・認可は IdP 発行トークン（`event_access`）による。観測ページはブラウザで動くが、BFF の背後の confidential client であり、OIDC の認証、Token Exchange、トークンの更新は BFF が行う
 - 観測ページは BFF を経由して Service Gateway を呼ぶ。外部トークンはブラウザへ渡さない（ADR-0087）
 - どの端末からの計測かは、観測ページの発行 URL に含まれる `edge_device_id` で示す
