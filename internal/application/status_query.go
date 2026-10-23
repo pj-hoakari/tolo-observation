@@ -16,14 +16,19 @@ type EventOverview struct {
 
 type StatusQueryUseCases interface {
 	GetEventOverview(ctx context.Context, eventID string) (EventOverview, error)
+	GetGuestSnapshot(ctx context.Context, eventID string) (domain.GuestStatus, error)
 }
 
 type StatusQueryService struct {
-	snapshots repository.SnapshotRepository
+	snapshots     repository.SnapshotRepository
+	guestStatuses repository.GuestStatusRepository
 }
 
-func NewStatusQueryService(snapshots repository.SnapshotRepository) *StatusQueryService {
-	return &StatusQueryService{snapshots: snapshots}
+func NewStatusQueryService(
+	snapshots repository.SnapshotRepository,
+	guestStatuses repository.GuestStatusRepository,
+) *StatusQueryService {
+	return &StatusQueryService{snapshots: snapshots, guestStatuses: guestStatuses}
 }
 
 func (s *StatusQueryService) GetEventOverview(ctx context.Context, eventID string) (EventOverview, error) {
@@ -41,4 +46,17 @@ func (s *StatusQueryService) GetEventOverview(ctx context.Context, eventID strin
 	}
 
 	return EventOverview{Snapshot: &snapshot}, nil
+}
+
+func (s *StatusQueryService) GetGuestSnapshot(ctx context.Context, eventID string) (domain.GuestStatus, error) {
+	if err := tenantctx.EnsureEvent(ctx, eventID); err != nil {
+		return domain.GuestStatus{}, err
+	}
+
+	status, err := s.guestStatuses.LatestGuestStatus(ctx, eventID)
+	if err != nil {
+		return domain.GuestStatus{}, fmt.Errorf("find latest guest status: %w", err)
+	}
+
+	return status, nil
 }

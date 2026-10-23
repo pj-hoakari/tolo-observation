@@ -94,6 +94,9 @@ service ManualInterventionService {
 }
 
 service StatusQueryService {
+  rpc GetGuestSnapshot(GetGuestSnapshotRequest) returns (GetGuestSnapshotResponse) {
+    option (authz.v1.auth_policy) = { level: AUTH_LEVEL_INTERNAL };
+  }
   rpc GetEventOverview(GetEventOverviewRequest) returns (GetEventOverviewResponse) {
     option (authz.v1.auth_policy) = {
       level: AUTH_LEVEL_AUTHENTICATED
@@ -272,6 +275,46 @@ message CorrectQueueRequest {
 }
 
 message CorrectQueueResponse {}
+
+message GetGuestSnapshotRequest {
+  string event_id = 1;
+}
+
+message GetGuestSnapshotResponse {
+  GuestStatus status = 1;
+}
+
+message GuestStatus {
+  string event_id = 1;
+  uint64 sequence = 2;
+  google.protobuf.Timestamp taken_at = 3;
+  repeated CrowdStatus crowd = 4;
+  repeated QueueStatus queues = 5;
+}
+
+message CrowdStatus {
+  oneof target {
+    string point_id = 1;
+    string route_id = 2;
+  }
+  CrowdLevel level = 3;
+  bool danger = 4;
+}
+
+enum CrowdLevel {
+  CROWD_LEVEL_UNSPECIFIED = 0;
+  CROWD_LEVEL_LOW = 1;
+  CROWD_LEVEL_MID = 2;
+  CROWD_LEVEL_HIGH = 3;
+}
+
+message QueueStatus {
+  string queue_id = 1;
+  repeated string gate_point_ids = 2;
+  double wait_time_minutes = 3;
+  int32 turnaround_count = 4;
+  repeated string recommended_gate_point_ids = 5;
+}
 
 message GetEventOverviewRequest {
   string event_id = 1;

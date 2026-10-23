@@ -31,6 +31,7 @@ var ManualInterventionServicePolicies = authz.Policies{
 
 // StatusQueryServicePolicies is the effective policy of every procedure of tolo.observation.v1.StatusQueryService.
 var StatusQueryServicePolicies = authz.Policies{
+	StatusQueryServiceGetGuestSnapshotProcedure: {Level: authz.LevelInternal},
 	StatusQueryServiceGetEventOverviewProcedure: {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.read"}, TokenUses: []string{"event_access"}},
 }
 

@@ -46,6 +46,7 @@ var clientErrors = []struct {
 	{domain.ErrEventTypeRequired, connectrpc.CodeInvalidArgument, "event_type is required"},
 	{application.ErrEdgeDeviceRequired, connectrpc.CodeInvalidArgument, "edge_device_id is required for edge measurements"},
 	{repository.ErrEdgeDeviceNotFound, connectrpc.CodeNotFound, "edge device not found"},
+	{repository.ErrGuestStatusNotFound, connectrpc.CodeNotFound, "guest status not found"},
 	{domain.ErrObservationPointNotFound, connectrpc.CodeNotFound, "observation point not found"},
 	{domain.ErrEdgeDeviceUnregistered, connectrpc.CodeFailedPrecondition, "edge device is unregistered"},
 	{tenantctx.ErrMissing, connectrpc.CodePermissionDenied, "tenant ID is missing from the token"},

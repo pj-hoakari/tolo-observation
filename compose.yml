@@ -15,6 +15,15 @@ services:
         volumes:
             - postgres-data:/var/lib/postgresql
 
+    nats:
+        image: nats:2-alpine@sha256:7ae34c25dfd6fe2e01c6483eabef20d796690fdcac6c4d94ca780a6cf9877fde
+        command: ["-js", "-m", "8222"]
+        healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8222/healthz?js-enabled-only=true"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+
     migrate:
         build:
             context: .
@@ -46,11 +55,14 @@ services:
             FLOW_CONTROL_URL: http://mockdeps:8080
             OPERATION_URL: http://mockdeps:8080
             INTERNAL_JWKS_URL: http://mockdeps:8080/.well-known/jwks.json
+            NATS_URL: nats://nats:4222
         depends_on:
             migrate:
                 condition: service_completed_successfully
             mockdeps:
                 condition: service_started
+            nats:
+                condition: service_healthy
         ports:
             - "8080:8080"
 

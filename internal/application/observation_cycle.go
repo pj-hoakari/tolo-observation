@@ -43,6 +43,10 @@ type Operation interface {
 	RecordFeedbackValues(ctx context.Context, tenantPublicID, eventID string, outcome domain.OptimizationOutcome) error
 }
 
+type GuestStatusPublisher interface {
+	PublishGuestStatus(ctx context.Context, status domain.GuestStatus) error
+}
+
 type ObservationCycleRunner interface {
 	Run(ctx context.Context, tenantPublicID, eventID string) error
 }
@@ -63,6 +67,8 @@ type ObservationCycle struct {
 	measurements repository.MeasurementRepository
 	snapshots    repository.SnapshotRepository
 	settings     repository.ObservationSettingsRepository
+	guests       repository.GuestStatusRepository
+	guestPublish GuestStatusPublisher
 	config       ObservationCycleConfig
 }
 
@@ -75,6 +81,8 @@ func NewObservationCycle(
 	measurements repository.MeasurementRepository,
 	snapshots repository.SnapshotRepository,
 	settings repository.ObservationSettingsRepository,
+	guests repository.GuestStatusRepository,
+	guestPublish GuestStatusPublisher,
 	config ObservationCycleConfig,
 ) *ObservationCycle {
 	if config.Now == nil {
@@ -90,6 +98,8 @@ func NewObservationCycle(
 		measurements: measurements,
 		snapshots:    snapshots,
 		settings:     settings,
+		guests:       guests,
+		guestPublish: guestPublish,
 		config:       config,
 	}
 }
@@ -169,6 +179,10 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 		return fmt.Errorf("save snapshot: %w", err)
 	}
 
+	if err := c.publishGuestStatus(ctx, tenantPublicID, eventID, windowEnd); err != nil {
+		return err
+	}
+
 	var (
 		previous      *domain.OptimizationOutcome
 		previousCycle time.Time
@@ -211,6 +225,25 @@ func (c *ObservationCycle) Run(ctx context.Context, tenantPublicID, eventID stri
 	}
 
 	c.deliverToOperation(ctx, tenantPublicID, eventID, outcome)
+
+	return nil
+}
+
+func (c *ObservationCycle) publishGuestStatus(ctx context.Context, tenantPublicID, eventID string, takenAt time.Time) error {
+	status, err := c.guests.SaveGuestStatus(ctx, tenantPublicID, domain.GuestStatus{
+		EventID:  eventID,
+		Sequence: 0,
+		TakenAt:  takenAt,
+		Crowd:    nil,
+		Queues:   nil,
+	})
+	if err != nil {
+		return fmt.Errorf("save guest status: %w", err)
+	}
+
+	if err := c.guestPublish.PublishGuestStatus(ctx, status); err != nil {
+		slog.WarnContext(ctx, "guest status publish failed", "event_id", eventID, "sequence", status.Sequence, "error", err)
+	}
 
 	return nil
 }

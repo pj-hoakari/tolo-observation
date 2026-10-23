@@ -59,6 +59,9 @@ Compose は依存先の代わりに開発専用のモック `mockdeps`（`cmd/mo
 `mockdeps` は呼ばれた RPC の procedure をログに出すので、`docker compose logs mockdeps` で依存先への呼び出しを確かめられる  
 依存先の実サービスとつないだ検証は tolo リポジトリの統合環境で行う
 
+Compose は `guest-status` トピックのブローカーとして NATS JetStream の `nats` サービスも起動する  
+`server` の `NATS_URL` は `nats://nats:4222` を指す
+
 ### 環境変数
 
 | 環境変数 | デフォルト | 内容 |
@@ -75,6 +78,8 @@ Compose は依存先の代わりに開発専用のモック `mockdeps`（`cmd/mo
 | `OBSERVATION_WINDOW` | `1m` | スナップショットに含める計測値の期間（`window_end` がこの期間内のもの） |
 | `OPTIMIZE_TIMEOUT` | `30s` | Optimize 呼び出しのタイムアウト。超過や失敗はログに残し、計測値の受け入れは成功させる |
 | `OPERATION_TIMEOUT` | `5s` | Operation 呼び出しのタイムアウト。Optimize の後に呼び、超過や失敗はログに残して観測サイクルを続ける |
+| `NATS_URL` | なし | GuestStatus の publish 先にする NATS JetStream の接続先（compose では `nats://nats:4222`）。`PUBSUB_PROJECT_ID` とどちらか一方だけを設定する。起動時に `guest-status` ストリームを用意し、スナップショットを確定するたびに `guest-status` トピックへ publish する |
+| `PUBSUB_PROJECT_ID` | なし | GuestStatus の publish 先にする Cloud Pub/Sub のプロジェクト。`NATS_URL` とどちらか一方だけを設定する。スナップショットを確定するたびに、イベント ID を ordering key にして `guest-status` トピックへ publish する。どちらも未設定か両方を設定すると、サーバーは起動しない |
 | `INTERNAL_JWKS_URL` | `http://gateway:8080/.well-known/jwks.json` | 内部 JWT の検証に使う JWKS の取得先（compose では `http://mockdeps:8080/.well-known/jwks.json`） |
 | `INTERNAL_JWT_ISSUER` | `service-gateway` | 内部 JWT に期待する `iss` |
 | `INTERNAL_JWT_AUDIENCE` | `tolo-observation` | 内部 JWT に期待する `aud` |

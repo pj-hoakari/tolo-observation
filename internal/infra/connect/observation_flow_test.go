@@ -14,6 +14,7 @@ import (
 
 	connectrpc "connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 	"github.com/jmoiron/sqlx"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -29,6 +30,7 @@ import (
 	"github.com/pj-hoakari/tolo-observation/internal/application"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 	dbinfra "github.com/pj-hoakari/tolo-observation/internal/infra/db"
+	"github.com/pj-hoakari/tolo-observation/internal/infra/pubsub"
 )
 
 const otherEventPublicID = "9876543210fedcba"
@@ -106,6 +108,7 @@ type observationFlow struct {
 	graph         *graphStub
 	flow          *flowStub
 	operation     *operationStub
+	guestStatuses *gochannel.GoChannel
 	observedStart time.Time
 }
 
@@ -135,6 +138,10 @@ func newObservationFlow(t *testing.T) observationFlow {
 	graph, graphURL := startGraphStub(t)
 	flow, flowURL := startFlowStub(t)
 	operation, operationURL := startOperationStub(t)
+	guestStatusRepository := dbinfra.NewPostgresGuestStatusRepository(testDB)
+	guestStatuses := gochannel.NewGoChannel(gochannel.Config{}, nil)
+
+	t.Cleanup(func() { _ = guestStatuses.Close() })
 
 	graphs := NewGraphSupplyClient(http.DefaultClient, graphURL)
 
@@ -147,6 +154,8 @@ func newObservationFlow(t *testing.T) observationFlow {
 		measurements,
 		snapshots,
 		settings,
+		guestStatusRepository,
+		pubsub.NewGuestStatusPublisher(guestStatuses),
 		application.ObservationCycleConfig{
 			Window:           time.Minute,
 			OptimizeTimeout:  5 * time.Second,
@@ -162,7 +171,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 			Now:              time.Now,
 		}),
 		application.NewMeasurementIngestService(devices, measurements, graphs, cycle),
-		application.NewStatusQueryService(snapshots),
+		application.NewStatusQueryService(snapshots, guestStatusRepository),
 		application.NewObservationSettingsService(settings),
 	)
 	if err != nil {
@@ -184,6 +193,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 		graph:         graph,
 		flow:          flow,
 		operation:     operation,
+		guestStatuses: guestStatuses,
 		observedStart: time.Now().Add(-time.Minute),
 	}
 }

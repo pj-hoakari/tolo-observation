@@ -70,6 +70,9 @@ func TestGeneratedPoliciesMatchTheSpecification(t *testing.T) {
 			TokenUses:      []string{"event_access"},
 			RequiredScopes: []string{"events.operate"},
 		},
+		observationv1connect.StatusQueryServiceGetGuestSnapshotProcedure: {
+			Level: authz.LevelInternal,
+		},
 		observationv1connect.StatusQueryServiceGetEventOverviewProcedure: {
 			Level:          authz.LevelAuthenticated,
 			TokenUses:      []string{"event_access"},
