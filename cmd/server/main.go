@@ -172,7 +172,7 @@ func run() error {
 		jwtSettings,
 		edgeDevices,
 		measurements,
-		application.NewStatusQueryService(snapshots),
+		application.NewStatusQueryService(snapshots, dbinfra.NewPostgresGuestStatusRepository(db)),
 		application.NewObservationSettingsService(observationSettings),
 	)
 	if err != nil {

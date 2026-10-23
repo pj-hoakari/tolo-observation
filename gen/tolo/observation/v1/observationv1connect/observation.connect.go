@@ -67,6 +67,9 @@ const (
 	// ManualInterventionServiceCorrectQueueProcedure is the procedure name of the
 	// ManualInterventionService's CorrectQueue RPC.
 	ManualInterventionServiceCorrectQueueProcedure = "/tolo.observation.v1.ManualInterventionService/CorrectQueue"
+	// StatusQueryServiceGetGuestSnapshotProcedure is the procedure name of the StatusQueryService's
+	// GetGuestSnapshot RPC.
+	StatusQueryServiceGetGuestSnapshotProcedure = "/tolo.observation.v1.StatusQueryService/GetGuestSnapshot"
 	// StatusQueryServiceGetEventOverviewProcedure is the procedure name of the StatusQueryService's
 	// GetEventOverview RPC.
 	StatusQueryServiceGetEventOverviewProcedure = "/tolo.observation.v1.StatusQueryService/GetEventOverview"
@@ -566,6 +569,13 @@ func (h manualInterventionServiceHandler) correctQueue(ctx context.Context, _ co
 }
 
 var (
+	statusQueryServiceGetGuestSnapshotSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("StatusQueryService").Methods().ByName("GetGuestSnapshot"),
+			Procedure:  StatusQueryServiceGetGuestSnapshotProcedure,
+		}
+	})
 	statusQueryServiceGetEventOverviewSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -577,6 +587,7 @@ var (
 
 // StatusQueryServiceClient is a client for the tolo.observation.v1.StatusQueryService service.
 type StatusQueryServiceClient interface {
+	GetGuestSnapshot(context.Context, *v1.GetGuestSnapshotRequest) (*v1.GetGuestSnapshotResponse, error)
 	GetEventOverview(context.Context, *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error)
 }
 
@@ -589,6 +600,7 @@ func NewStatusQueryServiceClient(client *connect.Client) StatusQueryServiceClien
 // StatusQueryServiceHandler is an implementation of the tolo.observation.v1.StatusQueryService
 // service.
 type StatusQueryServiceHandler interface {
+	GetGuestSnapshot(context.Context, *v1.GetGuestSnapshotRequest) (*v1.GetGuestSnapshotResponse, error)
 	GetEventOverview(context.Context, *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error)
 }
 
@@ -597,6 +609,7 @@ type StatusQueryServiceHandler interface {
 func RegisterStatusQueryServiceHandler(server *connect.Server, svc StatusQueryServiceHandler) {
 	adapter := statusQueryServiceHandler{svc: svc}
 	server.Register(
+		connect.Method{Spec: statusQueryServiceGetGuestSnapshotSpec(), Handler: adapter.getGuestSnapshot},
 		connect.Method{Spec: statusQueryServiceGetEventOverviewSpec(), Handler: adapter.getEventOverview},
 	)
 }
@@ -604,12 +617,24 @@ func RegisterStatusQueryServiceHandler(server *connect.Server, svc StatusQuerySe
 // UnimplementedStatusQueryServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedStatusQueryServiceHandler struct{}
 
+func (UnimplementedStatusQueryServiceHandler) GetGuestSnapshot(context.Context, *v1.GetGuestSnapshotRequest) (*v1.GetGuestSnapshotResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.StatusQueryService.GetGuestSnapshot is not implemented")
+}
+
 func (UnimplementedStatusQueryServiceHandler) GetEventOverview(context.Context, *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.StatusQueryService.GetEventOverview is not implemented")
 }
 
 type statusQueryServiceClient struct {
 	client *connect.Client
+}
+
+func (c *statusQueryServiceClient) GetGuestSnapshot(ctx context.Context, req *v1.GetGuestSnapshotRequest) (*v1.GetGuestSnapshotResponse, error) {
+	var res v1.GetGuestSnapshotResponse
+	if err := c.client.CallUnary(ctx, statusQueryServiceGetGuestSnapshotSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
 
 func (c *statusQueryServiceClient) GetEventOverview(ctx context.Context, req *v1.GetEventOverviewRequest) (*v1.GetEventOverviewResponse, error) {
@@ -621,6 +646,18 @@ func (c *statusQueryServiceClient) GetEventOverview(ctx context.Context, req *v1
 }
 
 type statusQueryServiceHandler struct{ svc StatusQueryServiceHandler }
+
+func (h statusQueryServiceHandler) getGuestSnapshot(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetGuestSnapshotRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetGuestSnapshot(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
 
 func (h statusQueryServiceHandler) getEventOverview(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
 	var req v1.GetEventOverviewRequest

@@ -12,6 +12,7 @@ import (
 	"github.com/pj-hoakari/tolo-observation/gen/tolo/observation/v1/observationv1connect"
 	"github.com/pj-hoakari/tolo-observation/internal/application"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
+	"github.com/pj-hoakari/tolo-observation/internal/infra/pubsub"
 )
 
 type MeasurementIngestService struct {
@@ -286,6 +287,18 @@ func (s *StatusQueryService) GetEventOverview(
 			DangerFlags: nil,
 		},
 	}, nil
+}
+
+func (s *StatusQueryService) GetGuestSnapshot(
+	ctx context.Context,
+	req *observationv1.GetGuestSnapshotRequest,
+) (*observationv1.GetGuestSnapshotResponse, error) {
+	status, err := s.useCases.GetGuestSnapshot(ctx, req.GetEventId())
+	if err != nil {
+		return nil, clientError(ctx, err)
+	}
+
+	return &observationv1.GetGuestSnapshotResponse{Status: pubsub.GuestStatusProto(status)}, nil
 }
 
 func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {

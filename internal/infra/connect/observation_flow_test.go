@@ -162,7 +162,7 @@ func newObservationFlow(t *testing.T) observationFlow {
 			Now:              time.Now,
 		}),
 		application.NewMeasurementIngestService(devices, measurements, graphs, cycle),
-		application.NewStatusQueryService(snapshots),
+		application.NewStatusQueryService(snapshots, dbinfra.NewPostgresGuestStatusRepository(testDB)),
 		application.NewObservationSettingsService(settings),
 	)
 	if err != nil {
