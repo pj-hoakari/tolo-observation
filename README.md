@@ -79,6 +79,7 @@ Compose は `guest-status` トピックのブローカーとして NATS JetStrea
 | `OPTIMIZE_TIMEOUT` | `30s` | Optimize 呼び出しのタイムアウト。超過や失敗はログに残し、計測値の受け入れは成功させる |
 | `OPERATION_TIMEOUT` | `5s` | Operation 呼び出しのタイムアウト。Optimize の後に呼び、超過や失敗はログに残して観測サイクルを続ける |
 | `NATS_URL` | なし | GuestStatus の publish 先にする NATS JetStream の接続先（compose では `nats://nats:4222`）。`PUBSUB_PROJECT_ID` とどちらか一方だけを設定する。起動時に `guest-status` ストリームを用意し、スナップショットを確定するたびに `guest-status` トピックへ publish する |
+| `NATS_STREAM_MAX_AGE` | `24h` | `NATS_URL` を設定したときに、起動時に用意するストリームの保存期限（Go の duration 形式。`1d` は使えないので `24h` と書く）。期限を過ぎたメッセージは配送の済み・未済にかかわらず消える。duration として読めない値か 0 以下の値なら、サーバーは起動しない |
 | `PUBSUB_PROJECT_ID` | なし | GuestStatus の publish 先にする Cloud Pub/Sub のプロジェクト。`NATS_URL` とどちらか一方だけを設定する。スナップショットを確定するたびに、イベント ID を ordering key にして `guest-status` トピックへ publish する。どちらも未設定か両方を設定すると、サーバーは起動しない |
 | `INTERNAL_JWKS_URL` | `http://gateway:8080/.well-known/jwks.json` | 内部 JWT の検証に使う JWKS の取得先（compose では `http://mockdeps:8080/.well-known/jwks.json`） |
 | `INTERNAL_JWT_ISSUER` | `service-gateway` | 内部 JWT に期待する `iss` |
