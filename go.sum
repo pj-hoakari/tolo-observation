@@ -196,6 +196,8 @@ github.com/pj-hoakari/protoc-gen-authz-go v0.3.0 h1:oLKiB3M/JaFROsHR7NHU0+kN6IZz
 github.com/pj-hoakari/protoc-gen-authz-go v0.3.0/go.mod h1:wrZQc2mY9d2WXSt/7P3+4Fp5yesNuQPCrEWqt6UGPqI=
 github.com/pj-hoakari/tolo-graph-authoring v0.2.0-rc.0.20261016022610-0fb78cdf9234 h1:8cEYO+ACU3PWFEHPt++bNpC94u5SJBrDs+vCu8wzxHk=
 github.com/pj-hoakari/tolo-graph-authoring v0.2.0-rc.0.20261016022610-0fb78cdf9234/go.mod h1:einVZDSv6zTBAxjtmhWo9k8YQBU1lt72rATJsIhEk/U=
+github.com/pj-hoakari/tolo-graph-authoring v0.3.0-rc h1:Ai3+X3NvR+SjU/5T2A+OpyAQDbptMnM/h2n2x67Qqlc=
+github.com/pj-hoakari/tolo-graph-authoring v0.3.0-rc/go.mod h1:mMa00fPFMbCBXygLpsyzrM9rnOW1dj5vjK2E6+10SXg=
 github.com/pj-hoakari/tolo-kernel-proto v0.4.0 h1:yEO6kFq3HubbZRXv9Ed2sIG7VGRm8WZ7O4tlwFROMDU=
 github.com/pj-hoakari/tolo-kernel-proto v0.4.0/go.mod h1:dH46KE1uBX0a+aL4VYDFYvdkuNPTmbFWcB6B/xjvekQ=
 github.com/pj-hoakari/tolo-operation v0.0.0-20261017035148-4bc5234f5136 h1:VEqYX0zlOShsWtdXO7c+bS8Py3CCpjOe2TCPMLpFSTI=
