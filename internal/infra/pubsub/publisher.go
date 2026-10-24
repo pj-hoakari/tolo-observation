@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-googlecloud/v2/pkg/googlecloud"
@@ -46,7 +47,7 @@ func (p *GuestStatusPublisher) PublishGuestStatus(ctx context.Context, status do
 	return nil
 }
 
-func NewNATSPublisher(ctx context.Context, url string) (message.Publisher, error) {
+func NewNATSPublisher(ctx context.Context, url string, maxAge time.Duration) (message.Publisher, error) {
 	conn, err := nats.Connect(url)
 	if err != nil {
 		return nil, fmt.Errorf("connect to NATS: %w", err)
@@ -57,6 +58,7 @@ func NewNATSPublisher(ctx context.Context, url string) (message.Publisher, error
 		_, err = js.CreateOrUpdateStream(ctx, natsjetstream.StreamConfig{
 			Name:     GuestStatusTopic,
 			Subjects: []string{GuestStatusTopic},
+			MaxAge:   maxAge,
 		})
 	}
 

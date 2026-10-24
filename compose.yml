@@ -56,6 +56,7 @@ services:
             OPERATION_URL: http://mockdeps:8080
             INTERNAL_JWKS_URL: http://mockdeps:8080/.well-known/jwks.json
             NATS_URL: nats://nats:4222
+            NATS_STREAM_MAX_AGE: 24h
         depends_on:
             migrate:
                 condition: service_completed_successfully

@@ -34,6 +34,7 @@ const (
 	defaultHoldThreshold     = 0.8
 	defaultHoldMinDevices    = 10
 	defaultHoldMaxDuration   = 5 * time.Minute
+	defaultStreamMaxAge      = 24 * time.Hour
 	shutdownTimeout          = 10 * time.Second
 	readHeaderTimeout        = 10 * time.Second
 )
@@ -245,7 +246,16 @@ func newGuestStatusPublisher(ctx context.Context) (message.Publisher, error) {
 	case natsURL != "" && projectID != "":
 		return nil, errors.New("set only one of NATS_URL and PUBSUB_PROJECT_ID")
 	case natsURL != "":
-		return pubsubinfra.NewNATSPublisher(ctx, natsURL)
+		maxAge, err := time.ParseDuration(getenv("NATS_STREAM_MAX_AGE", defaultStreamMaxAge.String()))
+		if err != nil {
+			return nil, fmt.Errorf("read NATS_STREAM_MAX_AGE: %w", err)
+		}
+
+		if maxAge <= 0 {
+			return nil, fmt.Errorf("read NATS_STREAM_MAX_AGE: %s is not positive", maxAge)
+		}
+
+		return pubsubinfra.NewNATSPublisher(ctx, natsURL, maxAge)
 	case projectID != "":
 		return pubsubinfra.NewGooglePublisher(projectID)
 	default:
