@@ -24,7 +24,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/nats-io/nats.go v1.54.0
 	github.com/pj-hoakari/internal-jwt-handling v0.4.0
-	github.com/pj-hoakari/protoc-gen-authz-go v0.3.0
+	github.com/pj-hoakari/protoc-gen-authz-go v0.4.1
 	github.com/pj-hoakari/tolo-graph-authoring v0.4.0-rc
 	github.com/pj-hoakari/tolo-kernel-proto v0.4.0
 	github.com/pj-hoakari/tolo-operation v0.1.0-dev

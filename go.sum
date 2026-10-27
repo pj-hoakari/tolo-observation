@@ -186,8 +186,8 @@ github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJw
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
 github.com/pj-hoakari/internal-jwt-handling v0.4.0 h1:npS5wZ/6VmiH0CEO9utwPP+TuLPxlbSIS+r8k11Agwk=
 github.com/pj-hoakari/internal-jwt-handling v0.4.0/go.mod h1:5ZJeQf0tgNYIuxRUd11r1N3x2x83Hw6X1Z1vhmDwjt4=
-github.com/pj-hoakari/protoc-gen-authz-go v0.3.0 h1:oLKiB3M/JaFROsHR7NHU0+kN6IZzNUOrecWAtw7Byu8=
-github.com/pj-hoakari/protoc-gen-authz-go v0.3.0/go.mod h1:wrZQc2mY9d2WXSt/7P3+4Fp5yesNuQPCrEWqt6UGPqI=
+github.com/pj-hoakari/protoc-gen-authz-go v0.4.1 h1:qhcYmZHtyhgkShNCuSB36XZOkH3T6jqcr6Af8OrCXmI=
+github.com/pj-hoakari/protoc-gen-authz-go v0.4.1/go.mod h1:qmfbUJQHMYtEu7QHjEkEvUmA+3GutuLYGB1SCmxo8ss=
 github.com/pj-hoakari/tolo-graph-authoring v0.4.0-rc h1:T0m+Zl7nqSenDqaGbvhzYlCfeeEvoOpp9XpWadCsALc=
 github.com/pj-hoakari/tolo-graph-authoring v0.4.0-rc/go.mod h1:4wCLyUt9EHEwXkyfLUL3ES2kPWvNIIsIpC5t3p3Y0fs=
 github.com/pj-hoakari/tolo-kernel-proto v0.4.0 h1:yEO6kFq3HubbZRXv9Ed2sIG7VGRm8WZ7O4tlwFROMDU=
