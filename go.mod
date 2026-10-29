@@ -12,7 +12,7 @@ tool (
 )
 
 require (
-	connectrpc.com/connect/v2 v2.0.1
+	connectrpc.com/connect/v2 v2.0.2
 	connectrpc.com/otelconnect v0.12.0
 	github.com/ThreeDotsLabs/watermill v1.5.3
 	github.com/ThreeDotsLabs/watermill-googlecloud/v2 v2.0.1
