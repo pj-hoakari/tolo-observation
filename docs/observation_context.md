@@ -23,7 +23,7 @@ Edge Bridge Service は WebRTC のシグナリングのみを担い、Service Ga
 | ObservationSettingsChanged／EventTypeAssigned | ObservationSettingsService.UpdateObservationSettings |
 | AccessRequested | Edge Bridge Service のシグナリング（Edge Bridge Service。接続要求（RequestConnection）を受け付けてセッション文書を作った時点） |
 
-## 手動介入・運用状態変更の受け口（誘導ドメインの現場誘導接点）
+## 手動介入・運用状態変更の受け付け（誘導ドメインの現場誘導接点）
 
 | ドメインイベント（所属先） | 対応 RPC |
 |---|---|
