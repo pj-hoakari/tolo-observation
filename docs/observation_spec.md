@@ -114,7 +114,7 @@ message Measurement {
   int32 count_in = 4;   // ウィンドウ内の流入計上
   int32 count_out = 5;  // ウィンドウ内の流出計上。source=QR のときは 0
   MeasurementSource source = 6;
-  string qr_location_id = 7;  // source=QR のとき必須（設置箇所。正本はグラフ編集の QrLocation）。source=EDGE のときは空
+  string qr_location_id = 7;  // source=QR のとき必須（設置箇所。所有はグラフ編集の QrLocation）。source=EDGE のときは空
   optional double mean_detected_people = 8;  // ウィンドウ内の視野内検知人数（検知フレームごとの人数の平均。人）。0 以上の有限値
 }
 
@@ -417,7 +417,7 @@ message UpdateObservationSettingsResponse {
   発行済みの観測ページ URL は無効となり、開いても計測値を送れない
   `ListEdgeDevices` は既定で解除済みを返さず、`include_unregistered` の指定時のみ含める
   既に受信済みの計測値と観測スナップショットは削除しない
-- ゲートの扱い: 設計時指定（Graph Authoring の GetGatePoints が正本）を基に、未開設のゲートは閉状態の GateState として Line へ渡す
+- ゲートの扱い: 設計時指定（Graph Authoring が所有し、GetGatePoints で供給）を基に、未開設のゲートは閉状態の GateState として Line へ渡す
   開閉とサービスレート設定値は本サービスの OperateGate（スタッフアプリが直接呼ぶ）で上書きする
 - 検知状態（Flow 所有）と行列状態（Line 所有）は本サービスが解釈せず永続化し、次回要求で返送する
   行列状態は Operation への配信のため `tolo.operation.v1.QueueSummary` へ機械的に写すが、本サービスの判断には用いない
@@ -446,7 +446,7 @@ message UpdateObservationSettingsResponse {
   経路の停止から復旧した後にまとめて届く古いウィンドウの計測値を、観測スナップショットにどう反映するかは実装フェーズで確定する
   QR 由来（source=QR）の計測値は対象外とする
 - QR 由来計測（source=QR）は設置箇所単位で計上する（QR は設置箇所×種類ごとの発行 URL。計上は設置箇所単位）
-  設置箇所は `Measurement.qr_location_id` で指定する。正本はグラフ編集の QrLocation（グラフ要素参照付き）
+  設置箇所は `Measurement.qr_location_id` で指定する。所有はグラフ編集の QrLocation（グラフ要素参照付き）
   ゲスト用ページを開くたびに、その設置箇所で 1 人の人数増加として数える。QR は向きを持たないため、計上は `count_in` に入れ、`count_out` は 0 とする
 - QR 設置箇所は QR 方式の観測点として扱う。カメラ方式の観測点と対等であり、補完的な位置づけではない
   登録はグラフ編集の `AddQrLocation` が所有し、本サービスは `GetQrLocations` で取得して観測点として読み替える。観測点として別途登録しない
