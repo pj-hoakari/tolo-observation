@@ -12,6 +12,7 @@ import (
 
 	"github.com/pj-hoakari/tolo-observation/internal/application"
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
+	"github.com/pj-hoakari/tolo-observation/internal/repository"
 	"github.com/pj-hoakari/tolo-observation/internal/tenantctx"
 )
 
@@ -219,6 +220,108 @@ func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 	// effective value the caller sees is false.
 	if point.Enabled {
 		t.Errorf("Enabled = true, want false")
+	}
+}
+
+func TestListEdgeDeviceObservationPointsReturnsEveryPointOfTheDevice(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		lastHeartbeatAt *time.Time
+		wantEnabled     []bool
+	}{
+		{name: "fresh heartbeat", lastHeartbeatAt: ptr(testNow.Add(-time.Minute)), wantEnabled: []bool{true, false}},
+		{name: "stale heartbeat", lastHeartbeatAt: ptr(testNow.Add(-10 * time.Minute)), wantEnabled: []bool{false, false}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			service, devices := newService(t)
+			devices.EXPECT().
+				FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+				Return(domain.EdgeDevice{
+					ID:              "1122334455667788",
+					EventID:         testEventPublicID,
+					LastHeartbeatAt: tt.lastHeartbeatAt,
+					ObservationPoints: []domain.ObservationPoint{
+						{ID: "99aabbccddeeff00", Name: "north", Enabled: true},
+						{ID: "00ffeeddccbbaa99", Name: "south", Enabled: false},
+					},
+				}, nil)
+
+			points, err := service.ListEdgeDeviceObservationPoints(
+				withEventToken(testEventPublicID),
+				application.ListEdgeDeviceObservationPointsInput{
+					EventID:      testEventPublicID,
+					EdgeDeviceID: "1122334455667788",
+				},
+			)
+			if err != nil {
+				t.Fatalf("ListEdgeDeviceObservationPoints() error = %v", err)
+			}
+
+			if len(points) != 2 || points[0].Name != "north" || points[1].Name != "south" {
+				t.Fatalf("ListEdgeDeviceObservationPoints() = %v, want north and south", points)
+			}
+
+			for i, point := range points {
+				if point.Enabled != tt.wantEnabled[i] {
+					t.Errorf("%s Enabled = %v, want %v", point.Name, point.Enabled, tt.wantEnabled[i])
+				}
+			}
+		})
+	}
+}
+
+func TestListEdgeDeviceObservationPointsRejectsDevicesItCannotServe(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		device domain.EdgeDevice
+		err    error
+		want   error
+	}{
+		{
+			name:   "unregistered device",
+			device: domain.EdgeDevice{EventID: testEventPublicID, Unregistered: true},
+			want:   domain.ErrEdgeDeviceUnregistered,
+		},
+		{
+			name:   "another event's device",
+			device: domain.EdgeDevice{EventID: otherEventPublicID},
+			want:   application.ErrForeignEvent,
+		},
+		{
+			name: "unknown device",
+			err:  repository.ErrEdgeDeviceNotFound,
+			want: repository.ErrEdgeDeviceNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			service, devices := newService(t)
+			devices.EXPECT().
+				FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+				Return(tt.device, tt.err)
+
+			_, err := service.ListEdgeDeviceObservationPoints(
+				withEventToken(testEventPublicID),
+				application.ListEdgeDeviceObservationPointsInput{
+					EventID:      testEventPublicID,
+					EdgeDeviceID: "1122334455667788",
+				},
+			)
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("ListEdgeDeviceObservationPoints() error = %v, want %v", err, tt.want)
+			}
+		})
 	}
 }
 

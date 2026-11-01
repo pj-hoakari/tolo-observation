@@ -13,11 +13,12 @@ var MeasurementIngestServicePolicies = authz.Policies{
 
 // EdgeDeviceServicePolicies is the effective policy of every procedure of tolo.observation.v1.EdgeDeviceService.
 var EdgeDeviceServicePolicies = authz.Policies{
-	EdgeDeviceServiceRegisterEdgeDeviceProcedure:           {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.manage"}, TokenUses: []string{"event_access"}},
-	EdgeDeviceServiceUnregisterEdgeDeviceProcedure:         {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.manage"}, TokenUses: []string{"event_access"}},
-	EdgeDeviceServiceListEdgeDevicesProcedure:              {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.read"}, TokenUses: []string{"event_access"}},
-	EdgeDeviceServiceHeartbeatProcedure:                    {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.report"}, TokenUses: []string{"event_access"}},
-	EdgeDeviceServiceUpdateObservationPointConfigProcedure: {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.operate"}, TokenUses: []string{"event_access"}},
+	EdgeDeviceServiceRegisterEdgeDeviceProcedure:              {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.manage"}, TokenUses: []string{"event_access"}},
+	EdgeDeviceServiceUnregisterEdgeDeviceProcedure:            {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.manage"}, TokenUses: []string{"event_access"}},
+	EdgeDeviceServiceListEdgeDevicesProcedure:                 {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.read"}, TokenUses: []string{"event_access"}},
+	EdgeDeviceServiceListEdgeDeviceObservationPointsProcedure: {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.report"}, TokenUses: []string{"event_access"}},
+	EdgeDeviceServiceHeartbeatProcedure:                       {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.report"}, TokenUses: []string{"event_access"}},
+	EdgeDeviceServiceUpdateObservationPointConfigProcedure:    {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.operate"}, TokenUses: []string{"event_access"}},
 }
 
 // ManualInterventionServicePolicies is the effective policy of every procedure of tolo.observation.v1.ManualInterventionService.

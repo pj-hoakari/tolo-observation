@@ -46,6 +46,9 @@ const (
 	// EdgeDeviceServiceListEdgeDevicesProcedure is the procedure name of the EdgeDeviceService's
 	// ListEdgeDevices RPC.
 	EdgeDeviceServiceListEdgeDevicesProcedure = "/tolo.observation.v1.EdgeDeviceService/ListEdgeDevices"
+	// EdgeDeviceServiceListEdgeDeviceObservationPointsProcedure is the procedure name of the
+	// EdgeDeviceService's ListEdgeDeviceObservationPoints RPC.
+	EdgeDeviceServiceListEdgeDeviceObservationPointsProcedure = "/tolo.observation.v1.EdgeDeviceService/ListEdgeDeviceObservationPoints"
 	// EdgeDeviceServiceHeartbeatProcedure is the procedure name of the EdgeDeviceService's Heartbeat
 	// RPC.
 	EdgeDeviceServiceHeartbeatProcedure = "/tolo.observation.v1.EdgeDeviceService/Heartbeat"
@@ -176,6 +179,13 @@ var (
 			Procedure:  EdgeDeviceServiceListEdgeDevicesProcedure,
 		}
 	})
+	edgeDeviceServiceListEdgeDeviceObservationPointsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods().ByName("ListEdgeDeviceObservationPoints"),
+			Procedure:  EdgeDeviceServiceListEdgeDeviceObservationPointsProcedure,
+		}
+	})
 	edgeDeviceServiceHeartbeatSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -197,6 +207,7 @@ type EdgeDeviceServiceClient interface {
 	RegisterEdgeDevice(context.Context, *v1.RegisterEdgeDeviceRequest) (*v1.RegisterEdgeDeviceResponse, error)
 	UnregisterEdgeDevice(context.Context, *v1.UnregisterEdgeDeviceRequest) (*v1.UnregisterEdgeDeviceResponse, error)
 	ListEdgeDevices(context.Context, *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error)
+	ListEdgeDeviceObservationPoints(context.Context, *v1.ListEdgeDeviceObservationPointsRequest) (*v1.ListEdgeDeviceObservationPointsResponse, error)
 	Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error)
 	UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error)
 }
@@ -213,6 +224,7 @@ type EdgeDeviceServiceHandler interface {
 	RegisterEdgeDevice(context.Context, *v1.RegisterEdgeDeviceRequest) (*v1.RegisterEdgeDeviceResponse, error)
 	UnregisterEdgeDevice(context.Context, *v1.UnregisterEdgeDeviceRequest) (*v1.UnregisterEdgeDeviceResponse, error)
 	ListEdgeDevices(context.Context, *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error)
+	ListEdgeDeviceObservationPoints(context.Context, *v1.ListEdgeDeviceObservationPointsRequest) (*v1.ListEdgeDeviceObservationPointsResponse, error)
 	Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error)
 	UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error)
 }
@@ -225,6 +237,7 @@ func RegisterEdgeDeviceServiceHandler(server *connect.Server, svc EdgeDeviceServ
 		connect.Method{Spec: edgeDeviceServiceRegisterEdgeDeviceSpec(), Handler: adapter.registerEdgeDevice},
 		connect.Method{Spec: edgeDeviceServiceUnregisterEdgeDeviceSpec(), Handler: adapter.unregisterEdgeDevice},
 		connect.Method{Spec: edgeDeviceServiceListEdgeDevicesSpec(), Handler: adapter.listEdgeDevices},
+		connect.Method{Spec: edgeDeviceServiceListEdgeDeviceObservationPointsSpec(), Handler: adapter.listEdgeDeviceObservationPoints},
 		connect.Method{Spec: edgeDeviceServiceHeartbeatSpec(), Handler: adapter.heartbeat},
 		connect.Method{Spec: edgeDeviceServiceUpdateObservationPointConfigSpec(), Handler: adapter.updateObservationPointConfig},
 	)
@@ -243,6 +256,10 @@ func (UnimplementedEdgeDeviceServiceHandler) UnregisterEdgeDevice(context.Contex
 
 func (UnimplementedEdgeDeviceServiceHandler) ListEdgeDevices(context.Context, *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.ListEdgeDevices is not implemented")
+}
+
+func (UnimplementedEdgeDeviceServiceHandler) ListEdgeDeviceObservationPoints(context.Context, *v1.ListEdgeDeviceObservationPointsRequest) (*v1.ListEdgeDeviceObservationPointsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.ListEdgeDeviceObservationPoints is not implemented")
 }
 
 func (UnimplementedEdgeDeviceServiceHandler) Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error) {
@@ -276,6 +293,14 @@ func (c *edgeDeviceServiceClient) UnregisterEdgeDevice(ctx context.Context, req 
 func (c *edgeDeviceServiceClient) ListEdgeDevices(ctx context.Context, req *v1.ListEdgeDevicesRequest) (*v1.ListEdgeDevicesResponse, error) {
 	var res v1.ListEdgeDevicesResponse
 	if err := c.client.CallUnary(ctx, edgeDeviceServiceListEdgeDevicesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *edgeDeviceServiceClient) ListEdgeDeviceObservationPoints(ctx context.Context, req *v1.ListEdgeDeviceObservationPointsRequest) (*v1.ListEdgeDeviceObservationPointsResponse, error) {
+	var res v1.ListEdgeDeviceObservationPointsResponse
+	if err := c.client.CallUnary(ctx, edgeDeviceServiceListEdgeDeviceObservationPointsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -329,6 +354,18 @@ func (h edgeDeviceServiceHandler) listEdgeDevices(ctx context.Context, _ connect
 		return err
 	}
 	res, err := h.svc.ListEdgeDevices(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h edgeDeviceServiceHandler) listEdgeDeviceObservationPoints(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEdgeDeviceObservationPointsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEdgeDeviceObservationPoints(ctx, &req)
 	if err != nil {
 		return err
 	}

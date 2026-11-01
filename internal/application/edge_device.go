@@ -41,6 +41,11 @@ type ListEdgeDevicesInput struct {
 	IncludeUnregistered bool
 }
 
+type ListEdgeDeviceObservationPointsInput struct {
+	EventID      string
+	EdgeDeviceID string
+}
+
 type HeartbeatInput struct {
 	EventID                   string
 	EdgeDeviceID              string
@@ -58,6 +63,7 @@ type EdgeDeviceUseCases interface {
 	RegisterEdgeDevice(ctx context.Context, input RegisterEdgeDeviceInput) (RegisterEdgeDeviceOutput, error)
 	UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (EdgeDeviceView, error)
 	ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]EdgeDeviceView, error)
+	ListEdgeDeviceObservationPoints(ctx context.Context, input ListEdgeDeviceObservationPointsInput) ([]domain.ObservationPoint, error)
 	Heartbeat(ctx context.Context, input HeartbeatInput) error
 	UpdateObservationPointConfig(ctx context.Context, input UpdateObservationPointConfigInput) (domain.ObservationPoint, error)
 }
@@ -166,6 +172,44 @@ func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeD
 	}
 
 	return views, nil
+}
+
+func (s *EdgeDeviceService) ListEdgeDeviceObservationPoints(
+	ctx context.Context,
+	input ListEdgeDeviceObservationPointsInput,
+) ([]domain.ObservationPoint, error) {
+	if err := tenantctx.EnsureEvent(ctx, input.EventID); err != nil {
+		return nil, err
+	}
+
+	id, err := domain.ParseEdgeDeviceID(input.EdgeDeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	device, err := s.devices.FindByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("find edge device: %w", err)
+	}
+
+	if device.EventID != input.EventID {
+		return nil, ErrForeignEvent
+	}
+
+	if device.Unregistered {
+		return nil, domain.ErrEdgeDeviceUnregistered
+	}
+
+	now := s.config.Now()
+
+	hold, err := s.holds.Evaluate(ctx, now)
+	if err != nil {
+		return nil, err
+	}
+
+	applyEffectiveEnabled(&device, hold.Connected(device, now))
+
+	return device.ObservationPoints, nil
 }
 
 func (s *EdgeDeviceService) Heartbeat(ctx context.Context, input HeartbeatInput) error {
