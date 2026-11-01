@@ -12,6 +12,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/nats-io/nats.go"
 	natsjetstream "github.com/nats-io/nats.go/jetstream"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -39,6 +41,7 @@ func (p *GuestStatusPublisher) PublishGuestStatus(ctx context.Context, status do
 	msg := message.NewMessage(watermill.NewUUID(), payload)
 	msg.Metadata.Set(EventIDMetadataKey, status.EventID)
 	msg.SetContext(ctx)
+	otel.GetTextMapPropagator().Inject(ctx, propagation.MapCarrier(msg.Metadata))
 
 	if err := p.publisher.Publish(GuestStatusTopic, msg); err != nil {
 		return fmt.Errorf("publish guest status: %w", err)
