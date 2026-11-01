@@ -263,8 +263,8 @@ func TestObservationCycle(t *testing.T) {
 			EventId:      cycleEventPublicID,
 			EdgeDeviceId: deviceID,
 			Measurements: []*observationv1.Measurement{
-				edgeMeasurement(corridor, flow.observedStart),
-				edgeMeasurement(hall, flow.observedStart),
+				edgeMeasurement(corridor, time.Now().Add(-time.Minute)),
+				edgeMeasurement(hall, time.Now().Add(-time.Minute)),
 			},
 		}))
 		if err != nil {
@@ -450,6 +450,49 @@ func TestObservationCycle(t *testing.T) {
 		requests, _ := flow.flow.received()
 		if got := requests[len(requests)-1].GetEventContext().GetTerm(); got != flowv1.EventTerm_EVENT_TERM_LONG {
 			t.Errorf("Optimize event_context.term = %v, want long", got)
+		}
+	})
+
+	t.Run("counts a resent window once and runs no cycle for it", func(t *testing.T) {
+		windowStart := time.Now().Add(-time.Minute)
+		send := func(t *testing.T, measurements ...*observationv1.Measurement) int32 {
+			t.Helper()
+
+			reported, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
+				EventId:      cycleEventPublicID,
+				EdgeDeviceId: deviceID,
+				Measurements: measurements,
+			}))
+			if err != nil {
+				t.Fatalf("ReportMeasurements() error = %v", err)
+			}
+
+			return reported.GetAcceptedCount()
+		}
+
+		if got := send(t, edgeMeasurement(corridor, windowStart)); got != 1 {
+			t.Fatalf("accepted_count for a new window = %d, want 1", got)
+		}
+
+		requestsBefore, _ := flow.flow.received()
+
+		resent := edgeMeasurement(corridor, windowStart)
+		resent.CountIn = 99
+
+		if got := send(t, resent); got != 0 {
+			t.Errorf("accepted_count for a resent window = %d, want 0", got)
+		}
+
+		if requests, _ := flow.flow.received(); len(requests) != len(requestsBefore) {
+			t.Errorf("Optimize requests after a resent window = %d, want %d", len(requests), len(requestsBefore))
+		}
+
+		if got := send(t, edgeMeasurement(corridor, windowStart), edgeMeasurement(hall, windowStart)); got != 1 {
+			t.Errorf("accepted_count for a resent window with a new one = %d, want 1", got)
+		}
+
+		if requests, _ := flow.flow.received(); len(requests) != len(requestsBefore)+1 {
+			t.Errorf("Optimize requests after a report with a new window = %d, want %d", len(requests), len(requestsBefore)+1)
 		}
 	})
 }

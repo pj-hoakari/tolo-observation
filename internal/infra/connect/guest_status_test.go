@@ -103,7 +103,7 @@ func TestObservationCyclePublishesGuestStatus(t *testing.T) {
 			&observationv1.ReportMeasurementsRequest{
 				EventId:      eventID,
 				EdgeDeviceId: registered.GetDevice().GetEdgeDeviceId(),
-				Measurements: []*observationv1.Measurement{edgeMeasurement(hall, flow.observedStart)},
+				Measurements: []*observationv1.Measurement{edgeMeasurement(hall, time.Now().Add(-time.Minute))},
 			},
 		)); err != nil {
 			t.Fatalf("ReportMeasurements() error = %v", err)

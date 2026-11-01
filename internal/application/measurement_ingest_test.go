@@ -95,8 +95,8 @@ func TestReportMeasurementsRecordsUnderTheDevicesTenant(t *testing.T) {
 		FindByID(gomock.Any(), domain.EdgeDeviceID(testEdgeDeviceID)).
 		Return(registeredDevice(), nil)
 	measurements.EXPECT().
-		RecordAll(gomock.Any(), otherTenantPublicID, testEventPublicID, gomock.Len(2)).
-		Return(nil)
+		RecordAll(gomock.Any(), otherTenantPublicID, testEventPublicID, domain.EdgeDeviceID(testEdgeDeviceID), gomock.Len(2)).
+		Return(int32(2), nil)
 
 	accepted, err := service.ReportMeasurements(
 		withEventToken(testEventPublicID),
@@ -119,6 +119,38 @@ func TestReportMeasurementsRecordsUnderTheDevicesTenant(t *testing.T) {
 
 	if want := []string{otherTenantPublicID, testEventPublicID}; !slices.Equal(cycled, want) {
 		t.Errorf("observation cycle ran with %v, want %v", cycled, want)
+	}
+}
+
+func TestReportMeasurementsCountsOnlyNewlyAcceptedWindowsAndSkipsTheCycleWithoutThem(t *testing.T) {
+	t.Parallel()
+
+	service, devices, measurements := newIngestServiceWithCycle(t, cycleFunc(func(context.Context, string, string) error {
+		t.Error("observation cycle ran for a report without newly accepted measurements")
+
+		return nil
+	}))
+	devices.EXPECT().
+		FindByID(gomock.Any(), domain.EdgeDeviceID(testEdgeDeviceID)).
+		Return(registeredDevice(), nil)
+	measurements.EXPECT().
+		RecordAll(gomock.Any(), otherTenantPublicID, testEventPublicID, domain.EdgeDeviceID(testEdgeDeviceID), gomock.Len(1)).
+		Return(int32(0), nil)
+
+	accepted, err := service.ReportMeasurements(
+		withEventToken(testEventPublicID),
+		application.ReportMeasurementsInput{
+			EventID:      testEventPublicID,
+			EdgeDeviceID: testEdgeDeviceID,
+			Measurements: []application.MeasurementInput{edgeMeasurement(testPointID)},
+		},
+	)
+	if err != nil {
+		t.Fatalf("ReportMeasurements() error = %v", err)
+	}
+
+	if accepted != 0 {
+		t.Errorf("accepted = %d, want 0 for a resent window", accepted)
 	}
 }
 

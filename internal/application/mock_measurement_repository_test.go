@@ -58,15 +58,16 @@ func (mr *MockMeasurementRepositoryMockRecorder) ListWindowEndingSince(ctx, even
 }
 
 // RecordAll mocks base method.
-func (m *MockMeasurementRepository) RecordAll(ctx context.Context, tenantPublicID, eventID string, measurements []domain.Measurement) error {
+func (m *MockMeasurementRepository) RecordAll(ctx context.Context, tenantPublicID, eventID string, edgeDeviceID domain.EdgeDeviceID, measurements []domain.Measurement) (int32, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RecordAll", ctx, tenantPublicID, eventID, measurements)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "RecordAll", ctx, tenantPublicID, eventID, edgeDeviceID, measurements)
+	ret0, _ := ret[0].(int32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RecordAll indicates an expected call of RecordAll.
-func (mr *MockMeasurementRepositoryMockRecorder) RecordAll(ctx, tenantPublicID, eventID, measurements any) *gomock.Call {
+func (mr *MockMeasurementRepositoryMockRecorder) RecordAll(ctx, tenantPublicID, eventID, edgeDeviceID, measurements any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordAll", reflect.TypeOf((*MockMeasurementRepository)(nil).RecordAll), ctx, tenantPublicID, eventID, measurements)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordAll", reflect.TypeOf((*MockMeasurementRepository)(nil).RecordAll), ctx, tenantPublicID, eventID, edgeDeviceID, measurements)
 }

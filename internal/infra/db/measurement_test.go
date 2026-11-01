@@ -1,7 +1,10 @@
 package db
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,8 +62,13 @@ func TestPostgresMeasurementRepositoryRecordAll(t *testing.T) {
 		t.Fatalf("NewMeasurement second: %v", err)
 	}
 
-	if err := repo.RecordAll(ctx, "tenant-measure", "event-measure", []domain.Measurement{first, second}); err != nil {
+	accepted, err := repo.RecordAll(ctx, "tenant-measure", "event-measure", device.ID, []domain.Measurement{first, second})
+	if err != nil {
 		t.Fatalf("RecordAll: %v", err)
+	}
+
+	if accepted != 2 {
+		t.Errorf("accepted = %d, want 2", accepted)
 	}
 
 	rows := selectMeasurements(t, "event-measure")
@@ -99,10 +107,82 @@ func TestPostgresMeasurementRepositoryRecordAll(t *testing.T) {
 	}
 }
 
+func TestPostgresMeasurementRepositoryRecordAllKeepsTheFirstEdgeWindow(t *testing.T) {
+	repo := NewPostgresMeasurementRepository(testDB)
+	ctx := context.Background()
+	device := newDevice(t, "tenant-resend", "event-resend", "in", "out")
+	start := time.Now().UTC().Truncate(time.Microsecond)
+
+	window := func(pointIndex int, countIn int32) domain.Measurement {
+		measurement, err := domain.NewMeasurement(string(device.ObservationPoints[pointIndex].ID),
+			start, start.Add(time.Minute), countIn, 0, nil)
+		if err != nil {
+			t.Fatalf("NewMeasurement: %v", err)
+		}
+
+		return measurement
+	}
+
+	if _, err := repo.RecordAll(ctx, "tenant-resend", "event-resend", device.ID, []domain.Measurement{window(0, 4)}); err != nil {
+		t.Fatalf("RecordAll first: %v", err)
+	}
+
+	var logs bytes.Buffer
+
+	previous := slog.Default()
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	accepted, err := repo.RecordAll(ctx, "tenant-resend", "event-resend", device.ID,
+		[]domain.Measurement{window(0, 9), window(1, 2), window(1, 2)})
+	if err != nil {
+		t.Fatalf("RecordAll resend: %v", err)
+	}
+
+	if accepted != 1 {
+		t.Errorf("accepted = %d, want 1 for the only new window", accepted)
+	}
+
+	if got := strings.Count(logs.String(), "resent measurement differs from the accepted one"); got != 1 {
+		t.Errorf("logged %d divergent resends, want 1 for the window resent with another count:\n%s", got, logs.String())
+	}
+
+	rows := selectMeasurements(t, "event-resend")
+	if len(rows) != 2 || rows[0].CountIn != 4 || rows[1].CountIn != 2 {
+		t.Errorf("rows = %+v, want the first window kept at count_in 4 and one row for the new window", rows)
+	}
+
+	other := newDevice(t, "tenant-resend", "event-resend", "in")
+	if accepted, err := repo.RecordAll(ctx, "tenant-resend", "event-resend", other.ID, []domain.Measurement{window(0, 4)}); err != nil || accepted != 1 {
+		t.Errorf("RecordAll from another device = %d, %v, want 1 accepted", accepted, err)
+	}
+}
+
+func TestPostgresMeasurementRepositoryRecordAllKeepsEveryQRMeasurement(t *testing.T) {
+	repo := NewPostgresMeasurementRepository(testDB)
+	ctx := context.Background()
+	start := time.Now().UTC().Truncate(time.Microsecond)
+
+	measurement, err := domain.NewMeasurement("0123456789abcdef", start, start.Add(time.Second), 1, 0, nil)
+	if err != nil {
+		t.Fatalf("NewMeasurement: %v", err)
+	}
+
+	accepted, err := repo.RecordAll(ctx, "tenant-qr", "event-qr", "", []domain.Measurement{measurement, measurement})
+	if err != nil {
+		t.Fatalf("RecordAll: %v", err)
+	}
+
+	if accepted != 2 || len(selectMeasurements(t, "event-qr")) != 2 {
+		t.Errorf("accepted = %d, want both QR measurements kept", accepted)
+	}
+}
+
 func TestPostgresMeasurementRepositoryRecordAllEmpty(t *testing.T) {
 	repo := NewPostgresMeasurementRepository(testDB)
 
-	if err := repo.RecordAll(context.Background(), "tenant-empty", "event-empty", nil); err != nil {
+	if _, err := repo.RecordAll(context.Background(), "tenant-empty", "event-empty", "", nil); err != nil {
 		t.Fatalf("RecordAll with no measurements: %v", err)
 	}
 
@@ -128,7 +208,7 @@ func TestPostgresMeasurementRepositoryListWindowEndingSinceIncludesTheBoundary(t
 		measurements = append(measurements, measurement)
 	}
 
-	if err := repo.RecordAll(ctx, "tenant-since", "event-since", measurements); err != nil {
+	if _, err := repo.RecordAll(ctx, "tenant-since", "event-since", device.ID, measurements); err != nil {
 		t.Fatalf("RecordAll: %v", err)
 	}
 
