@@ -39,6 +39,13 @@ service EdgeDeviceService {
       token_uses: "event_access"
     };
   }
+  rpc ListEdgeDeviceObservationPoints(ListEdgeDeviceObservationPointsRequest) returns (ListEdgeDeviceObservationPointsResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.report"
+      token_uses: "event_access"
+    };
+  }
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse) {
     option (authz.v1.auth_policy) = {
       level: AUTH_LEVEL_AUTHENTICATED
@@ -203,6 +210,15 @@ message ListEdgeDevicesRequest {
 
 message ListEdgeDevicesResponse {
   repeated EdgeDevice devices = 1;
+}
+
+message ListEdgeDeviceObservationPointsRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+}
+
+message ListEdgeDeviceObservationPointsResponse {
+  repeated ObservationPoint observation_points = 1;
 }
 
 message HeartbeatRequest {

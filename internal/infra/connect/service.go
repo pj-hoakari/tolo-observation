@@ -180,6 +180,26 @@ func (s *EdgeDeviceService) ListEdgeDevices(
 	return &observationv1.ListEdgeDevicesResponse{Devices: protoDevices}, nil
 }
 
+func (s *EdgeDeviceService) ListEdgeDeviceObservationPoints(
+	ctx context.Context,
+	req *observationv1.ListEdgeDeviceObservationPointsRequest,
+) (*observationv1.ListEdgeDeviceObservationPointsResponse, error) {
+	points, err := s.useCases.ListEdgeDeviceObservationPoints(ctx, application.ListEdgeDeviceObservationPointsInput{
+		EventID:      req.GetEventId(),
+		EdgeDeviceID: req.GetEdgeDeviceId(),
+	})
+	if err != nil {
+		return nil, clientError(ctx, err)
+	}
+
+	protoPoints := make([]*observationv1.ObservationPoint, 0, len(points))
+	for _, point := range points {
+		protoPoints = append(protoPoints, newProtoObservationPoint(point))
+	}
+
+	return &observationv1.ListEdgeDeviceObservationPointsResponse{ObservationPoints: protoPoints}, nil
+}
+
 func (s *EdgeDeviceService) Heartbeat(
 	ctx context.Context,
 	req *observationv1.HeartbeatRequest,

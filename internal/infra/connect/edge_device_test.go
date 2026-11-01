@@ -27,7 +27,15 @@ type fakeEdgeDeviceUseCases struct {
 	device         application.EdgeDeviceView
 	devices        []application.EdgeDeviceView
 	point          domain.ObservationPoint
+	points         []domain.ObservationPoint
 	err            error
+}
+
+func (f *fakeEdgeDeviceUseCases) ListEdgeDeviceObservationPoints(
+	_ context.Context,
+	_ application.ListEdgeDeviceObservationPointsInput,
+) ([]domain.ObservationPoint, error) {
+	return f.points, f.err
 }
 
 func (f *fakeEdgeDeviceUseCases) Heartbeat(_ context.Context, _ application.HeartbeatInput) error {
@@ -216,6 +224,54 @@ func TestListEdgeDevicesReportsLiveness(t *testing.T) {
 				t.Errorf("last_heartbeat_at = %v, want %v", got, *tt.wantHeartbeat)
 			}
 		})
+	}
+}
+
+func TestListEdgeDeviceObservationPointsAnswersTheEdgeDevice(t *testing.T) {
+	t.Parallel()
+
+	client := newEdgeDeviceClient(t, "events.report", &fakeEdgeDeviceUseCases{
+		points: []domain.ObservationPoint{
+			{ID: "99aabbccddeeff00", Name: "north", Enabled: true},
+			{ID: "00ffeeddccbbaa99", Name: "south", Enabled: false},
+		},
+	})
+
+	res, err := client.ListEdgeDeviceObservationPoints(
+		context.Background(),
+		&observationv1.ListEdgeDeviceObservationPointsRequest{EventId: testEventPublicID, EdgeDeviceId: testEdgeDeviceID},
+	)
+	if err != nil {
+		t.Fatalf("ListEdgeDeviceObservationPoints() error = %v", err)
+	}
+
+	points := res.GetObservationPoints()
+	if len(points) != 2 {
+		t.Fatalf("observation_points = %v, want two points", points)
+	}
+
+	if got := points[0]; got.GetObservationPointId() != "99aabbccddeeff00" || got.GetName() != "north" || !got.GetEnabled() {
+		t.Errorf("observation_points[0] = %v, want enabled north", got)
+	}
+
+	if got := points[1]; got.GetObservationPointId() != "00ffeeddccbbaa99" || got.GetName() != "south" || got.GetEnabled() {
+		t.Errorf("observation_points[1] = %v, want disabled south", got)
+	}
+}
+
+func TestListEdgeDeviceObservationPointsRejectsAnUnregisteredDevice(t *testing.T) {
+	t.Parallel()
+
+	client := newEdgeDeviceClient(t, "events.report", &fakeEdgeDeviceUseCases{
+		err: fmt.Errorf("list edge device observation points: %w", domain.ErrEdgeDeviceUnregistered),
+	})
+
+	_, err := client.ListEdgeDeviceObservationPoints(
+		context.Background(),
+		&observationv1.ListEdgeDeviceObservationPointsRequest{EventId: testEventPublicID, EdgeDeviceId: testEdgeDeviceID},
+	)
+	if got := connectrpc.CodeOf(err); got != connectrpc.CodeFailedPrecondition {
+		t.Fatalf("ListEdgeDeviceObservationPoints() error code = %v (%v), want %v", got, err, connectrpc.CodeFailedPrecondition)
 	}
 }
 
