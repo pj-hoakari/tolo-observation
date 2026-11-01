@@ -64,8 +64,6 @@ func (s *MeasurementIngestService) ReportMeasurements(
 
 	measurements := make([]domain.Measurement, 0, len(input.Measurements))
 
-	var accepted int32
-
 	for _, reported := range input.Measurements {
 		measurement, err := domain.NewMeasurement(
 			reported.ObservationPointID,
@@ -80,16 +78,20 @@ func (s *MeasurementIngestService) ReportMeasurements(
 		}
 
 		measurements = append(measurements, measurement)
-		accepted++
 	}
 
-	tenantPublicID, err := s.resolveTenant(ctx, input, measurements)
+	tenantPublicID, edgeDeviceID, err := s.resolveTenant(ctx, input, measurements)
 	if err != nil {
 		return 0, err
 	}
 
-	if err := s.measurements.RecordAll(ctx, tenantPublicID, input.EventID, measurements); err != nil {
+	accepted, err := s.measurements.RecordAll(ctx, tenantPublicID, input.EventID, edgeDeviceID, measurements)
+	if err != nil {
 		return 0, fmt.Errorf("record measurements: %w", err)
+	}
+
+	if accepted == 0 {
+		return 0, nil
 	}
 
 	if err := s.cycle.Run(ctx, tenantPublicID, input.EventID); err != nil {
@@ -103,48 +105,50 @@ func (s *MeasurementIngestService) resolveTenant(
 	ctx context.Context,
 	input ReportMeasurementsInput,
 	measurements []domain.Measurement,
-) (string, error) {
+) (string, domain.EdgeDeviceID, error) {
 	tenantID := strings.TrimSpace(input.TenantID)
 	if tenantID != "" {
 		if err := tenantctx.VerifyOwnership(ctx, tenantID); err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
 	if input.Method == domain.MeasurementMethodQR {
-		return s.resolveQRTenant(ctx, tenantID, input.EventID, measurements)
+		tenantPublicID, err := s.resolveQRTenant(ctx, tenantID, input.EventID, measurements)
+
+		return tenantPublicID, "", err
 	}
 
 	edgeDeviceID := strings.TrimSpace(input.EdgeDeviceID)
 	if edgeDeviceID == "" {
-		return "", ErrEdgeDeviceRequired
+		return "", "", ErrEdgeDeviceRequired
 	}
 
 	id, err := domain.ParseEdgeDeviceID(edgeDeviceID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	device, err := s.devices.FindByID(ctx, id)
 	if err != nil {
-		return "", fmt.Errorf("find edge device: %w", err)
+		return "", "", fmt.Errorf("find edge device: %w", err)
 	}
 
 	if device.EventID != input.EventID {
-		return "", ErrForeignEvent
+		return "", "", ErrForeignEvent
 	}
 
 	if device.Unregistered {
-		return "", domain.ErrEdgeDeviceUnregistered
+		return "", "", domain.ErrEdgeDeviceUnregistered
 	}
 
 	for _, measurement := range measurements {
 		if !device.HasObservationPoint(measurement.ObservationPointID) {
-			return "", ErrForeignEvent
+			return "", "", ErrForeignEvent
 		}
 	}
 
-	return device.TenantPublicID, nil
+	return device.TenantPublicID, device.ID, nil
 }
 
 func (s *MeasurementIngestService) resolveQRTenant(
