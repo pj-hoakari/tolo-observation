@@ -6,7 +6,7 @@ package: `tolo.observation.v1`
 手動介入（現場誘導のシステム接点）と運用状態の変更（ゲート開閉・観測点設定変更）も本サービスが直接受け、次回の最適化・誘導要求に反映する
 
 対象外: WebRTC のシグナリング（別デプロイ単位の Edge Bridge Service が担う）と、映像の中継・映像越しの設定変更（ページ間で完結しマイクロサービスを介さない）
-エッジ端末のライフサイクル管理（登録・登録解除・ハートビート）は本仕様に含む
+エッジ端末（観測ページ端末とカメラ端末）のライフサイクル管理（登録・登録解除。Heartbeat は観測ページ端末のみ）は本仕様に含む
 
 ## RPC 一覧
 
@@ -14,17 +14,17 @@ package: `tolo.observation.v1`
 
 | RPC | 説明（ユビキタス言語） | 呼び出し元 | 認可 | 関連ドメインイベント |
 |---|---|---|---|---|
-| ReportMeasurements | 観測点からの計測値（人数カウント）を受け取り、正準単位（人/分）へ正規化して永続化する。QR（設置箇所×種類ごとの発行 URL）由来の人数計上も計測源のひとつ | エッジ端末（ブラウザ、Connect）、Guest Service | `event_access` + events.report／サービス間（token_use=service） | MeasurementReceived／GuestCountedViaQr |
+| ReportMeasurements | 観測点からの計測値（人数カウント）を受け取り、正準単位（人/分）へ正規化して永続化する。QR（設置箇所×種類ごとの発行 URL）由来の人数計上も計測源のひとつ | 観測ページ端末（ブラウザ、Connect）、Guest Service | `event_access` + events.report／サービス間（token_use=service） | MeasurementReceived／GuestCountedViaQr |
 
 ### エッジ端末・観測点の管理（WebRTC 除く）
 
 | RPC | 説明（ユビキタス言語） | 呼び出し元 | 認可 | 関連ドメインイベント |
 |---|---|---|---|---|
-| RegisterEdgeDevice | エッジ端末を登録する。登録は実質的に観測点登録を兼ねる | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered |
-| UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。配下観測点は観測不能化する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled |
-| ListEdgeDevices | イベント配下のエッジ端末と観測点の一覧を、エッジ端末の稼働状態とあわせて返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
-| ListEdgeDeviceObservationPoints | 指定したエッジ端末の観測点をすべて返す。観測ページが、検知ラインと観測点を対応させるために使う（ADR-0105） | エッジ端末 | `event_access` + events.report | （参照のみ） |
-| Heartbeat | エッジ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する | エッジ端末 | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
+| RegisterEdgeDevice | エッジ端末を登録する。観測ページ端末の登録は実質的に観測点登録を兼ねる。カメラ端末の登録は観測点を登録しない | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered（観測ページ端末のみ）／CameraLinked |
+| UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。観測ページ端末の配下観測点は観測不能化する。カメラ端末の登録解除では、BFF が先に IdP のデバイス認可失効を記録してから登録解除を確定する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled（観測ページ端末のみ）／CameraUnlinked |
+| ListEdgeDevices | イベント配下のエッジ端末と観測点、種別、カメラの紐づけを返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
+| ListEdgeDeviceObservationPoints | 指定した観測ページ端末の観測点をすべて返す。観測ページが、検知ラインと観測点を対応させるために使う（ADR-0105） | エッジ端末（観測ページ端末） | `event_access` + events.report | （参照のみ） |
+| Heartbeat | 観測ページ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する。カメラ端末は呼べない | エッジ端末（観測ページ端末） | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
 
 ### 手動介入・運用状態の変更（現場誘導のシステム接点。誘導ドメイン所属）
@@ -120,7 +120,7 @@ message Measurement {
 
 enum MeasurementSource {
   MEASUREMENT_SOURCE_UNSPECIFIED = 0;
-  MEASUREMENT_SOURCE_EDGE = 1;  // エッジ端末の人検知・追跡
+  MEASUREMENT_SOURCE_EDGE = 1;  // 観測ページ端末の人検知・追跡
   MEASUREMENT_SOURCE_QR = 2;    // QR（設置箇所×種類ごとの発行 URL）由来の人数計上
 }
 
@@ -136,15 +136,28 @@ message ReportMeasurementsResponse {
 
 // ---- エッジ端末・観測点 ----
 
-// エッジ端末: Webカメラ＋PC等。人検知・人数カウントをエッジで完結
+// エッジ端末: 観測ページ端末（Webカメラ＋PC等）またはカメラ端末（ESP32等）
 message EdgeDevice {
-  string edge_device_id = 1;  // 公開 ID（ランダムな 16 文字 hex）。観測ページ URL に載る
+  string edge_device_id = 1;  // 公開 ID（ランダムな 16 文字 hex）。観測ページ端末では URL に載る
   string event_id = 2;
   string name = 3;
-  repeated ObservationPoint observation_points = 4;  // エッジ端末 ∋ 観測点（0個以上）
-  bool unregistered = 5;  // 登録解除済み（論理削除）。識別子と配下観測点は保持
-  google.protobuf.Timestamp last_heartbeat_at = 6;  // 最後に Heartbeat を受けた時刻。一度も受けていなければ未設定
-  bool online = 7;  // 稼働中（WebRTC で待ち受け中）。Heartbeat の途絶が30秒以内なら true。登録解除済みは常に false
+  repeated ObservationPoint observation_points = 4;  // 観測ページ端末 ∋ 観測点（0個以上）。カメラ端末は常に空
+  bool unregistered = 5;  // 登録解除済み（論理削除）。識別子は保持
+  google.protobuf.Timestamp last_heartbeat_at = 6;  // 最後に Heartbeat を受けた時刻。一度も受けていなければ未設定。カメラ端末は常に値を持たない
+  optional bool online = 7;  // 稼働中（WebRTC で待ち受け中）。観測ページ端末だけに設定し、カメラ端末は値を持たない
+  EdgeDeviceKind kind = 8;  // 観測ページ端末またはカメラ端末
+  repeated CameraLink camera_links = 10;  // 観測ページ端末が接続できるカメラ端末の紐づけ
+}
+
+enum EdgeDeviceKind {
+  EDGE_DEVICE_KIND_UNSPECIFIED = 0;
+  EDGE_DEVICE_KIND_OBSERVATION_PAGE = 1;  // 観測ページを開く推論デバイス
+  EDGE_DEVICE_KIND_CAMERA = 2;             // ESP32 などの映像ソース端末
+}
+
+message CameraLink {
+  string camera_edge_device_id = 1;  // カメラ端末の公開 ID
+  string observation_point_id = 2;   // このカメラが映像を供給する観測点
 }
 
 // 観測点: 計測対象（ポイント／ルート）ごとの計測単位。グラフ要素との関連はグラフ編集が保持
@@ -158,18 +171,20 @@ message ObservationPoint {
 // 計測方式: 観測点がどう計測するか。悉皆性が異なる
 enum MeasurementMethod {
   MEASUREMENT_METHOD_UNSPECIFIED = 0;
-  MEASUREMENT_METHOD_CAMERA = 1;  // エッジ端末の人検知。悉皆計測
+  MEASUREMENT_METHOD_CAMERA = 1;  // 観測ページ端末の人検知。悉皆計測
   MEASUREMENT_METHOD_QR = 2;      // QR 設置箇所の読み取り。悉皆でない
 }
 
 message RegisterEdgeDeviceRequest {
   string event_id = 1;
   string name = 2;
-  repeated string observation_point_names = 3;  // 登録は観測点登録を兼ねる
+  repeated string observation_point_names = 3;  // 観測ページ端末の登録は観測点登録を兼ねる。カメラ端末では空
+  EdgeDeviceKind kind = 4;                       // 観測ページ端末またはカメラ端末。未指定は観測ページ端末として扱う
+  string linked_observation_point_id = 5;        // カメラ端末を紐づけるカメラ方式の観測点1つ
 }
 message RegisterEdgeDeviceResponse {
   EdgeDevice device = 1;
-  string observation_page_path = 3;  // 観測ページの発行 URL のパス（edge_device_id を含む）。ホストは管理 UI が付ける
+  string observation_page_path = 3;  // 観測ページ端末のみ。発行 URL のパス（edge_device_id を含む）。ホストは管理 UI が付ける。カメラ端末は空
   reserved 2;
   reserved "observation_page_url";
 }
@@ -379,23 +394,24 @@ message UpdateObservationSettingsResponse {
   本サービスは、`event_id` が `tenant_id` に属すること、`qr_location_id` が `event_id` に属することを検証し、満たさない場合は `permission_denied` を返す
   検証には `GetQrLocations` を使う。リクエストの `tenant_id` を渡し、グラフ編集がイベントの所属テナントと一致しないとして拒否したら、テナントとイベントの所属を満たさないとする。設置箇所の所属は、返った設置箇所に `qr_location_id` が含まれるかで確かめる
   `edge_device_id` が空で `tenant_id` も空の要求は `invalid_argument` を返す
-  エッジ端末由来の計上では、テナントを `event_access` のクレームから取る。リクエストに `tenant_id` があればクレームと突合し、不一致は `permission_denied` を返す
+  観測ページ端末由来の計上では、テナントを `event_access` のクレームから取る。リクエストに `tenant_id` があればクレームと突合し、不一致は `permission_denied` を返す
 - グラフ要素の合成に使う観測点の組み合わせが前回の合成から変わったとき、本サービスは Flow へ `SENSOR_SET_CHANGED` を送り、そのグラフ要素の履歴の要約から変更前の標本を除く（Flow Control）
   初めて観測されたグラフ要素では送らない。故障や観測不能化から復帰しても、観測点の組み合わせが同じなら送らない
 - 正準単位への正規化（人/分）は本サービスの責務。エッジはウィンドウ内の計上数を送る
   視野内検知人数（`mean_detected_people`）は時点の人数を表す量であり、人/分へ換算せず人数のまま扱う。停滞量スコアと人数スコアの源泉になる
 - 観測点はグラフのポイントと1対1ではない。スコア算出時に紐づけ（グラフ編集所有）で変換
-- エッジ端末の切断・登録解除は配下観測点の観測不能化に波及
+- 観測ページ端末の切断・登録解除は配下観測点の観測不能化に波及
   切断は Heartbeat 途絶で判定し、復帰すれば観測再開する（一時的）
-  ただし、多数のエッジ端末の Heartbeat が同時に途絶えた間は、共有の経路（BFF、そのセッションのデータストア、Service Gateway の公開用）の障害の疑いとして、切断と観測不能化を保留する（ADR-0089）
-  保留の判定は、稼働中だった全テナント・全イベントのエッジ端末を母数とし、同じ判定の窓の中で途絶えた割合が閾値以上で、かつ母数が下限以上のときに行う
-  判定の窓は Heartbeat の途絶の基準と同じ 30 秒とする。判定時刻の直前「基準＋窓」の間に Heartbeat を送ってきた、登録解除されていないエッジ端末を母数とし、そのうち判定時刻に途絶している端末を途絶の数とする（ADR-0100）
+  カメラ端末の切断・登録解除は観測点の観測不能化に波及しない。登録解除は接続委任とデバイス認可を失効させる
+  ただし、多数の観測ページ端末の Heartbeat が同時に途絶えた間は、共有の経路（BFF、そのセッションのデータストア、Service Gateway の公開用）の障害の疑いとして、切断と観測不能化を保留する（ADR-0089）
+  保留の判定は、稼働中だった全テナント・全イベントの観測ページ端末を母数とし、同じ判定の窓の中で途絶えた割合が閾値以上で、かつ母数が下限以上のときに行う
+  判定の窓は Heartbeat の途絶の基準と同じ 30 秒とする。判定時刻の直前「基準＋窓」の間に Heartbeat を送ってきた、登録解除されていない観測ページ端末を母数とし、そのうち判定時刻に途絶している端末を途絶の数とする（ADR-0100）
   保留中でないときに保留の条件を満たしたら、保留を始める。保留の開始時刻は DB に全テナントで 1 つだけ持ち、`ListEdgeDevices` と観測サイクルの処理のたびに判定する
-  保留するのは、保留の開始時刻の直前「基準＋窓」の間に最後の Heartbeat を送り、判定時刻に途絶しているエッジ端末である。保留の開始より前に窓の外で途絶えていた端末は保留しない
-  保留には上限時間を置き、上限時間を超えても途絶が続くエッジ端末は通常どおり切断する。保留中に Heartbeat が戻ったエッジ端末は、切断も観測不能化も起きなかったものとして扱う
+   保留するのは、保留の開始時刻の直前「基準＋窓」の間に最後の Heartbeat を送り、判定時刻に途絶している観測ページ端末である。保留の開始より前に窓の外で途絶えていた端末は保留しない
+  保留には上限時間を置き、上限時間を超えても途絶が続く観測ページ端末は通常どおり切断する。保留中に Heartbeat が戻った観測ページ端末は、切断も観測不能化も起きなかったものとして扱う
   保留は、保留の開始から上限時間に達したとき、または母数が下限以上で途絶の割合が閾値未満になったときに終える。母数が下限未満になっただけでは終えない
   閾値、母数の下限、上限時間は本サービスの設定とし、既定値は閾値 0.8、母数の下限 10 台、上限時間 5 分とする
-  保留の開始時刻、終了時刻、開始時の途絶の数を DB に履歴として残し、削除しない。判定にはテナントを跨いで数えた件数だけを使い、エッジ端末の中身は読まない
+  保留の開始時刻、終了時刻、開始時の途絶の数を DB に履歴として残し、削除しない。判定にはテナントを跨いで数えた件数だけを使い、観測ページ端末の中身は読まない
   登録解除は `UnregisterEdgeDevice` による明示の操作であり、復帰しない（恒久的）。両者は `EdgeDevice.unregistered` で区別する
 - Flow へ渡す観測の信頼度（`confidence_flag`）は、計測の途絶から本サービスが決める（Flow Control）
   対象の合成に使う観測点がすべて今の窓で計測していれば OK とする。途絶えた観測点を含む対象は、最後の計測から 15 分までは HOLD、超えたら INVALID とする
@@ -403,15 +419,25 @@ message UpdateObservationSettingsResponse {
   HOLD の間は、途絶えた観測点の最後の値で合成し、占有量変化は欠測として渡す。HOLD の値は観測スナップショットに入れない
   途絶えた観測点を含むグラフ要素は、観測スナップショットとスタッフ向けの詳細状況（`GetEventOverview`）で欠測とする。直近有効値も、残りの観測点だけの部分和も出さない
   `GetEventOverview` では、欠測のグラフ要素を省かず、値の欄（ルートの流量を含む）をすべて未設定にしたスコアとして返す。スナップショットの履歴には保存せず、Flow へ渡す履歴と統計から除く
-- エッジ端末の稼働状態は本サービスが Heartbeat から判定し、`ListEdgeDevices` の `EdgeDevice.online` と `last_heartbeat_at` で返す
+- エッジ端末は種別を持つ。観測ページ端末は観測点を所有し、Heartbeat と `online` で稼働を判定する。カメラ端末は映像ソースで、観測点を所有せず、Heartbeat も `online` も持たない
+  カメラ端末の登録は観測点登録を兼ねない。`ObservationPointRegistered` を発行しない
+  カメラ端末は同一イベントの観測ページ端末が所有するカメラ方式の観測点1つに紐づける。同じ観測点に複数のカメラ端末を紐づけない。カメラ同士の紐づけと、QR 方式の観測点への紐づけは拒否する
+  1つの観測ページ端末に複数のカメラ端末を紐づけられる。推論デバイスは1つの `edge_device_id` で複数のカメラを処理する（ADR-0130）
+  カメラ端末の登録解除では、BFF が先に IdP へ端末の失効を記録し、成功してから Observation の登録解除を確定する。Observation の登録解除後、BFF は接続委任も失効させる。IdP に失効を記録できなければ登録解除を完了させない
+  RegisterEdgeDevice でカメラ端末を登録するときは、`observation_point_names` を空にし、紐づけ先のカメラ方式観測点1つを指定する。観測ページ端末の登録では、カメラの紐づけ先を指定しない。種別と紐づけ先の組み合わせが不正な場合は `invalid_argument` を返す。`kind` を省略した要求は観測ページ端末として扱う
+- 観測ページ端末の稼働状態は本サービスが Heartbeat から判定し、`ListEdgeDevices` の `EdgeDevice.online` と `last_heartbeat_at` で返す
   稼働中は、観測ページが WebRTC で待ち受けていることを表す（Edge Bridge Service）。観測ページは待ち受けている間だけ Heartbeat を送り、待ち受けをやめたら送らない
+  カメラ端末は Heartbeat を送らないため、`online` と `last_heartbeat_at` は値を持たない
+  カメラ端末に Heartbeat、ReportMeasurements、ListEdgeDeviceObservationPoints を送ると `failed_precondition` を返す。カメラ端末は観測点を持たない
   `online` の判定は切断の判定と同じ基準を使う。基準は Heartbeat の途絶30秒とし、観測ページは基準より短い10秒間隔で送る。基準の時間は本サービスの設定であり、呼び出し側に判定を複製させない
-  経路の障害の疑いで切断を保留している間も、`online` と `last_heartbeat_at` は Heartbeat の受信の事実どおりに返す。このため保留中は、`online` が false でも切断していないエッジ端末がありうる
+  経路の障害の疑いで切断を保留している間も、`online` と `last_heartbeat_at` は Heartbeat の受信の事実どおりに返す。このため保留中は、`online` が false でも切断していない観測ページ端末がありうる
 - 登録解除は論理削除であり、エッジ端末と配下観測点の識別子を保持する
   観測点を物理削除するとグラフ編集が持つ観測点とグラフ要素の対応の参照先が失われるため、識別子は残す
-  配下観測点は観測不能化（`enabled = false`）し、観測再開の対象から外す
+  観測ページ端末の配下観測点は観測不能化（`enabled = false`）し、観測再開の対象から外す
+  カメラ端末は観測点を持たないため、観測不能化は行わない。BFF が IdP のデバイス認可と接続委任を失効させる
 - 登録解除の取り消しは設けない。撤去した端末を再び使う場合は新規登録とし、グラフ紐づけをやり直す
   機材の入れ替えは登録解除を伴わない。新しい機材に同じ観測ページ URL を設定すれば同一のエッジ端末として続く
+  カメラ端末を登録解除した後に同じ機材を再び使う場合も、新規登録として新しい `edge_device_id` を発行する。登録解除を伴わない機材交換では、新しい機材に同じ `edge_device_id` を書き込み、Device Authorization をやり直す
   ただし、計測の水準が変わる機材の入れ替えとラインの増減では、観測点を登録し直す運用とする。本サービスはライン設定を持たず、同じ観測点のままではこれらの変化を検知できないため
 - 登録解除済みのエッジ端末の扱い: `ReportMeasurements`／`Heartbeat`／`ListEdgeDeviceObservationPoints` は `failed_precondition` を返す
   発行済みの観測ページ URL は無効となり、開いても計測値を送れない
@@ -424,11 +450,13 @@ message UpdateObservationSettingsResponse {
   ゲスト向けの行列数値は Line の案内ダイジェスト（`GuideQueuesResponse.guest_digest`）をそのまま `QueueStatus` へ写して publish し、QueueState の中身には依存しない
 - エッジ端末の認証・認可は IdP 発行トークン（`event_access`）による。観測ページはブラウザで動くが、BFF の背後の confidential client であり、OIDC の認証、Token Exchange、トークンの更新は BFF が行う
 - 観測ページは BFF を経由して Service Gateway を呼ぶ。外部トークンはブラウザへ渡さない（ADR-0087）
-- どの端末からの計測かは、観測ページの発行 URL に含まれる `edge_device_id` で示す
-  RegisterEdgeDevice 応答で端末ごとの固定 URL のパスを返す。管理 UI がテナントのサブドメイン名のホストを付けて固定 URL とし（ADR-0104）、現場ではこれをキオスクの起動 URL やブックマークに設定する
-  端末側のストレージに識別子を保持しない。ブラウザデータの消去・ITP によるストレージ削除・キオスクのクリーン起動で識別子を失わないための規約である
-  機材を入れ替える場合は、新しい機材に同じ URL を設定すれば同一のエッジ端末として続く
+- カメラ端末は Device Authorization Grant で `event_access` を得る。主体は承認したスタッフ、scope は `events.stream`、クレームに `edge_device_id` を持つ。カメラは BFF を挟まず Edge Bridge Service を呼ぶ（ADR-0127、ADR-0128）
+- 観測ページ端末からの計測は、観測ページの発行 URL に含まれる `edge_device_id` で示す
+  RegisterEdgeDevice 応答で観測ページ端末ごとの固定 URL のパスを返す。管理 UI がテナントのサブドメイン名のホストを付けて固定 URL とし（ADR-0104）、現場ではこれをキオスクの起動 URL やブックマークに設定する
+  観測ページ端末のブラウザは識別子を保持しない。ブラウザデータの消去・ITP によるストレージ削除・キオスクのクリーン起動で識別子を失わないための規約である
+  機材を入れ替える場合は、新しい機材に同じ URL を設定すれば同一の観測ページ端末として続く
   URL は秘密ではない。提示しても権限は生じず、計測値の送信には別途 `event_access` を要する
+  カメラ端末は観測ページ URL を持たない。初期設定で書き込んだ `edge_device_id` を不揮発領域に保持し、signaling のパスに使う。これは ADR-0038 の例外である（ADR-0126）
 - `edge_device_id` は URL に載るため、テナント・イベントと同じく公開 ID（ランダムな 16 文字 hex）とし、内部主キーを外へ出さない
 - 観測サイクル（スナップショット確定 → Flow／Line への要求）は計測値の到着を契機に実行する（ADR-0092）
   `ReportMeasurements` は計測値を受理して永続化した後、サイクルを待たずに応答する。成功応答は永続化を表し、観測サイクルの完了も成否も表さない
@@ -439,7 +467,7 @@ message UpdateObservationSettingsResponse {
   期限までに次の後段呼び出しを開始できないサイクルは、その時点で打ち切り、残りの呼び出しを行わない。開始済みの呼び出しは各 RPC の timeout に従って完了させる。打ち切ったサイクルの数を記録する
   `time_to_last_downstream_start_seconds` は入口から最後の後段呼び出しの開始までを計測し、入口 JWT の `exp` までの実時間予算と比較する
   `cycle_end_to_end_duration_seconds` は入口から後段呼び出しの完了までを計測し、30秒の配信 SLO と各 RPC の timeout に対する性能指標とする。JWT の TTL または `exp` をサイクル完了期限として扱わない（spec-base/nonfunctional.md）
-- エッジ端末由来（source=EDGE）の計測値は、テナント、`event_id`、`edge_device_id`、`observation_point_id`、`window_start` の組を一意とする（ADR-0090）。テナントは `event_access` から取る
+- 観測ページ端末由来（source=EDGE）の計測値は、テナント、`event_id`、`edge_device_id`、`observation_point_id`、`window_start` の組を一意とする（ADR-0090）。テナントは `event_access` から取る
   すでに受理した組の計測値を再び受けたときは、保存し直さず、二重に計上しない。先に受理した値を正とし、後から届いた値で上書きしない。値が異なる場合は記録を残す
   重複を含む要求も、要求全体としては成功とする。`accepted_count` はその要求で新たに受理した計測値の数とする。新たに受理した計測値が 1 件もない要求は、観測サイクルを起動しない
   観測ページは、送信に失敗したウィンドウの計測値を保持し、`window_start` と `window_end` を変えずに次の送信に含めて再送する。保持する量には上限を置き、上限を超えたら古いウィンドウから捨てる。上限の値は実装フェーズで確定する
