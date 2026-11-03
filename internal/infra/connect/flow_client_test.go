@@ -163,7 +163,7 @@ func TestFlowRequestLeavesOutScoresThatAreNotExhaustive(t *testing.T) {
 	}
 }
 
-func TestNewOptimizeRequestSendsEachElementsMeasurementWindowAsItsResolution(t *testing.T) {
+func TestNewOptimizeRequestSendsMeasurementWindowsLongerThanTheCycleAsTheResolution(t *testing.T) {
 	end := time.Unix(3600, 0)
 
 	request, err := newOptimizeRequest(application.OptimizeInput{
@@ -174,7 +174,7 @@ func TestNewOptimizeRequestSendsEachElementsMeasurementWindowAsItsResolution(t *
 		Snapshot: domain.Snapshot{
 			WindowStart: end.Add(-time.Minute),
 			WindowEnd:   end,
-			Resolutions: map[domain.GraphAnchor]time.Duration{{RouteID: "r1"}: 30 * time.Second, {PointID: "p1"}: 10 * time.Second},
+			Resolutions: map[domain.GraphAnchor]time.Duration{{RouteID: "r1"}: 2 * time.Minute, {PointID: "p1"}: 10 * time.Second},
 		},
 	})
 	if err != nil {
@@ -190,9 +190,10 @@ func TestNewOptimizeRequestSendsEachElementsMeasurementWindowAsItsResolution(t *
 		got["edge:"+edge.GetEdgeId()] = edge.GetTimeResolutionS()
 	}
 
-	want := map[string]int32{"node:p1": 10, "node:p2": 60, "edge:r1": 30, "edge:r2": 60}
+	want := map[string]int32{"node:p1": 60, "node:p2": 60, "edge:r1": 120, "edge:r2": 60}
 	if !maps.Equal(got, want) {
-		t.Errorf("time_resolution_s = %v, want %v, with the cycle window for elements without a measurement", got, want)
+		t.Errorf("time_resolution_s = %v, want %v, never shorter than the 60s cycle that spaces the samples flow-control sees",
+			got, want)
 	}
 }
 

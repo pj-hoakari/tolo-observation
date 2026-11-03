@@ -1,7 +1,6 @@
 package connect
 
 import (
-	"cmp"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -92,7 +91,7 @@ func (c *FlowControlClient) Optimize(
 func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeRequest, error) {
 	snapshot := input.Snapshot
 	resolution := func(anchor domain.GraphAnchor) *int32 {
-		return proto.Int32(int32(cmp.Or(snapshot.Resolutions[anchor], snapshot.WindowEnd.Sub(snapshot.WindowStart)).Seconds()))
+		return proto.Int32(int32(max(snapshot.Resolutions[anchor], snapshot.WindowEnd.Sub(snapshot.WindowStart)).Seconds()))
 	}
 
 	detectionState := new(flowv1.DetectionState)
