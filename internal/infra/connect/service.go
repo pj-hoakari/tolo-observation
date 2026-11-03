@@ -300,11 +300,18 @@ func (s *StatusQueryService) GetEventOverview(
 		return nil, clientError(ctx, err)
 	}
 
+	elementStates, warnings, err := newProtoFlowDiagnostics(overview.Diagnostics)
+	if err != nil {
+		return nil, clientError(ctx, err)
+	}
+
 	return &observationv1.GetEventOverviewResponse{
 		Overview: &observationv1.EventOverview{
-			Snapshot:    newProtoSnapshot(overview.Snapshot),
-			Risks:       nil,
-			DangerFlags: nil,
+			Snapshot:          newProtoSnapshot(overview.Snapshot),
+			Risks:             nil,
+			DangerFlags:       nil,
+			FlowElementStates: elementStates,
+			FlowWarnings:      warnings,
 		},
 	}, nil
 }
