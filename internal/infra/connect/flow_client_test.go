@@ -55,6 +55,24 @@ func TestNewOptimizeRequestSendsShortFallbackEta(t *testing.T) {
 	}
 }
 
+func TestNewOptimizeRequestReadsDetectionStateSavedBeforeDemandExcessWasRemoved(t *testing.T) {
+	saved := []byte(`{"cooldownUntil":"2026-11-03T00:00:00Z","arcDemandDigest":{"entries":[{"edgeId":"r1","demand":3}]},` +
+		`"arcWatchStates":[{"edgeId":"r1","surgeBreached":true,"demandExcessBreached":true,"demandWatchSince":"2026-11-03T00:00:00Z"}]}`)
+
+	request, err := newOptimizeRequest(application.OptimizeInput{
+		Previous: &domain.OptimizationOutcome{DetectionState: saved},
+	})
+	if err != nil {
+		t.Fatalf("newOptimizeRequest() error = %v", err)
+	}
+
+	state := request.GetDetectionState()
+	if !state.GetCooldownUntil().AsTime().Equal(time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)) ||
+		len(state.GetArcWatchStates()) != 1 || !state.GetArcWatchStates()[0].GetSurgeBreached() {
+		t.Errorf("detection state = %v, want the cooldown and the surge watch kept", state)
+	}
+}
+
 func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 	people := 4.0
 	stagnation := 3.0
