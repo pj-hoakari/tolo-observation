@@ -332,3 +332,64 @@ func TestPostgresSnapshotRepositoryDecodesSnapshotsWithoutMissingAnchors(t *test
 		t.Errorf("LatestSnapshot = %+v, want p1 and no missing anchors", got)
 	}
 }
+
+func TestPostgresSnapshotRepositorySummarizesFlowP90AndFreeFlowDwellWithinTheMiddleFlowBand(t *testing.T) {
+	repo := NewPostgresSnapshotRepository(testDB)
+	since := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
+
+	dwell := func(flow int) float64 {
+		switch {
+		case flow >= 5 && flow <= 10:
+			return 0.5
+		case flow >= 11 && flow <= 15:
+			return 1
+		default:
+			return 3
+		}
+	}
+
+	for flow := 0; flow <= 20; flow++ {
+		windowEnd := since.Add(time.Duration(flow+1) * 15 * time.Minute)
+		stagnation := 4.0
+
+		if flow > 0 {
+			stagnation = float64(flow) * dwell(flow)
+		}
+
+		err := repo.SaveSnapshot(context.Background(), "tenant-arc", domain.Snapshot{
+			ID:          fmt.Sprintf("event-arc-dwell-%d", flow),
+			EventID:     "event-arc-dwell",
+			WindowStart: windowEnd.Add(-time.Minute),
+			WindowEnd:   windowEnd,
+			RouteScores: []domain.RouteScore{{
+				RouteID: "r1", Forward: float64(flow), Backward: 0, StagnationScore: new(stagnation), Exhaustive: true,
+			}},
+		})
+		if err != nil {
+			t.Fatalf("SaveSnapshot: %v", err)
+		}
+	}
+
+	got, err := repo.SummarizeArcHistory(context.Background(), "event-arc-dwell", since)
+	if err != nil {
+		t.Fatalf("SummarizeArcHistory: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("SummarizeArcHistory = %+v, want one route", got)
+	}
+
+	summary := got[0].FlowDwell
+	if math.Abs(summary.FlowP90-18) > 0.18 || summary.Span != 5*time.Hour+time.Minute {
+		t.Errorf("flow dwell = %+v, want flow p90 18 over a 5h1m span", summary)
+	}
+
+	if summary.FreeFlowDwellMin == nil {
+		t.Fatal("free flow dwell = nil, want 0.5")
+	}
+
+	if math.Abs(*summary.FreeFlowDwellMin-0.5) > 0.005 {
+		t.Errorf("free flow dwell = %v, want 0.5, the median dwell of the windows whose flow is between p25 5 and p75 15",
+			*summary.FreeFlowDwellMin)
+	}
+}

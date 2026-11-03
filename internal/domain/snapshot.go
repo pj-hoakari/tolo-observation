@@ -94,6 +94,7 @@ type Snapshot struct {
 	PointScores []PointScore
 	RouteScores []RouteScore
 	Missing     MissingAnchors
+	Resolutions map[GraphAnchor]time.Duration
 }
 
 type MissingAnchors struct {
@@ -110,6 +111,13 @@ type ArcHistory struct {
 	LastEnd        time.Time
 	Flow           FlowRegression
 	SameSensorFlow FlowRegression
+	FlowDwell      FlowDwellSummary
+}
+
+type FlowDwellSummary struct {
+	FlowP90          float64
+	FreeFlowDwellMin *float64
+	Span             time.Duration
 }
 
 type FlowRegression struct {
@@ -190,6 +198,7 @@ type anchorScore struct {
 	detected   *float64
 	sensors    []ObservationPointID
 	qr         bool
+	resolution time.Duration
 }
 
 func NewSnapshot(
@@ -252,13 +261,18 @@ func NewSnapshot(
 
 		score, ok := anchors[mapping.Anchor]
 		if !ok {
-			score = &anchorScore{confidence: confidenceOK, rateIn: 0, rateOut: 0, detected: nil, sensors: nil, qr: false}
+			score = &anchorScore{
+				confidence: confidenceOK, rateIn: 0, rateOut: 0, detected: nil, sensors: nil, qr: false, resolution: 0,
+			}
 			anchors[mapping.Anchor] = score
 		}
 
 		score.sensors = append(score.sensors, mapping.ObservationPointID)
 
 		current, ok := readings[mapping.ObservationPointID]
+		if ok {
+			score.resolution = max(score.resolution, current.latest.WindowEnd.Sub(current.latest.WindowStart))
+		}
 
 		if mapping.Method == MeasurementMethodQR {
 			score.qr = true
@@ -299,6 +313,7 @@ func NewSnapshot(
 		PointScores: nil,
 		RouteScores: nil,
 		Missing:     MissingAnchors{PointIDs: nil, RouteIDs: nil},
+		Resolutions: map[GraphAnchor]time.Duration{},
 	}
 
 	var (
@@ -308,6 +323,10 @@ func NewSnapshot(
 
 	for _, anchor := range slices.SortedFunc(maps.Keys(anchors), compareAnchors) {
 		score := anchors[anchor]
+
+		if score.resolution > 0 {
+			snapshot.Resolutions[anchor] = score.resolution
+		}
 
 		switch {
 		case anchor.RouteID != "" && score.confidence == confidenceInvalid:
