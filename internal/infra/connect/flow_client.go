@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -90,7 +91,9 @@ func (c *FlowControlClient) Optimize(
 
 func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeRequest, error) {
 	snapshot := input.Snapshot
-	resolution := int32(snapshot.WindowEnd.Sub(snapshot.WindowStart).Seconds())
+	resolution := func(anchor domain.GraphAnchor) *int32 {
+		return proto.Int32(int32(cmp.Or(snapshot.Resolutions[anchor], snapshot.WindowEnd.Sub(snapshot.WindowStart)).Seconds()))
+	}
 
 	detectionState := new(flowv1.DetectionState)
 
@@ -142,7 +145,7 @@ func flowEventTerm(eventType domain.EventType) flowv1.EventTerm {
 	return flowv1.EventTerm_EVENT_TERM_SHORT
 }
 
-func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]bool, map[string]bool) {
+func flowGraph(graph domain.Graph, resolution func(domain.GraphAnchor) *int32) (*flowv1.Graph, map[string]bool, map[string]bool) {
 	nodes := make([]*flowv1.Node, 0, len(graph.Points))
 	nodeIDs := make(map[string]bool, len(graph.Points))
 
@@ -153,7 +156,7 @@ func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]
 			Kind:            flowNodeKind(point.Type).Enum(),
 			Enabled:         proto.Bool(true),
 			AttributeTags:   nil,
-			TimeResolutionS: proto.Int32(resolution),
+			TimeResolutionS: resolution(domain.GraphAnchor{PointID: point.ID, RouteID: ""}),
 			DangerFlag:      proto.Bool(false),
 			DangerCapacity:  nil,
 			Boundary:        flowBoundary(point.Boundary),
@@ -182,7 +185,7 @@ func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]
 			Enabled:             proto.Bool(true),
 			ObservationType:     flowv1.ObservationType_OBSERVATION_TYPE_VECTOR.Enum(),
 			AttributeTags:       nil,
-			TimeResolutionS:     proto.Int32(resolution),
+			TimeResolutionS:     resolution(domain.GraphAnchor{PointID: "", RouteID: route.ID}),
 			DangerFlag:          proto.Bool(false),
 			DangerFlowCapacity:  nil,
 			CapacityHint:        route.CapacityHint,
@@ -361,6 +364,7 @@ func flowHistoryDigest(
 ) *flowv1.HistoryDigest {
 	series := map[string]*flowv1.ArcWindowSeries{}
 	digest := new(flowv1.HistoryDigest)
+	established := 0
 
 	for _, arc := range arcHistory {
 		if !edgeIDs[arc.RouteID] {
@@ -378,6 +382,11 @@ func flowHistoryDigest(
 			FreeFlowDwellMin:   nil,
 		}
 
+		if arc.FlowDwell.Span >= minArcHistorySpan {
+			stat.FlowP90 = proto.Float64(arc.FlowDwell.FlowP90)
+			stat.FreeFlowDwellMin = arc.FlowDwell.FreeFlowDwellMin
+		}
+
 		if span >= minArcHistorySpan {
 			stat.P90Stagnation = proto.Float64(arc.P90Stagnation)
 			stat.BaselineStagnation = proto.Float64(arc.MeanStagnation)
@@ -388,6 +397,14 @@ func flowHistoryDigest(
 		}
 
 		digest.ArcStats = append(digest.ArcStats, stat)
+
+		if stat.P90Stagnation != nil {
+			established++
+		}
+	}
+
+	if len(edgeIDs) > 0 {
+		digest.Completeness = float64(established) / float64(len(edgeIDs))
 	}
 
 	for _, snapshot := range history {

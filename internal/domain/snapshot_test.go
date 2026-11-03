@@ -470,3 +470,57 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 		t.Errorf("sensor sets = %v, want %v", sensed, wantSensed)
 	}
 }
+
+func TestNewSnapshotRecordsTheLongestLatestMeasurementWindowOfEachAnchor(t *testing.T) {
+	t.Parallel()
+
+	end := time.Date(2026, time.October, 3, 10, 0, 0, 0, time.UTC)
+
+	measurement := func(pointID string, start, stop time.Duration) domain.Measurement {
+		m, err := domain.NewMeasurement(pointID, end.Add(-start), end.Add(-stop), 1, 1, new(1.0))
+		if err != nil {
+			t.Fatalf("NewMeasurement: %v", err)
+		}
+
+		return m
+	}
+
+	const (
+		routeShort = "00000000000000a1"
+		routeLong  = "00000000000000a2"
+		nodePoint  = "00000000000000b1"
+		silent     = "00000000000000c1"
+	)
+
+	measurements := []domain.Measurement{
+		measurement(routeShort, 2*time.Minute, time.Minute),
+		measurement(routeShort, time.Minute, 40*time.Second),
+		measurement(routeLong, 30*time.Second, 0),
+		measurement(nodePoint, 10*time.Second, 0),
+	}
+
+	mappings := []domain.ObservationPointMapping{
+		{ObservationPointID: routeShort, Anchor: domain.GraphAnchor{RouteID: "r1"}},
+		{ObservationPointID: routeLong, Anchor: domain.GraphAnchor{RouteID: "r1"}},
+		{ObservationPointID: nodePoint, Anchor: domain.GraphAnchor{PointID: "p1"}},
+		{ObservationPointID: silent, Anchor: domain.GraphAnchor{RouteID: "r2"}},
+	}
+
+	active := domain.ObservationPointActive
+	states := map[domain.ObservationPointID]domain.ObservationPointState{
+		routeShort: active, routeLong: active, nodePoint: active, silent: active,
+	}
+
+	snapshot, _, _, err := domain.NewSnapshot("event", end.Add(-time.Minute), end, measurements, mappings, states)
+	if err != nil {
+		t.Fatalf("NewSnapshot: %v", err)
+	}
+
+	want := map[domain.GraphAnchor]time.Duration{
+		{RouteID: "r1"}: 30 * time.Second,
+		{PointID: "p1"}: 10 * time.Second,
+	}
+	if !maps.Equal(snapshot.Resolutions, want) {
+		t.Errorf("resolutions = %v, want %v", snapshot.Resolutions, want)
+	}
+}

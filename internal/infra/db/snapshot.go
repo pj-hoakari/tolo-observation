@@ -117,6 +117,21 @@ func (r *PostgresSnapshotRepository) SaveSnapshot(
 			if err != nil {
 				return fmt.Errorf("upsert arc stagnation: %w", err)
 			}
+
+			_, err = executor.ExecContext(ctx, `
+				INSERT INTO arc_flow_dwell_hourly AS h (
+					event_id, hour_start, route_id, flow_bucket, dwell_bucket, sample_count, first_start, last_end)
+				VALUES ($1, date_trunc('hour', $2::timestamptz, 'UTC'), $3, arc_stagnation_bucket($5::float8),
+					CASE WHEN $5::float8 > 0 THEN arc_stagnation_bucket($4::float8 / $5::float8) END, 1, $2, $6)
+				ON CONFLICT (event_id, hour_start, route_id, flow_bucket, dwell_bucket) DO UPDATE
+				SET sample_count = h.sample_count + 1,
+					first_start = LEAST(h.first_start, EXCLUDED.first_start),
+					last_end = GREATEST(h.last_end, EXCLUDED.last_end)`,
+				snapshot.EventID, snapshot.WindowStart, score.RouteID, *score.StagnationScore,
+				score.Forward+score.Backward, snapshot.WindowEnd)
+			if err != nil {
+				return fmt.Errorf("upsert arc flow dwell: %w", err)
+			}
 		}
 
 		return nil
@@ -244,6 +259,11 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 		return nil, fmt.Errorf("summarize arc history: %w", err)
 	}
 
+	flowDwell, err := r.summarizeArcFlowDwell(ctx, eventID, since)
+	if err != nil {
+		return nil, err
+	}
+
 	histories := make([]domain.ArcHistory, 0, len(rows))
 	for _, row := range rows {
 		histories = append(histories, domain.ArcHistory{
@@ -267,10 +287,92 @@ func (r *PostgresSnapshotRepository) SummarizeArcHistory(
 				FlowSquareSum:     row.SameSensorFlowSquareSum,
 				FlowStagnationSum: row.SameSensorFlowStagnationSum,
 			},
+			FlowDwell: flowDwell[row.RouteID],
 		})
 	}
 
 	return histories, nil
+}
+
+type arcFlowDwellRow struct {
+	RouteID          string          `db:"route_id"`
+	FlowP90          float64         `db:"flow_p90"`
+	FreeFlowDwellMin sql.NullFloat64 `db:"free_flow_dwell_min"`
+	FirstStart       time.Time       `db:"first_start"`
+	LastEnd          time.Time       `db:"last_end"`
+}
+
+func (r *PostgresSnapshotRepository) summarizeArcFlowDwell(
+	ctx context.Context,
+	eventID string,
+	since time.Time,
+) (map[string]domain.FlowDwellSummary, error) {
+	var rows []arcFlowDwellRow
+
+	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `
+		WITH cells AS (
+			SELECT h.route_id, h.flow_bucket, h.dwell_bucket,
+				sum(h.sample_count) AS n,
+				min(h.first_start) AS first_start,
+				max(h.last_end) AS last_end
+			FROM arc_flow_dwell_hourly h
+			LEFT JOIN anchor_sensor_sets s ON s.event_id = h.event_id AND s.route_id = h.route_id
+			WHERE h.event_id = $1 AND h.hour_start >= $2 AND (s.changed_at IS NULL OR h.first_start >= s.changed_at)
+			GROUP BY h.route_id, h.flow_bucket, h.dwell_bucket
+		), flows AS (
+			SELECT route_id, flow_bucket,
+				sum(sum(n)) OVER (PARTITION BY route_id ORDER BY flow_bucket) AS cumulative,
+				sum(sum(n)) OVER (PARTITION BY route_id) AS total
+			FROM cells
+			GROUP BY route_id, flow_bucket
+		), quantiles AS (
+			SELECT route_id,
+				min(flow_bucket) FILTER (WHERE cumulative >= 0.25 * total) AS p25,
+				min(flow_bucket) FILTER (WHERE cumulative >= 0.75 * total) AS p75,
+				min(flow_bucket) FILTER (WHERE cumulative >= 0.9 * total) AS p90
+			FROM flows
+			GROUP BY route_id
+		), band AS (
+			SELECT c.route_id, c.dwell_bucket,
+				sum(sum(c.n)) OVER (PARTITION BY c.route_id ORDER BY c.dwell_bucket) AS cumulative,
+				sum(sum(c.n)) OVER (PARTITION BY c.route_id) AS total
+			FROM cells c
+			JOIN quantiles q ON q.route_id = c.route_id
+			WHERE c.dwell_bucket IS NOT NULL AND c.flow_bucket BETWEEN q.p25 AND q.p75
+			GROUP BY c.route_id, c.dwell_bucket
+		), dwell AS (
+			SELECT route_id, min(dwell_bucket) FILTER (WHERE cumulative >= 0.5 * total) AS free_flow_dwell_min
+			FROM band
+			GROUP BY route_id
+		), spans AS (
+			SELECT route_id, min(first_start) AS first_start, max(last_end) AS last_end
+			FROM cells
+			GROUP BY route_id
+		)
+		SELECT q.route_id, q.p90 AS flow_p90, d.free_flow_dwell_min, s.first_start, s.last_end
+		FROM quantiles q
+		JOIN spans s ON s.route_id = q.route_id
+		LEFT JOIN dwell d ON d.route_id = q.route_id`, eventID, since)
+	if err != nil {
+		return nil, fmt.Errorf("summarize arc flow dwell: %w", err)
+	}
+
+	summaries := make(map[string]domain.FlowDwellSummary, len(rows))
+	for _, row := range rows {
+		summary := domain.FlowDwellSummary{
+			FlowP90:          row.FlowP90,
+			FreeFlowDwellMin: nil,
+			Span:             row.LastEnd.Sub(row.FirstStart),
+		}
+
+		if row.FreeFlowDwellMin.Valid {
+			summary.FreeFlowDwellMin = &row.FreeFlowDwellMin.Float64
+		}
+
+		summaries[row.RouteID] = summary
+	}
+
+	return summaries, nil
 }
 
 func (r *PostgresSnapshotRepository) EarliestSnapshotStart(ctx context.Context, eventID string) (time.Time, error) {
@@ -303,6 +405,7 @@ func (row snapshotRow) snapshot() (domain.Snapshot, error) {
 		PointScores: make([]domain.PointScore, 0, len(scores.Points)),
 		RouteScores: make([]domain.RouteScore, 0, len(scores.Routes)),
 		Missing:     domain.MissingAnchors(scores.Missing),
+		Resolutions: nil,
 	}
 
 	for _, score := range scores.Points {
