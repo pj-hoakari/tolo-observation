@@ -147,7 +147,7 @@ message RiskLocation {
 
 enum RiskKind {
   RISK_KIND_UNSPECIFIED = 0;
-  RISK_KIND_PUNCTURE = 1;         // パンク（容量ヒント持ちスカラールートが容量到達）
+  RISK_KIND_PUNCTURE = 1;         // パンク（流量が自己 P90 以上で、平均滞在時間が自由流のときの一定倍以上。ADR-0131）
   RISK_KIND_HIGH_STAGNATION = 2;  // 高停滞（履歴パーセンタイル以上かつ上昇幅一定以上）
 }
 
