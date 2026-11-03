@@ -20,6 +20,8 @@ import (
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
+var previousStateOptions = protojson.UnmarshalOptions{DiscardUnknown: true}
+
 const (
 	flowRequestSchemaVersion = "request/1"
 	minArcHistorySpan        = 4 * time.Hour
@@ -95,13 +97,13 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 	var previousResult *flowv1.OptimizationResult
 
 	if input.Previous != nil {
-		if err := protojson.Unmarshal(input.Previous.DetectionState, detectionState); err != nil {
+		if err := previousStateOptions.Unmarshal(input.Previous.DetectionState, detectionState); err != nil {
 			return nil, fmt.Errorf("decode previous detection state: %w", err)
 		}
 
 		if input.Previous.OptimizationResult != nil {
 			previousResult = new(flowv1.OptimizationResult)
-			if err := protojson.Unmarshal(input.Previous.OptimizationResult, previousResult); err != nil {
+			if err := previousStateOptions.Unmarshal(input.Previous.OptimizationResult, previousResult); err != nil {
 				return nil, fmt.Errorf("decode previous optimization result: %w", err)
 			}
 		}
@@ -182,7 +184,7 @@ func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]
 			AttributeTags:       nil,
 			TimeResolutionS:     proto.Int32(resolution),
 			DangerFlag:          proto.Bool(false),
-			DangerCapacity:      nil,
+			DangerFlowCapacity:  nil,
 			CapacityHint:        route.CapacityHint,
 		})
 	}
@@ -372,6 +374,8 @@ func flowHistoryDigest(
 			BaselineStagnation: nil,
 			FlowSensitivityEta: nil,
 			AvailableSpanHours: proto.Float64(span.Hours()),
+			FlowP90:            nil,
+			FreeFlowDwellMin:   nil,
 		}
 
 		if span >= minArcHistorySpan {
@@ -422,7 +426,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		SurgeRateThresholdPercentPerMin: proto.Float64(10),
 		HighStagnationDurationMin:       proto.Float64(5),
 		Beta:                            proto.Float64(1),
-		ThetaDemand:                     nil,
 		MinWindowSamples:                proto.Int32(5),
 		CooldownDurationMin:             proto.Float64(60),
 		WarmupDurationMin:               proto.Float64(60),
@@ -439,7 +442,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		RestrictionProposalEnabled:      proto.Bool(false),
 		TauDangerThreshold:              nil,
 		PunctureTriggerEnabled:          proto.Bool(false),
-		PunctureRatioThreshold:          proto.Float64(1),
 		ForecastingBudgetSec:            proto.Float64(30),
 		DetourBudgetSec:                 proto.Float64(30),
 		LightweightOptBudgetSec:         proto.Float64(120),
@@ -449,7 +451,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		Epsilon:                         proto.Float64(1e-3),
 		Epsilon_0:                       proto.Float64(1e-6),
 		BigMFactor:                      proto.Float64(1),
-		DeltaMin:                        proto.Float64(0.5),
 		ConfidenceWeightFloor:           proto.Float64(0.5),
 		MipRelGap:                       proto.Float64(0),
 		GravityAlpha:                    proto.Float64(1),
@@ -460,7 +461,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		MinReferenceSampleCount:         proto.Int32(5),
 		KShortestPaths:                  proto.Int32(3),
 		FallbackEta:                     proto.Float64(0.25),
-		FallbackBaselineStagnation:      proto.Float64(1),
 		ScalarDirectionEnabled:          proto.Bool(false),
 		KShortestPathsAuto:              proto.Bool(false),
 		KShortestPathsMax:               proto.Int32(3),
@@ -481,5 +481,9 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		MilpBoundaryControlEnabled:      proto.Bool(false),
 		ScheduledInflowPriorEnabled:     proto.Bool(false),
 		LogTenantId:                     proto.Bool(false),
+		DeltaMinFraction:                proto.Float64(0.01),
+		StaleObservationResolutions:     proto.Float64(2),
+		StaleObservationFloorS:          proto.Float64(60),
+		PunctureDwellRatioThreshold:     proto.Float64(1.5),
 	}
 }

@@ -1175,8 +1175,7 @@ const (
 	WarningCode_WARNING_CODE_MANY_TRIGGER_ZONES          WarningCode = 9
 	WarningCode_WARNING_CODE_LOW_CONFIDENCE_PROPOSAL     WarningCode = 10
 	WarningCode_WARNING_CODE_INSUFFICIENT_WINDOW_SAMPLES WarningCode = 11
-	WarningCode_WARNING_CODE_SURGE_PROXY_FALLBACK        WarningCode = 12
-	WarningCode_WARNING_CODE_DEGRADED_COMBINED_TRIGGER   WarningCode = 13
+	WarningCode_WARNING_CODE_PARTIAL_COMBINED_TRIGGER    WarningCode = 14
 )
 
 // Enum value maps for WarningCode.
@@ -1194,8 +1193,7 @@ var (
 		9:  "WARNING_CODE_MANY_TRIGGER_ZONES",
 		10: "WARNING_CODE_LOW_CONFIDENCE_PROPOSAL",
 		11: "WARNING_CODE_INSUFFICIENT_WINDOW_SAMPLES",
-		12: "WARNING_CODE_SURGE_PROXY_FALLBACK",
-		13: "WARNING_CODE_DEGRADED_COMBINED_TRIGGER",
+		14: "WARNING_CODE_PARTIAL_COMBINED_TRIGGER",
 	}
 	WarningCode_value = map[string]int32{
 		"WARNING_CODE_UNSPECIFIED":                 0,
@@ -1210,8 +1208,7 @@ var (
 		"WARNING_CODE_MANY_TRIGGER_ZONES":          9,
 		"WARNING_CODE_LOW_CONFIDENCE_PROPOSAL":     10,
 		"WARNING_CODE_INSUFFICIENT_WINDOW_SAMPLES": 11,
-		"WARNING_CODE_SURGE_PROXY_FALLBACK":        12,
-		"WARNING_CODE_DEGRADED_COMBINED_TRIGGER":   13,
+		"WARNING_CODE_PARTIAL_COMBINED_TRIGGER":    14,
 	}
 )
 
@@ -1388,6 +1385,174 @@ func (FallbackKind) EnumDescriptor() ([]byte, []int) {
 	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{23}
 }
 
+type ObservationState int32
+
+const (
+	ObservationState_OBSERVATION_STATE_UNSPECIFIED ObservationState = 0
+	ObservationState_OBSERVATION_STATE_UNOBSERVED  ObservationState = 1
+	ObservationState_OBSERVATION_STATE_INVALID     ObservationState = 2
+	ObservationState_OBSERVATION_STATE_HOLD        ObservationState = 3
+	ObservationState_OBSERVATION_STATE_STALE       ObservationState = 4
+	ObservationState_OBSERVATION_STATE_OK          ObservationState = 5
+)
+
+// Enum value maps for ObservationState.
+var (
+	ObservationState_name = map[int32]string{
+		0: "OBSERVATION_STATE_UNSPECIFIED",
+		1: "OBSERVATION_STATE_UNOBSERVED",
+		2: "OBSERVATION_STATE_INVALID",
+		3: "OBSERVATION_STATE_HOLD",
+		4: "OBSERVATION_STATE_STALE",
+		5: "OBSERVATION_STATE_OK",
+	}
+	ObservationState_value = map[string]int32{
+		"OBSERVATION_STATE_UNSPECIFIED": 0,
+		"OBSERVATION_STATE_UNOBSERVED":  1,
+		"OBSERVATION_STATE_INVALID":     2,
+		"OBSERVATION_STATE_HOLD":        3,
+		"OBSERVATION_STATE_STALE":       4,
+		"OBSERVATION_STATE_OK":          5,
+	}
+)
+
+func (x ObservationState) Enum() *ObservationState {
+	p := new(ObservationState)
+	*p = x
+	return p
+}
+
+func (x ObservationState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ObservationState) Descriptor() protoreflect.EnumDescriptor {
+	return file_tolo_flow_v1_flow_proto_enumTypes[24].Descriptor()
+}
+
+func (ObservationState) Type() protoreflect.EnumType {
+	return &file_tolo_flow_v1_flow_proto_enumTypes[24]
+}
+
+func (x ObservationState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ObservationState.Descriptor instead.
+func (ObservationState) EnumDescriptor() ([]byte, []int) {
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{24}
+}
+
+type HistoryTier int32
+
+const (
+	HistoryTier_HISTORY_TIER_UNSPECIFIED HistoryTier = 0
+	HistoryTier_HISTORY_TIER_NONE        HistoryTier = 1
+	HistoryTier_HISTORY_TIER_WINDOW_ONLY HistoryTier = 2
+	HistoryTier_HISTORY_TIER_SHORT       HistoryTier = 3
+	HistoryTier_HISTORY_TIER_ESTABLISHED HistoryTier = 4
+)
+
+// Enum value maps for HistoryTier.
+var (
+	HistoryTier_name = map[int32]string{
+		0: "HISTORY_TIER_UNSPECIFIED",
+		1: "HISTORY_TIER_NONE",
+		2: "HISTORY_TIER_WINDOW_ONLY",
+		3: "HISTORY_TIER_SHORT",
+		4: "HISTORY_TIER_ESTABLISHED",
+	}
+	HistoryTier_value = map[string]int32{
+		"HISTORY_TIER_UNSPECIFIED": 0,
+		"HISTORY_TIER_NONE":        1,
+		"HISTORY_TIER_WINDOW_ONLY": 2,
+		"HISTORY_TIER_SHORT":       3,
+		"HISTORY_TIER_ESTABLISHED": 4,
+	}
+)
+
+func (x HistoryTier) Enum() *HistoryTier {
+	p := new(HistoryTier)
+	*p = x
+	return p
+}
+
+func (x HistoryTier) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (HistoryTier) Descriptor() protoreflect.EnumDescriptor {
+	return file_tolo_flow_v1_flow_proto_enumTypes[25].Descriptor()
+}
+
+func (HistoryTier) Type() protoreflect.EnumType {
+	return &file_tolo_flow_v1_flow_proto_enumTypes[25]
+}
+
+func (x HistoryTier) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use HistoryTier.Descriptor instead.
+func (HistoryTier) EnumDescriptor() ([]byte, []int) {
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{25}
+}
+
+type Judgement int32
+
+const (
+	Judgement_JUDGEMENT_UNSPECIFIED     Judgement = 0
+	Judgement_JUDGEMENT_SURGE           Judgement = 1
+	Judgement_JUDGEMENT_HIGH_STAGNATION Judgement = 2
+	Judgement_JUDGEMENT_COMBINED        Judgement = 3
+	Judgement_JUDGEMENT_PUNCTURE        Judgement = 4
+)
+
+// Enum value maps for Judgement.
+var (
+	Judgement_name = map[int32]string{
+		0: "JUDGEMENT_UNSPECIFIED",
+		1: "JUDGEMENT_SURGE",
+		2: "JUDGEMENT_HIGH_STAGNATION",
+		3: "JUDGEMENT_COMBINED",
+		4: "JUDGEMENT_PUNCTURE",
+	}
+	Judgement_value = map[string]int32{
+		"JUDGEMENT_UNSPECIFIED":     0,
+		"JUDGEMENT_SURGE":           1,
+		"JUDGEMENT_HIGH_STAGNATION": 2,
+		"JUDGEMENT_COMBINED":        3,
+		"JUDGEMENT_PUNCTURE":        4,
+	}
+)
+
+func (x Judgement) Enum() *Judgement {
+	p := new(Judgement)
+	*p = x
+	return p
+}
+
+func (x Judgement) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Judgement) Descriptor() protoreflect.EnumDescriptor {
+	return file_tolo_flow_v1_flow_proto_enumTypes[26].Descriptor()
+}
+
+func (Judgement) Type() protoreflect.EnumType {
+	return &file_tolo_flow_v1_flow_proto_enumTypes[26]
+}
+
+func (x Judgement) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Judgement.Descriptor instead.
+func (Judgement) EnumDescriptor() ([]byte, []int) {
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{26}
+}
+
 type StepKind int32
 
 const (
@@ -1439,11 +1604,11 @@ func (x StepKind) String() string {
 }
 
 func (StepKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_flow_v1_flow_proto_enumTypes[24].Descriptor()
+	return file_tolo_flow_v1_flow_proto_enumTypes[27].Descriptor()
 }
 
 func (StepKind) Type() protoreflect.EnumType {
-	return &file_tolo_flow_v1_flow_proto_enumTypes[24]
+	return &file_tolo_flow_v1_flow_proto_enumTypes[27]
 }
 
 func (x StepKind) Number() protoreflect.EnumNumber {
@@ -1452,7 +1617,7 @@ func (x StepKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use StepKind.Descriptor instead.
 func (StepKind) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{24}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{27}
 }
 
 type StepStatus int32
@@ -1491,11 +1656,11 @@ func (x StepStatus) String() string {
 }
 
 func (StepStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_flow_v1_flow_proto_enumTypes[25].Descriptor()
+	return file_tolo_flow_v1_flow_proto_enumTypes[28].Descriptor()
 }
 
 func (StepStatus) Type() protoreflect.EnumType {
-	return &file_tolo_flow_v1_flow_proto_enumTypes[25]
+	return &file_tolo_flow_v1_flow_proto_enumTypes[28]
 }
 
 func (x StepStatus) Number() protoreflect.EnumNumber {
@@ -1504,7 +1669,7 @@ func (x StepStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use StepStatus.Descriptor instead.
 func (StepStatus) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{25}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{28}
 }
 
 type ODResolutionMode int32
@@ -1543,11 +1708,11 @@ func (x ODResolutionMode) String() string {
 }
 
 func (ODResolutionMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_flow_v1_flow_proto_enumTypes[26].Descriptor()
+	return file_tolo_flow_v1_flow_proto_enumTypes[29].Descriptor()
 }
 
 func (ODResolutionMode) Type() protoreflect.EnumType {
-	return &file_tolo_flow_v1_flow_proto_enumTypes[26]
+	return &file_tolo_flow_v1_flow_proto_enumTypes[29]
 }
 
 func (x ODResolutionMode) Number() protoreflect.EnumNumber {
@@ -1556,7 +1721,7 @@ func (x ODResolutionMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ODResolutionMode.Descriptor instead.
 func (ODResolutionMode) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{26}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{29}
 }
 
 type ODResolutionReason int32
@@ -1598,11 +1763,11 @@ func (x ODResolutionReason) String() string {
 }
 
 func (ODResolutionReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_flow_v1_flow_proto_enumTypes[27].Descriptor()
+	return file_tolo_flow_v1_flow_proto_enumTypes[30].Descriptor()
 }
 
 func (ODResolutionReason) Type() protoreflect.EnumType {
-	return &file_tolo_flow_v1_flow_proto_enumTypes[27]
+	return &file_tolo_flow_v1_flow_proto_enumTypes[30]
 }
 
 func (x ODResolutionReason) Number() protoreflect.EnumNumber {
@@ -1611,7 +1776,7 @@ func (x ODResolutionReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ODResolutionReason.Descriptor instead.
 func (ODResolutionReason) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{27}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{30}
 }
 
 type OptimizeRequest struct {
@@ -2166,8 +2331,8 @@ type Edge struct {
 	AttributeTags       []string               `protobuf:"bytes,8,rep,name=attribute_tags,json=attributeTags,proto3" json:"attribute_tags,omitempty"`
 	TimeResolutionS     *int32                 `protobuf:"varint,9,opt,name=time_resolution_s,json=timeResolutionS,proto3,oneof" json:"time_resolution_s,omitempty"`
 	DangerFlag          *bool                  `protobuf:"varint,10,opt,name=danger_flag,json=dangerFlag,proto3,oneof" json:"danger_flag,omitempty"`
-	DangerCapacity      *float64               `protobuf:"fixed64,11,opt,name=danger_capacity,json=dangerCapacity,proto3,oneof" json:"danger_capacity,omitempty"`
 	CapacityHint        *float64               `protobuf:"fixed64,12,opt,name=capacity_hint,json=capacityHint,proto3,oneof" json:"capacity_hint,omitempty"`
+	DangerFlowCapacity  *float64               `protobuf:"fixed64,13,opt,name=danger_flow_capacity,json=dangerFlowCapacity,proto3,oneof" json:"danger_flow_capacity,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -2272,16 +2437,16 @@ func (x *Edge) GetDangerFlag() bool {
 	return false
 }
 
-func (x *Edge) GetDangerCapacity() float64 {
-	if x != nil && x.DangerCapacity != nil {
-		return *x.DangerCapacity
+func (x *Edge) GetCapacityHint() float64 {
+	if x != nil && x.CapacityHint != nil {
+		return *x.CapacityHint
 	}
 	return 0
 }
 
-func (x *Edge) GetCapacityHint() float64 {
-	if x != nil && x.CapacityHint != nil {
-		return *x.CapacityHint
+func (x *Edge) GetDangerFlowCapacity() float64 {
+	if x != nil && x.DangerFlowCapacity != nil {
+		return *x.DangerFlowCapacity
 	}
 	return 0
 }
@@ -2801,6 +2966,8 @@ type ArcHistoryStat struct {
 	BaselineStagnation *float64               `protobuf:"fixed64,3,opt,name=baseline_stagnation,json=baselineStagnation,proto3,oneof" json:"baseline_stagnation,omitempty"`
 	FlowSensitivityEta *float64               `protobuf:"fixed64,4,opt,name=flow_sensitivity_eta,json=flowSensitivityEta,proto3,oneof" json:"flow_sensitivity_eta,omitempty"`
 	AvailableSpanHours *float64               `protobuf:"fixed64,5,opt,name=available_span_hours,json=availableSpanHours,proto3,oneof" json:"available_span_hours,omitempty"`
+	FlowP90            *float64               `protobuf:"fixed64,6,opt,name=flow_p90,json=flowP90,proto3,oneof" json:"flow_p90,omitempty"`
+	FreeFlowDwellMin   *float64               `protobuf:"fixed64,7,opt,name=free_flow_dwell_min,json=freeFlowDwellMin,proto3,oneof" json:"free_flow_dwell_min,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2866,6 +3033,20 @@ func (x *ArcHistoryStat) GetFlowSensitivityEta() float64 {
 func (x *ArcHistoryStat) GetAvailableSpanHours() float64 {
 	if x != nil && x.AvailableSpanHours != nil {
 		return *x.AvailableSpanHours
+	}
+	return 0
+}
+
+func (x *ArcHistoryStat) GetFlowP90() float64 {
+	if x != nil && x.FlowP90 != nil {
+		return *x.FlowP90
+	}
+	return 0
+}
+
+func (x *ArcHistoryStat) GetFreeFlowDwellMin() float64 {
+	if x != nil && x.FreeFlowDwellMin != nil {
+		return *x.FreeFlowDwellMin
 	}
 	return 0
 }
@@ -3091,7 +3272,6 @@ type DetectionState struct {
 	CooldownUntil        *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=cooldown_until,json=cooldownUntil,proto3,oneof" json:"cooldown_until,omitempty"`
 	TriggerQueue         []*QueuedTrigger       `protobuf:"bytes,2,rep,name=trigger_queue,json=triggerQueue,proto3" json:"trigger_queue,omitempty"`
 	ArcWatchStates       []*ArcWatchState       `protobuf:"bytes,3,rep,name=arc_watch_states,json=arcWatchStates,proto3" json:"arc_watch_states,omitempty"`
-	ArcDemandDigest      *ArcDemandDigest       `protobuf:"bytes,4,opt,name=arc_demand_digest,json=arcDemandDigest,proto3,oneof" json:"arc_demand_digest,omitempty"`
 	WarmupStates         []*WarmupState         `protobuf:"bytes,5,rep,name=warmup_states,json=warmupStates,proto3" json:"warmup_states,omitempty"`
 	ArcRetriggerCounts   []*RetriggerEntry      `protobuf:"bytes,6,rep,name=arc_retrigger_counts,json=arcRetriggerCounts,proto3" json:"arc_retrigger_counts,omitempty"`
 	ConsecutiveSkipCount int32                  `protobuf:"varint,7,opt,name=consecutive_skip_count,json=consecutiveSkipCount,proto3" json:"consecutive_skip_count,omitempty"`
@@ -3150,13 +3330,6 @@ func (x *DetectionState) GetArcWatchStates() []*ArcWatchState {
 	return nil
 }
 
-func (x *DetectionState) GetArcDemandDigest() *ArcDemandDigest {
-	if x != nil {
-		return x.ArcDemandDigest
-	}
-	return nil
-}
-
 func (x *DetectionState) GetWarmupStates() []*WarmupState {
 	if x != nil {
 		return x.WarmupStates
@@ -3178,102 +3351,6 @@ func (x *DetectionState) GetConsecutiveSkipCount() int32 {
 	return 0
 }
 
-type ArcDemandDigest struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Entries       []*ArcDemandDigestEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ArcDemandDigest) Reset() {
-	*x = ArcDemandDigest{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ArcDemandDigest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArcDemandDigest) ProtoMessage() {}
-
-func (x *ArcDemandDigest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArcDemandDigest.ProtoReflect.Descriptor instead.
-func (*ArcDemandDigest) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{21}
-}
-
-func (x *ArcDemandDigest) GetEntries() []*ArcDemandDigestEntry {
-	if x != nil {
-		return x.Entries
-	}
-	return nil
-}
-
-type ArcDemandDigestEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	EdgeId        string                 `protobuf:"bytes,1,opt,name=edge_id,json=edgeId,proto3" json:"edge_id,omitempty"`
-	Demand        float64                `protobuf:"fixed64,2,opt,name=demand,proto3" json:"demand,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ArcDemandDigestEntry) Reset() {
-	*x = ArcDemandDigestEntry{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ArcDemandDigestEntry) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArcDemandDigestEntry) ProtoMessage() {}
-
-func (x *ArcDemandDigestEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArcDemandDigestEntry.ProtoReflect.Descriptor instead.
-func (*ArcDemandDigestEntry) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *ArcDemandDigestEntry) GetEdgeId() string {
-	if x != nil {
-		return x.EdgeId
-	}
-	return ""
-}
-
-func (x *ArcDemandDigestEntry) GetDemand() float64 {
-	if x != nil {
-		return x.Demand
-	}
-	return 0
-}
-
 type QueuedTrigger struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Kind             QueuedTriggerKind      `protobuf:"varint,1,opt,name=kind,proto3,enum=tolo.flow.v1.QueuedTriggerKind" json:"kind,omitempty"`
@@ -3289,7 +3366,7 @@ type QueuedTrigger struct {
 
 func (x *QueuedTrigger) Reset() {
 	*x = QueuedTrigger{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3301,7 +3378,7 @@ func (x *QueuedTrigger) String() string {
 func (*QueuedTrigger) ProtoMessage() {}
 
 func (x *QueuedTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3314,7 +3391,7 @@ func (x *QueuedTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueuedTrigger.ProtoReflect.Descriptor instead.
 func (*QueuedTrigger) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{23}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *QueuedTrigger) GetKind() QueuedTriggerKind {
@@ -3373,15 +3450,14 @@ type ArcWatchState struct {
 	DeltaBreached        bool                   `protobuf:"varint,3,opt,name=delta_breached,json=deltaBreached,proto3" json:"delta_breached,omitempty"`
 	StagnationWatchSince *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=stagnation_watch_since,json=stagnationWatchSince,proto3,oneof" json:"stagnation_watch_since,omitempty"`
 	SurgeBreached        bool                   `protobuf:"varint,5,opt,name=surge_breached,json=surgeBreached,proto3" json:"surge_breached,omitempty"`
-	DemandExcessBreached bool                   `protobuf:"varint,6,opt,name=demand_excess_breached,json=demandExcessBreached,proto3" json:"demand_excess_breached,omitempty"`
-	DemandWatchSince     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=demand_watch_since,json=demandWatchSince,proto3,oneof" json:"demand_watch_since,omitempty"`
+	StagnationLastHeldAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=stagnation_last_held_at,json=stagnationLastHeldAt,proto3,oneof" json:"stagnation_last_held_at,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ArcWatchState) Reset() {
 	*x = ArcWatchState{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3393,7 +3469,7 @@ func (x *ArcWatchState) String() string {
 func (*ArcWatchState) ProtoMessage() {}
 
 func (x *ArcWatchState) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3406,7 +3482,7 @@ func (x *ArcWatchState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArcWatchState.ProtoReflect.Descriptor instead.
 func (*ArcWatchState) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{24}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ArcWatchState) GetEdgeId() string {
@@ -3444,16 +3520,9 @@ func (x *ArcWatchState) GetSurgeBreached() bool {
 	return false
 }
 
-func (x *ArcWatchState) GetDemandExcessBreached() bool {
+func (x *ArcWatchState) GetStagnationLastHeldAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.DemandExcessBreached
-	}
-	return false
-}
-
-func (x *ArcWatchState) GetDemandWatchSince() *timestamppb.Timestamp {
-	if x != nil {
-		return x.DemandWatchSince
+		return x.StagnationLastHeldAt
 	}
 	return nil
 }
@@ -3468,7 +3537,7 @@ type WarmupState struct {
 
 func (x *WarmupState) Reset() {
 	*x = WarmupState{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3480,7 +3549,7 @@ func (x *WarmupState) String() string {
 func (*WarmupState) ProtoMessage() {}
 
 func (x *WarmupState) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3493,7 +3562,7 @@ func (x *WarmupState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarmupState.ProtoReflect.Descriptor instead.
 func (*WarmupState) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{25}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *WarmupState) GetTargetKey() string {
@@ -3522,7 +3591,7 @@ type RetriggerEntry struct {
 
 func (x *RetriggerEntry) Reset() {
 	*x = RetriggerEntry{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3534,7 +3603,7 @@ func (x *RetriggerEntry) String() string {
 func (*RetriggerEntry) ProtoMessage() {}
 
 func (x *RetriggerEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3547,7 +3616,7 @@ func (x *RetriggerEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetriggerEntry.ProtoReflect.Descriptor instead.
 func (*RetriggerEntry) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{26}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RetriggerEntry) GetEdgeId() string {
@@ -3590,7 +3659,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3602,7 +3671,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3615,7 +3684,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{27}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *Event) GetKind() EventKind {
@@ -3655,7 +3724,7 @@ type ParamList struct {
 
 func (x *ParamList) Reset() {
 	*x = ParamList{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3667,7 +3736,7 @@ func (x *ParamList) String() string {
 func (*ParamList) ProtoMessage() {}
 
 func (x *ParamList) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3680,7 +3749,7 @@ func (x *ParamList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParamList.ProtoReflect.Descriptor instead.
 func (*ParamList) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{28}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ParamList) GetValues() []*KeyValue {
@@ -3700,7 +3769,7 @@ type KeyValue struct {
 
 func (x *KeyValue) Reset() {
 	*x = KeyValue{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3712,7 +3781,7 @@ func (x *KeyValue) String() string {
 func (*KeyValue) ProtoMessage() {}
 
 func (x *KeyValue) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3725,7 +3794,7 @@ func (x *KeyValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyValue.ProtoReflect.Descriptor instead.
 func (*KeyValue) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{29}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *KeyValue) GetKey() string {
@@ -3758,7 +3827,7 @@ type ScalarValue struct {
 
 func (x *ScalarValue) Reset() {
 	*x = ScalarValue{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3770,7 +3839,7 @@ func (x *ScalarValue) String() string {
 func (*ScalarValue) ProtoMessage() {}
 
 func (x *ScalarValue) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3783,7 +3852,7 @@ func (x *ScalarValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScalarValue.ProtoReflect.Descriptor instead.
 func (*ScalarValue) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{30}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ScalarValue) GetKind() isScalarValue_Kind {
@@ -3883,7 +3952,7 @@ type Reference struct {
 
 func (x *Reference) Reset() {
 	*x = Reference{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3895,7 +3964,7 @@ func (x *Reference) String() string {
 func (*Reference) ProtoMessage() {}
 
 func (x *Reference) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3908,7 +3977,7 @@ func (x *Reference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Reference.ProtoReflect.Descriptor instead.
 func (*Reference) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{31}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Reference) GetByAttributeTag() []*TagReference {
@@ -3933,19 +4002,18 @@ func (x *Reference) GetSourceKAnonymity() int32 {
 }
 
 type TagReference struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	AttributeTag       string                 `protobuf:"bytes,1,opt,name=attribute_tag,json=attributeTag,proto3" json:"attribute_tag,omitempty"`
-	EtaTypical         *float64               `protobuf:"fixed64,2,opt,name=eta_typical,json=etaTypical,proto3,oneof" json:"eta_typical,omitempty"`
-	BaselineStagnation *float64               `protobuf:"fixed64,3,opt,name=baseline_stagnation,json=baselineStagnation,proto3,oneof" json:"baseline_stagnation,omitempty"`
-	CapacityTypical    *float64               `protobuf:"fixed64,4,opt,name=capacity_typical,json=capacityTypical,proto3,oneof" json:"capacity_typical,omitempty"`
-	SampleCount        int32                  `protobuf:"varint,5,opt,name=sample_count,json=sampleCount,proto3" json:"sample_count,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AttributeTag    string                 `protobuf:"bytes,1,opt,name=attribute_tag,json=attributeTag,proto3" json:"attribute_tag,omitempty"`
+	EtaTypical      *float64               `protobuf:"fixed64,2,opt,name=eta_typical,json=etaTypical,proto3,oneof" json:"eta_typical,omitempty"`
+	CapacityTypical *float64               `protobuf:"fixed64,4,opt,name=capacity_typical,json=capacityTypical,proto3,oneof" json:"capacity_typical,omitempty"`
+	SampleCount     int32                  `protobuf:"varint,5,opt,name=sample_count,json=sampleCount,proto3" json:"sample_count,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *TagReference) Reset() {
 	*x = TagReference{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3957,7 +4025,7 @@ func (x *TagReference) String() string {
 func (*TagReference) ProtoMessage() {}
 
 func (x *TagReference) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3970,7 +4038,7 @@ func (x *TagReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TagReference.ProtoReflect.Descriptor instead.
 func (*TagReference) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{32}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *TagReference) GetAttributeTag() string {
@@ -3983,13 +4051,6 @@ func (x *TagReference) GetAttributeTag() string {
 func (x *TagReference) GetEtaTypical() float64 {
 	if x != nil && x.EtaTypical != nil {
 		return *x.EtaTypical
-	}
-	return 0
-}
-
-func (x *TagReference) GetBaselineStagnation() float64 {
-	if x != nil && x.BaselineStagnation != nil {
-		return *x.BaselineStagnation
 	}
 	return 0
 }
@@ -4018,7 +4079,7 @@ type ThresholdDefaults struct {
 
 func (x *ThresholdDefaults) Reset() {
 	*x = ThresholdDefaults{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4030,7 +4091,7 @@ func (x *ThresholdDefaults) String() string {
 func (*ThresholdDefaults) ProtoMessage() {}
 
 func (x *ThresholdDefaults) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4043,7 +4104,7 @@ func (x *ThresholdDefaults) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThresholdDefaults.ProtoReflect.Descriptor instead.
 func (*ThresholdDefaults) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{33}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ThresholdDefaults) GetShortTerm() *ThresholdSet {
@@ -4065,7 +4126,6 @@ type ThresholdSet struct {
 	SurgeRateThresholdPercentPerMin *float64               `protobuf:"fixed64,1,opt,name=surge_rate_threshold_percent_per_min,json=surgeRateThresholdPercentPerMin,proto3,oneof" json:"surge_rate_threshold_percent_per_min,omitempty"`
 	HighStagnationDurationMin       *float64               `protobuf:"fixed64,2,opt,name=high_stagnation_duration_min,json=highStagnationDurationMin,proto3,oneof" json:"high_stagnation_duration_min,omitempty"`
 	Beta                            *float64               `protobuf:"fixed64,3,opt,name=beta,proto3,oneof" json:"beta,omitempty"`
-	ThetaDemand                     *float64               `protobuf:"fixed64,4,opt,name=theta_demand,json=thetaDemand,proto3,oneof" json:"theta_demand,omitempty"`
 	WarmupDurationMin               *float64               `protobuf:"fixed64,5,opt,name=warmup_duration_min,json=warmupDurationMin,proto3,oneof" json:"warmup_duration_min,omitempty"`
 	unknownFields                   protoimpl.UnknownFields
 	sizeCache                       protoimpl.SizeCache
@@ -4073,7 +4133,7 @@ type ThresholdSet struct {
 
 func (x *ThresholdSet) Reset() {
 	*x = ThresholdSet{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4085,7 +4145,7 @@ func (x *ThresholdSet) String() string {
 func (*ThresholdSet) ProtoMessage() {}
 
 func (x *ThresholdSet) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4098,7 +4158,7 @@ func (x *ThresholdSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThresholdSet.ProtoReflect.Descriptor instead.
 func (*ThresholdSet) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{34}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ThresholdSet) GetSurgeRateThresholdPercentPerMin() float64 {
@@ -4122,13 +4182,6 @@ func (x *ThresholdSet) GetBeta() float64 {
 	return 0
 }
 
-func (x *ThresholdSet) GetThetaDemand() float64 {
-	if x != nil && x.ThetaDemand != nil {
-		return *x.ThetaDemand
-	}
-	return 0
-}
-
 func (x *ThresholdSet) GetWarmupDurationMin() float64 {
 	if x != nil && x.WarmupDurationMin != nil {
 		return *x.WarmupDurationMin
@@ -4141,7 +4194,6 @@ type ResolvedConfig struct {
 	SurgeRateThresholdPercentPerMin *float64               `protobuf:"fixed64,1,opt,name=surge_rate_threshold_percent_per_min,json=surgeRateThresholdPercentPerMin,proto3,oneof" json:"surge_rate_threshold_percent_per_min,omitempty"`
 	HighStagnationDurationMin       *float64               `protobuf:"fixed64,2,opt,name=high_stagnation_duration_min,json=highStagnationDurationMin,proto3,oneof" json:"high_stagnation_duration_min,omitempty"`
 	Beta                            *float64               `protobuf:"fixed64,3,opt,name=beta,proto3,oneof" json:"beta,omitempty"`
-	ThetaDemand                     *float64               `protobuf:"fixed64,4,opt,name=theta_demand,json=thetaDemand,proto3,oneof" json:"theta_demand,omitempty"`
 	MinWindowSamples                *int32                 `protobuf:"varint,5,opt,name=min_window_samples,json=minWindowSamples,proto3,oneof" json:"min_window_samples,omitempty"`
 	CooldownDurationMin             *float64               `protobuf:"fixed64,6,opt,name=cooldown_duration_min,json=cooldownDurationMin,proto3,oneof" json:"cooldown_duration_min,omitempty"`
 	WarmupDurationMin               *float64               `protobuf:"fixed64,7,opt,name=warmup_duration_min,json=warmupDurationMin,proto3,oneof" json:"warmup_duration_min,omitempty"`
@@ -4158,7 +4210,6 @@ type ResolvedConfig struct {
 	RestrictionProposalEnabled      *bool                  `protobuf:"varint,18,opt,name=restriction_proposal_enabled,json=restrictionProposalEnabled,proto3,oneof" json:"restriction_proposal_enabled,omitempty"`
 	TauDangerThreshold              *float64               `protobuf:"fixed64,19,opt,name=tau_danger_threshold,json=tauDangerThreshold,proto3,oneof" json:"tau_danger_threshold,omitempty"`
 	PunctureTriggerEnabled          *bool                  `protobuf:"varint,20,opt,name=puncture_trigger_enabled,json=punctureTriggerEnabled,proto3,oneof" json:"puncture_trigger_enabled,omitempty"`
-	PunctureRatioThreshold          *float64               `protobuf:"fixed64,21,opt,name=puncture_ratio_threshold,json=punctureRatioThreshold,proto3,oneof" json:"puncture_ratio_threshold,omitempty"`
 	ForecastingBudgetSec            *float64               `protobuf:"fixed64,22,opt,name=forecasting_budget_sec,json=forecastingBudgetSec,proto3,oneof" json:"forecasting_budget_sec,omitempty"`
 	DetourBudgetSec                 *float64               `protobuf:"fixed64,23,opt,name=detour_budget_sec,json=detourBudgetSec,proto3,oneof" json:"detour_budget_sec,omitempty"`
 	LightweightOptBudgetSec         *float64               `protobuf:"fixed64,24,opt,name=lightweight_opt_budget_sec,json=lightweightOptBudgetSec,proto3,oneof" json:"lightweight_opt_budget_sec,omitempty"`
@@ -4168,7 +4219,6 @@ type ResolvedConfig struct {
 	Epsilon                         *float64               `protobuf:"fixed64,28,opt,name=epsilon,proto3,oneof" json:"epsilon,omitempty"`
 	Epsilon_0                       *float64               `protobuf:"fixed64,29,opt,name=epsilon_0,json=epsilon0,proto3,oneof" json:"epsilon_0,omitempty"`
 	BigMFactor                      *float64               `protobuf:"fixed64,30,opt,name=big_m_factor,json=bigMFactor,proto3,oneof" json:"big_m_factor,omitempty"`
-	DeltaMin                        *float64               `protobuf:"fixed64,31,opt,name=delta_min,json=deltaMin,proto3,oneof" json:"delta_min,omitempty"`
 	ConfidenceWeightFloor           *float64               `protobuf:"fixed64,32,opt,name=confidence_weight_floor,json=confidenceWeightFloor,proto3,oneof" json:"confidence_weight_floor,omitempty"`
 	MipRelGap                       *float64               `protobuf:"fixed64,33,opt,name=mip_rel_gap,json=mipRelGap,proto3,oneof" json:"mip_rel_gap,omitempty"`
 	GravityAlpha                    *float64               `protobuf:"fixed64,34,opt,name=gravity_alpha,json=gravityAlpha,proto3,oneof" json:"gravity_alpha,omitempty"`
@@ -4179,7 +4229,6 @@ type ResolvedConfig struct {
 	MinReferenceSampleCount         *int32                 `protobuf:"varint,39,opt,name=min_reference_sample_count,json=minReferenceSampleCount,proto3,oneof" json:"min_reference_sample_count,omitempty"`
 	KShortestPaths                  *int32                 `protobuf:"varint,40,opt,name=k_shortest_paths,json=kShortestPaths,proto3,oneof" json:"k_shortest_paths,omitempty"`
 	FallbackEta                     *float64               `protobuf:"fixed64,41,opt,name=fallback_eta,json=fallbackEta,proto3,oneof" json:"fallback_eta,omitempty"`
-	FallbackBaselineStagnation      *float64               `protobuf:"fixed64,42,opt,name=fallback_baseline_stagnation,json=fallbackBaselineStagnation,proto3,oneof" json:"fallback_baseline_stagnation,omitempty"`
 	ScalarDirectionEnabled          *bool                  `protobuf:"varint,43,opt,name=scalar_direction_enabled,json=scalarDirectionEnabled,proto3,oneof" json:"scalar_direction_enabled,omitempty"`
 	KShortestPathsAuto              *bool                  `protobuf:"varint,44,opt,name=k_shortest_paths_auto,json=kShortestPathsAuto,proto3,oneof" json:"k_shortest_paths_auto,omitempty"`
 	KShortestPathsMax               *int32                 `protobuf:"varint,45,opt,name=k_shortest_paths_max,json=kShortestPathsMax,proto3,oneof" json:"k_shortest_paths_max,omitempty"`
@@ -4200,13 +4249,17 @@ type ResolvedConfig struct {
 	MilpBoundaryControlEnabled      *bool                  `protobuf:"varint,60,opt,name=milp_boundary_control_enabled,json=milpBoundaryControlEnabled,proto3,oneof" json:"milp_boundary_control_enabled,omitempty"`
 	ScheduledInflowPriorEnabled     *bool                  `protobuf:"varint,61,opt,name=scheduled_inflow_prior_enabled,json=scheduledInflowPriorEnabled,proto3,oneof" json:"scheduled_inflow_prior_enabled,omitempty"`
 	LogTenantId                     *bool                  `protobuf:"varint,62,opt,name=log_tenant_id,json=logTenantId,proto3,oneof" json:"log_tenant_id,omitempty"`
+	DeltaMinFraction                *float64               `protobuf:"fixed64,63,opt,name=delta_min_fraction,json=deltaMinFraction,proto3,oneof" json:"delta_min_fraction,omitempty"`
+	StaleObservationResolutions     *float64               `protobuf:"fixed64,64,opt,name=stale_observation_resolutions,json=staleObservationResolutions,proto3,oneof" json:"stale_observation_resolutions,omitempty"`
+	StaleObservationFloorS          *float64               `protobuf:"fixed64,65,opt,name=stale_observation_floor_s,json=staleObservationFloorS,proto3,oneof" json:"stale_observation_floor_s,omitempty"`
+	PunctureDwellRatioThreshold     *float64               `protobuf:"fixed64,66,opt,name=puncture_dwell_ratio_threshold,json=punctureDwellRatioThreshold,proto3,oneof" json:"puncture_dwell_ratio_threshold,omitempty"`
 	unknownFields                   protoimpl.UnknownFields
 	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *ResolvedConfig) Reset() {
 	*x = ResolvedConfig{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4218,7 +4271,7 @@ func (x *ResolvedConfig) String() string {
 func (*ResolvedConfig) ProtoMessage() {}
 
 func (x *ResolvedConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4231,7 +4284,7 @@ func (x *ResolvedConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolvedConfig.ProtoReflect.Descriptor instead.
 func (*ResolvedConfig) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{35}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ResolvedConfig) GetSurgeRateThresholdPercentPerMin() float64 {
@@ -4251,13 +4304,6 @@ func (x *ResolvedConfig) GetHighStagnationDurationMin() float64 {
 func (x *ResolvedConfig) GetBeta() float64 {
 	if x != nil && x.Beta != nil {
 		return *x.Beta
-	}
-	return 0
-}
-
-func (x *ResolvedConfig) GetThetaDemand() float64 {
-	if x != nil && x.ThetaDemand != nil {
-		return *x.ThetaDemand
 	}
 	return 0
 }
@@ -4374,13 +4420,6 @@ func (x *ResolvedConfig) GetPunctureTriggerEnabled() bool {
 	return false
 }
 
-func (x *ResolvedConfig) GetPunctureRatioThreshold() float64 {
-	if x != nil && x.PunctureRatioThreshold != nil {
-		return *x.PunctureRatioThreshold
-	}
-	return 0
-}
-
 func (x *ResolvedConfig) GetForecastingBudgetSec() float64 {
 	if x != nil && x.ForecastingBudgetSec != nil {
 		return *x.ForecastingBudgetSec
@@ -4440,13 +4479,6 @@ func (x *ResolvedConfig) GetEpsilon_0() float64 {
 func (x *ResolvedConfig) GetBigMFactor() float64 {
 	if x != nil && x.BigMFactor != nil {
 		return *x.BigMFactor
-	}
-	return 0
-}
-
-func (x *ResolvedConfig) GetDeltaMin() float64 {
-	if x != nil && x.DeltaMin != nil {
-		return *x.DeltaMin
 	}
 	return 0
 }
@@ -4517,13 +4549,6 @@ func (x *ResolvedConfig) GetKShortestPaths() int32 {
 func (x *ResolvedConfig) GetFallbackEta() float64 {
 	if x != nil && x.FallbackEta != nil {
 		return *x.FallbackEta
-	}
-	return 0
-}
-
-func (x *ResolvedConfig) GetFallbackBaselineStagnation() float64 {
-	if x != nil && x.FallbackBaselineStagnation != nil {
-		return *x.FallbackBaselineStagnation
 	}
 	return 0
 }
@@ -4668,6 +4693,34 @@ func (x *ResolvedConfig) GetLogTenantId() bool {
 	return false
 }
 
+func (x *ResolvedConfig) GetDeltaMinFraction() float64 {
+	if x != nil && x.DeltaMinFraction != nil {
+		return *x.DeltaMinFraction
+	}
+	return 0
+}
+
+func (x *ResolvedConfig) GetStaleObservationResolutions() float64 {
+	if x != nil && x.StaleObservationResolutions != nil {
+		return *x.StaleObservationResolutions
+	}
+	return 0
+}
+
+func (x *ResolvedConfig) GetStaleObservationFloorS() float64 {
+	if x != nil && x.StaleObservationFloorS != nil {
+		return *x.StaleObservationFloorS
+	}
+	return 0
+}
+
+func (x *ResolvedConfig) GetPunctureDwellRatioThreshold() float64 {
+	if x != nil && x.PunctureDwellRatioThreshold != nil {
+		return *x.PunctureDwellRatioThreshold
+	}
+	return 0
+}
+
 type ThroughputWeights struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TriggerOrigin float64                `protobuf:"fixed64,1,opt,name=trigger_origin,json=triggerOrigin,proto3" json:"trigger_origin,omitempty"`
@@ -4679,7 +4732,7 @@ type ThroughputWeights struct {
 
 func (x *ThroughputWeights) Reset() {
 	*x = ThroughputWeights{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4691,7 +4744,7 @@ func (x *ThroughputWeights) String() string {
 func (*ThroughputWeights) ProtoMessage() {}
 
 func (x *ThroughputWeights) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4704,7 +4757,7 @@ func (x *ThroughputWeights) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThroughputWeights.ProtoReflect.Descriptor instead.
 func (*ThroughputWeights) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{36}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ThroughputWeights) GetTriggerOrigin() float64 {
@@ -4738,7 +4791,7 @@ type EdgeFloat struct {
 
 func (x *EdgeFloat) Reset() {
 	*x = EdgeFloat{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4750,7 +4803,7 @@ func (x *EdgeFloat) String() string {
 func (*EdgeFloat) ProtoMessage() {}
 
 func (x *EdgeFloat) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4763,7 +4816,7 @@ func (x *EdgeFloat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EdgeFloat.ProtoReflect.Descriptor instead.
 func (*EdgeFloat) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{37}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *EdgeFloat) GetEdgeId() string {
@@ -4797,7 +4850,7 @@ type OptimizationResult struct {
 
 func (x *OptimizationResult) Reset() {
 	*x = OptimizationResult{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4809,7 +4862,7 @@ func (x *OptimizationResult) String() string {
 func (*OptimizationResult) ProtoMessage() {}
 
 func (x *OptimizationResult) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4822,7 +4875,7 @@ func (x *OptimizationResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptimizationResult.ProtoReflect.Descriptor instead.
 func (*OptimizationResult) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{38}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *OptimizationResult) GetRouteImportance() []*RouteImportance {
@@ -4900,7 +4953,7 @@ type RouteImportance struct {
 
 func (x *RouteImportance) Reset() {
 	*x = RouteImportance{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4912,7 +4965,7 @@ func (x *RouteImportance) String() string {
 func (*RouteImportance) ProtoMessage() {}
 
 func (x *RouteImportance) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4925,7 +4978,7 @@ func (x *RouteImportance) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteImportance.ProtoReflect.Descriptor instead.
 func (*RouteImportance) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{39}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *RouteImportance) GetEdgeId() string {
@@ -4968,7 +5021,7 @@ type DirectionProposal struct {
 
 func (x *DirectionProposal) Reset() {
 	*x = DirectionProposal{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4980,7 +5033,7 @@ func (x *DirectionProposal) String() string {
 func (*DirectionProposal) ProtoMessage() {}
 
 func (x *DirectionProposal) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4993,7 +5046,7 @@ func (x *DirectionProposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectionProposal.ProtoReflect.Descriptor instead.
 func (*DirectionProposal) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{40}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DirectionProposal) GetEdgeId() string {
@@ -5032,13 +5085,14 @@ type RestrictionProposal struct {
 	Reason        RestrictionReason      `protobuf:"varint,4,opt,name=reason,proto3,enum=tolo.flow.v1.RestrictionReason" json:"reason,omitempty"`
 	Confidence    float64                `protobuf:"fixed64,5,opt,name=confidence,proto3" json:"confidence,omitempty"`
 	ScopeNote     string                 `protobuf:"bytes,6,opt,name=scope_note,json=scopeNote,proto3" json:"scope_note,omitempty"`
+	LimitRatio    *float64               `protobuf:"fixed64,7,opt,name=limit_ratio,json=limitRatio,proto3,oneof" json:"limit_ratio,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RestrictionProposal) Reset() {
 	*x = RestrictionProposal{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5050,7 +5104,7 @@ func (x *RestrictionProposal) String() string {
 func (*RestrictionProposal) ProtoMessage() {}
 
 func (x *RestrictionProposal) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5063,7 +5117,7 @@ func (x *RestrictionProposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestrictionProposal.ProtoReflect.Descriptor instead.
 func (*RestrictionProposal) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{41}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *RestrictionProposal) GetEdgeId() string {
@@ -5108,6 +5162,13 @@ func (x *RestrictionProposal) GetScopeNote() string {
 	return ""
 }
 
+func (x *RestrictionProposal) GetLimitRatio() float64 {
+	if x != nil && x.LimitRatio != nil {
+		return *x.LimitRatio
+	}
+	return 0
+}
+
 type DetourPathProposal struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OriginEdgeId  string                 `protobuf:"bytes,1,opt,name=origin_edge_id,json=originEdgeId,proto3" json:"origin_edge_id,omitempty"`
@@ -5119,7 +5180,7 @@ type DetourPathProposal struct {
 
 func (x *DetourPathProposal) Reset() {
 	*x = DetourPathProposal{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5131,7 +5192,7 @@ func (x *DetourPathProposal) String() string {
 func (*DetourPathProposal) ProtoMessage() {}
 
 func (x *DetourPathProposal) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5144,7 +5205,7 @@ func (x *DetourPathProposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetourPathProposal.ProtoReflect.Descriptor instead.
 func (*DetourPathProposal) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{42}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *DetourPathProposal) GetOriginEdgeId() string {
@@ -5179,7 +5240,7 @@ type BoundaryControl struct {
 
 func (x *BoundaryControl) Reset() {
 	*x = BoundaryControl{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5191,7 +5252,7 @@ func (x *BoundaryControl) String() string {
 func (*BoundaryControl) ProtoMessage() {}
 
 func (x *BoundaryControl) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5204,7 +5265,7 @@ func (x *BoundaryControl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BoundaryControl.ProtoReflect.Descriptor instead.
 func (*BoundaryControl) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{43}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *BoundaryControl) GetNodeId() string {
@@ -5238,7 +5299,7 @@ type OptimizationObjectiveValues struct {
 
 func (x *OptimizationObjectiveValues) Reset() {
 	*x = OptimizationObjectiveValues{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5250,7 +5311,7 @@ func (x *OptimizationObjectiveValues) String() string {
 func (*OptimizationObjectiveValues) ProtoMessage() {}
 
 func (x *OptimizationObjectiveValues) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5263,7 +5324,7 @@ func (x *OptimizationObjectiveValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptimizationObjectiveValues.ProtoReflect.Descriptor instead.
 func (*OptimizationObjectiveValues) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{44}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *OptimizationObjectiveValues) GetTauStar() float64 {
@@ -5301,7 +5362,7 @@ type FeedbackValues struct {
 
 func (x *FeedbackValues) Reset() {
 	*x = FeedbackValues{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5313,7 +5374,7 @@ func (x *FeedbackValues) String() string {
 func (*FeedbackValues) ProtoMessage() {}
 
 func (x *FeedbackValues) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5326,7 +5387,7 @@ func (x *FeedbackValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedbackValues.ProtoReflect.Descriptor instead.
 func (*FeedbackValues) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{45}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *FeedbackValues) GetSchemaVersion() string {
@@ -5435,7 +5496,7 @@ type ComputeMeta struct {
 
 func (x *ComputeMeta) Reset() {
 	*x = ComputeMeta{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5447,7 +5508,7 @@ func (x *ComputeMeta) String() string {
 func (*ComputeMeta) ProtoMessage() {}
 
 func (x *ComputeMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5460,7 +5521,7 @@ func (x *ComputeMeta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ComputeMeta.ProtoReflect.Descriptor instead.
 func (*ComputeMeta) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{46}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *ComputeMeta) GetMode() Mode {
@@ -5522,7 +5583,7 @@ type ReachabilityConstraints struct {
 
 func (x *ReachabilityConstraints) Reset() {
 	*x = ReachabilityConstraints{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5534,7 +5595,7 @@ func (x *ReachabilityConstraints) String() string {
 func (*ReachabilityConstraints) ProtoMessage() {}
 
 func (x *ReachabilityConstraints) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5547,7 +5608,7 @@ func (x *ReachabilityConstraints) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReachabilityConstraints.ProtoReflect.Descriptor instead.
 func (*ReachabilityConstraints) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{47}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ReachabilityConstraints) GetLocal() bool {
@@ -5574,7 +5635,7 @@ type FeedbackObjectiveValues struct {
 
 func (x *FeedbackObjectiveValues) Reset() {
 	*x = FeedbackObjectiveValues{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5586,7 +5647,7 @@ func (x *FeedbackObjectiveValues) String() string {
 func (*FeedbackObjectiveValues) ProtoMessage() {}
 
 func (x *FeedbackObjectiveValues) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5599,7 +5660,7 @@ func (x *FeedbackObjectiveValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedbackObjectiveValues.ProtoReflect.Descriptor instead.
 func (*FeedbackObjectiveValues) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{48}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *FeedbackObjectiveValues) GetTauStar() float64 {
@@ -5628,7 +5689,7 @@ type TagObservation struct {
 
 func (x *TagObservation) Reset() {
 	*x = TagObservation{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5640,7 +5701,7 @@ func (x *TagObservation) String() string {
 func (*TagObservation) ProtoMessage() {}
 
 func (x *TagObservation) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5653,7 +5714,7 @@ func (x *TagObservation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TagObservation.ProtoReflect.Descriptor instead.
 func (*TagObservation) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{49}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *TagObservation) GetAttributeTag() string {
@@ -5695,7 +5756,7 @@ type PredictionActualDiff struct {
 
 func (x *PredictionActualDiff) Reset() {
 	*x = PredictionActualDiff{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5707,7 +5768,7 @@ func (x *PredictionActualDiff) String() string {
 func (*PredictionActualDiff) ProtoMessage() {}
 
 func (x *PredictionActualDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5720,7 +5781,7 @@ func (x *PredictionActualDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PredictionActualDiff.ProtoReflect.Descriptor instead.
 func (*PredictionActualDiff) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{50}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *PredictionActualDiff) GetExpectedTauStar() float64 {
@@ -5755,7 +5816,7 @@ type ReferenceUsageReport struct {
 
 func (x *ReferenceUsageReport) Reset() {
 	*x = ReferenceUsageReport{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5767,7 +5828,7 @@ func (x *ReferenceUsageReport) String() string {
 func (*ReferenceUsageReport) ProtoMessage() {}
 
 func (x *ReferenceUsageReport) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5780,7 +5841,7 @@ func (x *ReferenceUsageReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReferenceUsageReport.ProtoReflect.Descriptor instead.
 func (*ReferenceUsageReport) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{51}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *ReferenceUsageReport) GetUsedTags() []string {
@@ -5815,7 +5876,7 @@ type QualityMetrics struct {
 
 func (x *QualityMetrics) Reset() {
 	*x = QualityMetrics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5827,7 +5888,7 @@ func (x *QualityMetrics) String() string {
 func (*QualityMetrics) ProtoMessage() {}
 
 func (x *QualityMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5840,7 +5901,7 @@ func (x *QualityMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QualityMetrics.ProtoReflect.Descriptor instead.
 func (*QualityMetrics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{52}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *QualityMetrics) GetVectorCoverageRatio() float64 {
@@ -5875,7 +5936,7 @@ type DetourMetrics struct {
 
 func (x *DetourMetrics) Reset() {
 	*x = DetourMetrics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5887,7 +5948,7 @@ func (x *DetourMetrics) String() string {
 func (*DetourMetrics) ProtoMessage() {}
 
 func (x *DetourMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5900,7 +5961,7 @@ func (x *DetourMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetourMetrics.ProtoReflect.Descriptor instead.
 func (*DetourMetrics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{53}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *DetourMetrics) GetKRequested() int32 {
@@ -5936,7 +5997,7 @@ type RestrictionMetrics struct {
 
 func (x *RestrictionMetrics) Reset() {
 	*x = RestrictionMetrics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5948,7 +6009,7 @@ func (x *RestrictionMetrics) String() string {
 func (*RestrictionMetrics) ProtoMessage() {}
 
 func (x *RestrictionMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5961,7 +6022,7 @@ func (x *RestrictionMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestrictionMetrics.ProtoReflect.Descriptor instead.
 func (*RestrictionMetrics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{54}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *RestrictionMetrics) GetProposedCount() int32 {
@@ -6002,7 +6063,7 @@ type RestrictionCount struct {
 
 func (x *RestrictionCount) Reset() {
 	*x = RestrictionCount{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6014,7 +6075,7 @@ func (x *RestrictionCount) String() string {
 func (*RestrictionCount) ProtoMessage() {}
 
 func (x *RestrictionCount) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6027,7 +6088,7 @@ func (x *RestrictionCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestrictionCount.ProtoReflect.Descriptor instead.
 func (*RestrictionCount) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{55}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *RestrictionCount) GetReason() RestrictionReason {
@@ -6055,7 +6116,7 @@ type DirectionChangeSummary struct {
 
 func (x *DirectionChangeSummary) Reset() {
 	*x = DirectionChangeSummary{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6067,7 +6128,7 @@ func (x *DirectionChangeSummary) String() string {
 func (*DirectionChangeSummary) ProtoMessage() {}
 
 func (x *DirectionChangeSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6080,7 +6141,7 @@ func (x *DirectionChangeSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectionChangeSummary.ProtoReflect.Descriptor instead.
 func (*DirectionChangeSummary) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{56}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *DirectionChangeSummary) GetConvert() int32 {
@@ -6118,7 +6179,7 @@ type AbDiff struct {
 
 func (x *AbDiff) Reset() {
 	*x = AbDiff{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6130,7 +6191,7 @@ func (x *AbDiff) String() string {
 func (*AbDiff) ProtoMessage() {}
 
 func (x *AbDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6143,7 +6204,7 @@ func (x *AbDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AbDiff.ProtoReflect.Descriptor instead.
 func (*AbDiff) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{57}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *AbDiff) GetEnabledExtensions() []string {
@@ -6199,7 +6260,7 @@ type ForecastSummary struct {
 
 func (x *ForecastSummary) Reset() {
 	*x = ForecastSummary{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6211,7 +6272,7 @@ func (x *ForecastSummary) String() string {
 func (*ForecastSummary) ProtoMessage() {}
 
 func (x *ForecastSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6224,7 +6285,7 @@ func (x *ForecastSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForecastSummary.ProtoReflect.Descriptor instead.
 func (*ForecastSummary) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{58}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ForecastSummary) GetNodeDemand() []*NodeDemand {
@@ -6263,7 +6324,7 @@ type NodeDemand struct {
 
 func (x *NodeDemand) Reset() {
 	*x = NodeDemand{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6275,7 +6336,7 @@ func (x *NodeDemand) String() string {
 func (*NodeDemand) ProtoMessage() {}
 
 func (x *NodeDemand) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6288,7 +6349,7 @@ func (x *NodeDemand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeDemand.ProtoReflect.Descriptor instead.
 func (*NodeDemand) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{59}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *NodeDemand) GetNodeId() string {
@@ -6352,7 +6413,7 @@ type NodeResolution struct {
 
 func (x *NodeResolution) Reset() {
 	*x = NodeResolution{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6364,7 +6425,7 @@ func (x *NodeResolution) String() string {
 func (*NodeResolution) ProtoMessage() {}
 
 func (x *NodeResolution) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6377,7 +6438,7 @@ func (x *NodeResolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeResolution.ProtoReflect.Descriptor instead.
 func (*NodeResolution) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{60}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *NodeResolution) GetNodeId() string {
@@ -6418,7 +6479,7 @@ type Warning struct {
 
 func (x *Warning) Reset() {
 	*x = Warning{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6430,7 +6491,7 @@ func (x *Warning) String() string {
 func (*Warning) ProtoMessage() {}
 
 func (x *Warning) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6443,7 +6504,7 @@ func (x *Warning) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Warning.ProtoReflect.Descriptor instead.
 func (*Warning) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{61}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *Warning) GetCode() WarningCode {
@@ -6461,21 +6522,21 @@ func (x *Warning) GetContext() []*KeyValue {
 }
 
 type Diagnostics struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Mode                Mode                   `protobuf:"varint,1,opt,name=mode,proto3,enum=tolo.flow.v1.Mode" json:"mode,omitempty"`
-	Warnings            []*Warning             `protobuf:"bytes,2,rep,name=warnings,proto3" json:"warnings,omitempty"`
-	TriggerEvidences    []*TriggerEvidence     `protobuf:"bytes,3,rep,name=trigger_evidences,json=triggerEvidences,proto3" json:"trigger_evidences,omitempty"`
-	FallbacksApplied    []*FallbackRecord      `protobuf:"bytes,4,rep,name=fallbacks_applied,json=fallbacksApplied,proto3" json:"fallbacks_applied,omitempty"`
-	StepsExecuted       []*StepRecord          `protobuf:"bytes,5,rep,name=steps_executed,json=stepsExecuted,proto3" json:"steps_executed,omitempty"`
-	DegradedShortTenant bool                   `protobuf:"varint,6,opt,name=degraded_short_tenant,json=degradedShortTenant,proto3" json:"degraded_short_tenant,omitempty"`
-	SchemaVersion       string                 `protobuf:"bytes,7,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Mode             Mode                   `protobuf:"varint,1,opt,name=mode,proto3,enum=tolo.flow.v1.Mode" json:"mode,omitempty"`
+	Warnings         []*Warning             `protobuf:"bytes,2,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	TriggerEvidences []*TriggerEvidence     `protobuf:"bytes,3,rep,name=trigger_evidences,json=triggerEvidences,proto3" json:"trigger_evidences,omitempty"`
+	FallbacksApplied []*FallbackRecord      `protobuf:"bytes,4,rep,name=fallbacks_applied,json=fallbacksApplied,proto3" json:"fallbacks_applied,omitempty"`
+	StepsExecuted    []*StepRecord          `protobuf:"bytes,5,rep,name=steps_executed,json=stepsExecuted,proto3" json:"steps_executed,omitempty"`
+	SchemaVersion    string                 `protobuf:"bytes,7,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	ElementStates    []*ElementStateRecord  `protobuf:"bytes,8,rep,name=element_states,json=elementStates,proto3" json:"element_states,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Diagnostics) Reset() {
 	*x = Diagnostics{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6487,7 +6548,7 @@ func (x *Diagnostics) String() string {
 func (*Diagnostics) ProtoMessage() {}
 
 func (x *Diagnostics) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6500,7 +6561,7 @@ func (x *Diagnostics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Diagnostics.ProtoReflect.Descriptor instead.
 func (*Diagnostics) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{62}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *Diagnostics) GetMode() Mode {
@@ -6538,18 +6599,94 @@ func (x *Diagnostics) GetStepsExecuted() []*StepRecord {
 	return nil
 }
 
-func (x *Diagnostics) GetDegradedShortTenant() bool {
-	if x != nil {
-		return x.DegradedShortTenant
-	}
-	return false
-}
-
 func (x *Diagnostics) GetSchemaVersion() string {
 	if x != nil {
 		return x.SchemaVersion
 	}
 	return ""
+}
+
+func (x *Diagnostics) GetElementStates() []*ElementStateRecord {
+	if x != nil {
+		return x.ElementStates
+	}
+	return nil
+}
+
+type ElementStateRecord struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TargetKey     string                 `protobuf:"bytes,1,opt,name=target_key,json=targetKey,proto3" json:"target_key,omitempty"`
+	Observation   ObservationState       `protobuf:"varint,2,opt,name=observation,proto3,enum=tolo.flow.v1.ObservationState" json:"observation,omitempty"`
+	History       HistoryTier            `protobuf:"varint,3,opt,name=history,proto3,enum=tolo.flow.v1.HistoryTier" json:"history,omitempty"`
+	LinePoints    int32                  `protobuf:"varint,4,opt,name=line_points,json=linePoints,proto3" json:"line_points,omitempty"`
+	Skipped       []Judgement            `protobuf:"varint,5,rep,packed,name=skipped,proto3,enum=tolo.flow.v1.Judgement" json:"skipped,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ElementStateRecord) Reset() {
+	*x = ElementStateRecord{}
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ElementStateRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ElementStateRecord) ProtoMessage() {}
+
+func (x *ElementStateRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ElementStateRecord.ProtoReflect.Descriptor instead.
+func (*ElementStateRecord) Descriptor() ([]byte, []int) {
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *ElementStateRecord) GetTargetKey() string {
+	if x != nil {
+		return x.TargetKey
+	}
+	return ""
+}
+
+func (x *ElementStateRecord) GetObservation() ObservationState {
+	if x != nil {
+		return x.Observation
+	}
+	return ObservationState_OBSERVATION_STATE_UNSPECIFIED
+}
+
+func (x *ElementStateRecord) GetHistory() HistoryTier {
+	if x != nil {
+		return x.History
+	}
+	return HistoryTier_HISTORY_TIER_UNSPECIFIED
+}
+
+func (x *ElementStateRecord) GetLinePoints() int32 {
+	if x != nil {
+		return x.LinePoints
+	}
+	return 0
+}
+
+func (x *ElementStateRecord) GetSkipped() []Judgement {
+	if x != nil {
+		return x.Skipped
+	}
+	return nil
 }
 
 type TriggerEvidence struct {
@@ -6567,7 +6704,7 @@ type TriggerEvidence struct {
 
 func (x *TriggerEvidence) Reset() {
 	*x = TriggerEvidence{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6579,7 +6716,7 @@ func (x *TriggerEvidence) String() string {
 func (*TriggerEvidence) ProtoMessage() {}
 
 func (x *TriggerEvidence) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6592,7 +6729,7 @@ func (x *TriggerEvidence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TriggerEvidence.ProtoReflect.Descriptor instead.
 func (*TriggerEvidence) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{63}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *TriggerEvidence) GetSource() TriggerEvidenceSource {
@@ -6655,7 +6792,7 @@ type FallbackRecord struct {
 
 func (x *FallbackRecord) Reset() {
 	*x = FallbackRecord{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6667,7 +6804,7 @@ func (x *FallbackRecord) String() string {
 func (*FallbackRecord) ProtoMessage() {}
 
 func (x *FallbackRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6680,7 +6817,7 @@ func (x *FallbackRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FallbackRecord.ProtoReflect.Descriptor instead.
 func (*FallbackRecord) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{64}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *FallbackRecord) GetKind() FallbackKind {
@@ -6716,7 +6853,7 @@ type StepRecord struct {
 
 func (x *StepRecord) Reset() {
 	*x = StepRecord{}
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[65]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6728,7 +6865,7 @@ func (x *StepRecord) String() string {
 func (*StepRecord) ProtoMessage() {}
 
 func (x *StepRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_flow_v1_flow_proto_msgTypes[65]
+	mi := &file_tolo_flow_v1_flow_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6741,7 +6878,7 @@ func (x *StepRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StepRecord.ProtoReflect.Descriptor instead.
 func (*StepRecord) Descriptor() ([]byte, []int) {
-	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{65}
+	return file_tolo_flow_v1_flow_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *StepRecord) GetStep() StepKind {
@@ -6850,7 +6987,7 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x06active\x18\x02 \x01(\bH\x01R\x06active\x88\x01\x01B\f\n" +
 	"\n" +
 	"_directionB\t\n" +
-	"\a_active\"\xa3\x06\n" +
+	"\a_active\"\xc8\x06\n" +
 	"\x04Edge\x12\x1c\n" +
 	"\aedge_id\x18\x01 \x01(\tH\x00R\x06edgeId\x88\x01\x01\x12\"\n" +
 	"\n" +
@@ -6865,10 +7002,10 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x11time_resolution_s\x18\t \x01(\x05H\aR\x0ftimeResolutionS\x88\x01\x01\x12$\n" +
 	"\vdanger_flag\x18\n" +
 	" \x01(\bH\bR\n" +
-	"dangerFlag\x88\x01\x01\x12,\n" +
-	"\x0fdanger_capacity\x18\v \x01(\x01H\tR\x0edangerCapacity\x88\x01\x01\x12(\n" +
-	"\rcapacity_hint\x18\f \x01(\x01H\n" +
-	"R\fcapacityHint\x88\x01\x01B\n" +
+	"dangerFlag\x88\x01\x01\x12(\n" +
+	"\rcapacity_hint\x18\f \x01(\x01H\tR\fcapacityHint\x88\x01\x01\x125\n" +
+	"\x14danger_flow_capacity\x18\r \x01(\x01H\n" +
+	"R\x12dangerFlowCapacity\x88\x01\x01B\n" +
 	"\n" +
 	"\b_edge_idB\r\n" +
 	"\v_endpoint_aB\r\n" +
@@ -6879,9 +7016,9 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\b_enabledB\x13\n" +
 	"\x11_observation_typeB\x14\n" +
 	"\x12_time_resolution_sB\x0e\n" +
-	"\f_danger_flagB\x12\n" +
-	"\x10_danger_capacityB\x10\n" +
-	"\x0e_capacity_hint\"\xd2\x03\n" +
+	"\f_danger_flagB\x10\n" +
+	"\x0e_capacity_hintB\x17\n" +
+	"\x15_danger_flow_capacityJ\x04\b\v\x10\fR\x0fdanger_capacity\"\xd2\x03\n" +
 	"\fObservations\x12;\n" +
 	"\vobserved_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"observedAt\x12&\n" +
@@ -6958,17 +7095,21 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\rHistoryDigest\x129\n" +
 	"\tarc_stats\x18\x01 \x03(\v2\x1c.tolo.flow.v1.ArcHistoryStatR\barcStats\x12B\n" +
 	"\rwindow_series\x18\x02 \x03(\v2\x1d.tolo.flow.v1.ArcWindowSeriesR\fwindowSeries\x12\"\n" +
-	"\fcompleteness\x18\x03 \x01(\x01R\fcompleteness\"\xd6\x02\n" +
+	"\fcompleteness\x18\x03 \x01(\x01R\fcompleteness\"\xcf\x03\n" +
 	"\x0eArcHistoryStat\x12\x17\n" +
 	"\aedge_id\x18\x01 \x01(\tR\x06edgeId\x12*\n" +
 	"\x0ep90_stagnation\x18\x02 \x01(\x01H\x00R\rp90Stagnation\x88\x01\x01\x124\n" +
 	"\x13baseline_stagnation\x18\x03 \x01(\x01H\x01R\x12baselineStagnation\x88\x01\x01\x125\n" +
 	"\x14flow_sensitivity_eta\x18\x04 \x01(\x01H\x02R\x12flowSensitivityEta\x88\x01\x01\x125\n" +
-	"\x14available_span_hours\x18\x05 \x01(\x01H\x03R\x12availableSpanHours\x88\x01\x01B\x11\n" +
+	"\x14available_span_hours\x18\x05 \x01(\x01H\x03R\x12availableSpanHours\x88\x01\x01\x12\x1e\n" +
+	"\bflow_p90\x18\x06 \x01(\x01H\x04R\aflowP90\x88\x01\x01\x122\n" +
+	"\x13free_flow_dwell_min\x18\a \x01(\x01H\x05R\x10freeFlowDwellMin\x88\x01\x01B\x11\n" +
 	"\x0f_p90_stagnationB\x16\n" +
 	"\x14_baseline_stagnationB\x17\n" +
 	"\x15_flow_sensitivity_etaB\x17\n" +
-	"\x15_available_span_hours\"\xb2\x02\n" +
+	"\x15_available_span_hoursB\v\n" +
+	"\t_flow_p90B\x16\n" +
+	"\x14_free_flow_dwell_min\"\xb2\x02\n" +
 	"\x0fArcWindowSeries\x12\x17\n" +
 	"\aedge_id\x18\x01 \x01(\tR\x06edgeId\x12;\n" +
 	"\fflow_samples\x18\x02 \x03(\v2\x18.tolo.flow.v1.TimedValueR\vflowSamples\x12G\n" +
@@ -6983,22 +7124,15 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\n" +
 	"TimedValue\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value\"\xa0\x04\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value\"\xd3\x03\n" +
 	"\x0eDetectionState\x12F\n" +
 	"\x0ecooldown_until\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\rcooldownUntil\x88\x01\x01\x12@\n" +
 	"\rtrigger_queue\x18\x02 \x03(\v2\x1b.tolo.flow.v1.QueuedTriggerR\ftriggerQueue\x12E\n" +
-	"\x10arc_watch_states\x18\x03 \x03(\v2\x1b.tolo.flow.v1.ArcWatchStateR\x0earcWatchStates\x12N\n" +
-	"\x11arc_demand_digest\x18\x04 \x01(\v2\x1d.tolo.flow.v1.ArcDemandDigestH\x01R\x0farcDemandDigest\x88\x01\x01\x12>\n" +
+	"\x10arc_watch_states\x18\x03 \x03(\v2\x1b.tolo.flow.v1.ArcWatchStateR\x0earcWatchStates\x12>\n" +
 	"\rwarmup_states\x18\x05 \x03(\v2\x19.tolo.flow.v1.WarmupStateR\fwarmupStates\x12N\n" +
 	"\x14arc_retrigger_counts\x18\x06 \x03(\v2\x1c.tolo.flow.v1.RetriggerEntryR\x12arcRetriggerCounts\x124\n" +
 	"\x16consecutive_skip_count\x18\a \x01(\x05R\x14consecutiveSkipCountB\x11\n" +
-	"\x0f_cooldown_untilB\x14\n" +
-	"\x12_arc_demand_digest\"O\n" +
-	"\x0fArcDemandDigest\x12<\n" +
-	"\aentries\x18\x01 \x03(\v2\".tolo.flow.v1.ArcDemandDigestEntryR\aentries\"G\n" +
-	"\x14ArcDemandDigestEntry\x12\x17\n" +
-	"\aedge_id\x18\x01 \x01(\tR\x06edgeId\x12\x16\n" +
-	"\x06demand\x18\x02 \x01(\x01R\x06demand\"\xa8\x03\n" +
+	"\x0f_cooldown_untilJ\x04\b\x04\x10\x05R\x11arc_demand_digest\"\xa8\x03\n" +
 	"\rQueuedTrigger\x123\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1f.tolo.flow.v1.QueuedTriggerKindR\x04kind\x12@\n" +
 	"\x0efirst_fired_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ffirstFiredAt\x12>\n" +
@@ -7009,17 +7143,16 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\fsnapshot_ref\x18\a \x01(\tH\x02R\vsnapshotRef\x88\x01\x01B\x11\n" +
 	"\x0f_origin_edge_idB\x11\n" +
 	"\x0f_origin_node_idB\x0f\n" +
-	"\r_snapshot_ref\"\xb5\x03\n" +
+	"\r_snapshot_ref\"\xc5\x03\n" +
 	"\rArcWatchState\x12\x17\n" +
 	"\aedge_id\x18\x01 \x01(\tR\x06edgeId\x12/\n" +
 	"\x13percentile_breached\x18\x02 \x01(\bR\x12percentileBreached\x12%\n" +
 	"\x0edelta_breached\x18\x03 \x01(\bR\rdeltaBreached\x12U\n" +
 	"\x16stagnation_watch_since\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x14stagnationWatchSince\x88\x01\x01\x12%\n" +
-	"\x0esurge_breached\x18\x05 \x01(\bR\rsurgeBreached\x124\n" +
-	"\x16demand_excess_breached\x18\x06 \x01(\bR\x14demandExcessBreached\x12M\n" +
-	"\x12demand_watch_since\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x10demandWatchSince\x88\x01\x01B\x19\n" +
-	"\x17_stagnation_watch_sinceB\x15\n" +
-	"\x13_demand_watch_since\"^\n" +
+	"\x0esurge_breached\x18\x05 \x01(\bR\rsurgeBreached\x12V\n" +
+	"\x17stagnation_last_held_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x14stagnationLastHeldAt\x88\x01\x01B\x19\n" +
+	"\x17_stagnation_watch_sinceB\x1a\n" +
+	"\x18_stagnation_last_held_atJ\x04\b\x06\x10\aJ\x04\b\a\x10\bR\x16demand_excess_breachedR\x12demand_watch_since\"^\n" +
 	"\vWarmupState\x12\x1d\n" +
 	"\n" +
 	"target_key\x18\x01 \x01(\tR\ttargetKey\x120\n" +
@@ -7055,104 +7188,99 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x10by_attribute_tag\x18\x01 \x03(\v2\x1a.tolo.flow.v1.TagReferenceR\x0ebyAttributeTag\x12S\n" +
 	"\x12default_thresholds\x18\x02 \x01(\v2\x1f.tolo.flow.v1.ThresholdDefaultsH\x00R\x11defaultThresholds\x88\x01\x01\x12,\n" +
 	"\x12source_k_anonymity\x18\x03 \x01(\x05R\x10sourceKAnonymityB\x15\n" +
-	"\x13_default_thresholds\"\x9f\x02\n" +
+	"\x13_default_thresholds\"\xec\x01\n" +
 	"\fTagReference\x12#\n" +
 	"\rattribute_tag\x18\x01 \x01(\tR\fattributeTag\x12$\n" +
 	"\veta_typical\x18\x02 \x01(\x01H\x00R\n" +
-	"etaTypical\x88\x01\x01\x124\n" +
-	"\x13baseline_stagnation\x18\x03 \x01(\x01H\x01R\x12baselineStagnation\x88\x01\x01\x12.\n" +
-	"\x10capacity_typical\x18\x04 \x01(\x01H\x02R\x0fcapacityTypical\x88\x01\x01\x12!\n" +
+	"etaTypical\x88\x01\x01\x12.\n" +
+	"\x10capacity_typical\x18\x04 \x01(\x01H\x01R\x0fcapacityTypical\x88\x01\x01\x12!\n" +
 	"\fsample_count\x18\x05 \x01(\x05R\vsampleCountB\x0e\n" +
-	"\f_eta_typicalB\x16\n" +
-	"\x14_baseline_stagnationB\x13\n" +
-	"\x11_capacity_typical\"\x87\x01\n" +
+	"\f_eta_typicalB\x13\n" +
+	"\x11_capacity_typicalJ\x04\b\x03\x10\x04R\x13baseline_stagnation\"\x87\x01\n" +
 	"\x11ThresholdDefaults\x129\n" +
 	"\n" +
 	"short_term\x18\x01 \x01(\v2\x1a.tolo.flow.v1.ThresholdSetR\tshortTerm\x127\n" +
-	"\tlong_term\x18\x02 \x01(\v2\x1a.tolo.flow.v1.ThresholdSetR\blongTerm\"\x9a\x03\n" +
+	"\tlong_term\x18\x02 \x01(\v2\x1a.tolo.flow.v1.ThresholdSetR\blongTerm\"\xf5\x02\n" +
 	"\fThresholdSet\x12R\n" +
 	"$surge_rate_threshold_percent_per_min\x18\x01 \x01(\x01H\x00R\x1fsurgeRateThresholdPercentPerMin\x88\x01\x01\x12D\n" +
 	"\x1chigh_stagnation_duration_min\x18\x02 \x01(\x01H\x01R\x19highStagnationDurationMin\x88\x01\x01\x12\x17\n" +
-	"\x04beta\x18\x03 \x01(\x01H\x02R\x04beta\x88\x01\x01\x12&\n" +
-	"\ftheta_demand\x18\x04 \x01(\x01H\x03R\vthetaDemand\x88\x01\x01\x123\n" +
-	"\x13warmup_duration_min\x18\x05 \x01(\x01H\x04R\x11warmupDurationMin\x88\x01\x01B'\n" +
+	"\x04beta\x18\x03 \x01(\x01H\x02R\x04beta\x88\x01\x01\x123\n" +
+	"\x13warmup_duration_min\x18\x05 \x01(\x01H\x03R\x11warmupDurationMin\x88\x01\x01B'\n" +
 	"%_surge_rate_threshold_percent_per_minB\x1f\n" +
 	"\x1d_high_stagnation_duration_minB\a\n" +
-	"\x05_betaB\x0f\n" +
-	"\r_theta_demandB\x16\n" +
-	"\x14_warmup_duration_min\"\xe1%\n" +
+	"\x05_betaB\x16\n" +
+	"\x14_warmup_duration_minJ\x04\b\x04\x10\x05R\ftheta_demand\"\x9d'\n" +
 	"\x0eResolvedConfig\x12R\n" +
 	"$surge_rate_threshold_percent_per_min\x18\x01 \x01(\x01H\x00R\x1fsurgeRateThresholdPercentPerMin\x88\x01\x01\x12D\n" +
 	"\x1chigh_stagnation_duration_min\x18\x02 \x01(\x01H\x01R\x19highStagnationDurationMin\x88\x01\x01\x12\x17\n" +
-	"\x04beta\x18\x03 \x01(\x01H\x02R\x04beta\x88\x01\x01\x12&\n" +
-	"\ftheta_demand\x18\x04 \x01(\x01H\x03R\vthetaDemand\x88\x01\x01\x121\n" +
-	"\x12min_window_samples\x18\x05 \x01(\x05H\x04R\x10minWindowSamples\x88\x01\x01\x127\n" +
-	"\x15cooldown_duration_min\x18\x06 \x01(\x01H\x05R\x13cooldownDurationMin\x88\x01\x01\x123\n" +
-	"\x13warmup_duration_min\x18\a \x01(\x01H\x06R\x11warmupDurationMin\x88\x01\x01\x12C\n" +
-	"\x1bretrigger_warning_threshold\x18\b \x01(\x05H\aR\x19retriggerWarningThreshold\x88\x01\x01\x12D\n" +
-	"\x1cretrigger_reset_quiet_cycles\x18\t \x01(\x05H\bR\x19retriggerResetQuietCycles\x88\x01\x01\x127\n" +
+	"\x04beta\x18\x03 \x01(\x01H\x02R\x04beta\x88\x01\x01\x121\n" +
+	"\x12min_window_samples\x18\x05 \x01(\x05H\x03R\x10minWindowSamples\x88\x01\x01\x127\n" +
+	"\x15cooldown_duration_min\x18\x06 \x01(\x01H\x04R\x13cooldownDurationMin\x88\x01\x01\x123\n" +
+	"\x13warmup_duration_min\x18\a \x01(\x01H\x05R\x11warmupDurationMin\x88\x01\x01\x12C\n" +
+	"\x1bretrigger_warning_threshold\x18\b \x01(\x05H\x06R\x19retriggerWarningThreshold\x88\x01\x01\x12D\n" +
+	"\x1cretrigger_reset_quiet_cycles\x18\t \x01(\x05H\aR\x19retriggerResetQuietCycles\x88\x01\x01\x127\n" +
 	"\x15queue_score_threshold\x18\n" +
-	" \x01(\x01H\tR\x13queueScoreThreshold\x88\x01\x01\x12?\n" +
-	"\x19queue_diversity_threshold\x18\v \x01(\x05H\n" +
-	"R\x17queueDiversityThreshold\x88\x01\x01\x123\n" +
-	"\x13queue_freshness_min\x18\f \x01(\x01H\vR\x11queueFreshnessMin\x88\x01\x01\x126\n" +
+	" \x01(\x01H\bR\x13queueScoreThreshold\x88\x01\x01\x12?\n" +
+	"\x19queue_diversity_threshold\x18\v \x01(\x05H\tR\x17queueDiversityThreshold\x88\x01\x01\x123\n" +
+	"\x13queue_freshness_min\x18\f \x01(\x01H\n" +
+	"R\x11queueFreshnessMin\x88\x01\x01\x126\n" +
 	"\x17throughput_target_edges\x18\r \x03(\tR\x15throughputTargetEdges\x12P\n" +
-	"\x11optimization_mode\x18\x0e \x01(\x0e2\x1e.tolo.flow.v1.OptimizationModeH\fR\x10optimizationMode\x88\x01\x01\x12/\n" +
-	"\x11local_radius_hops\x18\x0f \x01(\x05H\rR\x0flocalRadiusHops\x88\x01\x01\x12/\n" +
-	"\x11max_trigger_zones\x18\x10 \x01(\x05H\x0eR\x0fmaxTriggerZones\x88\x01\x01\x127\n" +
-	"\x15greedy_improve_margin\x18\x11 \x01(\x01H\x0fR\x13greedyImproveMargin\x88\x01\x01\x12E\n" +
-	"\x1crestriction_proposal_enabled\x18\x12 \x01(\bH\x10R\x1arestrictionProposalEnabled\x88\x01\x01\x125\n" +
-	"\x14tau_danger_threshold\x18\x13 \x01(\x01H\x11R\x12tauDangerThreshold\x88\x01\x01\x12=\n" +
-	"\x18puncture_trigger_enabled\x18\x14 \x01(\bH\x12R\x16punctureTriggerEnabled\x88\x01\x01\x12=\n" +
-	"\x18puncture_ratio_threshold\x18\x15 \x01(\x01H\x13R\x16punctureRatioThreshold\x88\x01\x01\x129\n" +
-	"\x16forecasting_budget_sec\x18\x16 \x01(\x01H\x14R\x14forecastingBudgetSec\x88\x01\x01\x12/\n" +
-	"\x11detour_budget_sec\x18\x17 \x01(\x01H\x15R\x0fdetourBudgetSec\x88\x01\x01\x12@\n" +
-	"\x1alightweight_opt_budget_sec\x18\x18 \x01(\x01H\x16R\x17lightweightOptBudgetSec\x88\x01\x01\x122\n" +
-	"\x13milp_time_limit_sec\x18\x19 \x01(\x01H\x17R\x10milpTimeLimitSec\x88\x01\x01\x127\n" +
-	"\x15max_consecutive_skips\x18\x1a \x01(\x05H\x18R\x13maxConsecutiveSkips\x88\x01\x01\x12$\n" +
-	"\vsolver_seed\x18\x1b \x01(\x05H\x19R\n" +
+	"\x11optimization_mode\x18\x0e \x01(\x0e2\x1e.tolo.flow.v1.OptimizationModeH\vR\x10optimizationMode\x88\x01\x01\x12/\n" +
+	"\x11local_radius_hops\x18\x0f \x01(\x05H\fR\x0flocalRadiusHops\x88\x01\x01\x12/\n" +
+	"\x11max_trigger_zones\x18\x10 \x01(\x05H\rR\x0fmaxTriggerZones\x88\x01\x01\x127\n" +
+	"\x15greedy_improve_margin\x18\x11 \x01(\x01H\x0eR\x13greedyImproveMargin\x88\x01\x01\x12E\n" +
+	"\x1crestriction_proposal_enabled\x18\x12 \x01(\bH\x0fR\x1arestrictionProposalEnabled\x88\x01\x01\x125\n" +
+	"\x14tau_danger_threshold\x18\x13 \x01(\x01H\x10R\x12tauDangerThreshold\x88\x01\x01\x12=\n" +
+	"\x18puncture_trigger_enabled\x18\x14 \x01(\bH\x11R\x16punctureTriggerEnabled\x88\x01\x01\x129\n" +
+	"\x16forecasting_budget_sec\x18\x16 \x01(\x01H\x12R\x14forecastingBudgetSec\x88\x01\x01\x12/\n" +
+	"\x11detour_budget_sec\x18\x17 \x01(\x01H\x13R\x0fdetourBudgetSec\x88\x01\x01\x12@\n" +
+	"\x1alightweight_opt_budget_sec\x18\x18 \x01(\x01H\x14R\x17lightweightOptBudgetSec\x88\x01\x01\x122\n" +
+	"\x13milp_time_limit_sec\x18\x19 \x01(\x01H\x15R\x10milpTimeLimitSec\x88\x01\x01\x127\n" +
+	"\x15max_consecutive_skips\x18\x1a \x01(\x05H\x16R\x13maxConsecutiveSkips\x88\x01\x01\x12$\n" +
+	"\vsolver_seed\x18\x1b \x01(\x05H\x17R\n" +
 	"solverSeed\x88\x01\x01\x12\x1d\n" +
-	"\aepsilon\x18\x1c \x01(\x01H\x1aR\aepsilon\x88\x01\x01\x12 \n" +
-	"\tepsilon_0\x18\x1d \x01(\x01H\x1bR\bepsilon0\x88\x01\x01\x12%\n" +
-	"\fbig_m_factor\x18\x1e \x01(\x01H\x1cR\n" +
-	"bigMFactor\x88\x01\x01\x12 \n" +
-	"\tdelta_min\x18\x1f \x01(\x01H\x1dR\bdeltaMin\x88\x01\x01\x12;\n" +
-	"\x17confidence_weight_floor\x18  \x01(\x01H\x1eR\x15confidenceWeightFloor\x88\x01\x01\x12#\n" +
-	"\vmip_rel_gap\x18! \x01(\x01H\x1fR\tmipRelGap\x88\x01\x01\x12(\n" +
-	"\rgravity_alpha\x18\" \x01(\x01H R\fgravityAlpha\x88\x01\x01\x12%\n" +
-	"\fipf_max_iter\x18# \x01(\x05H!R\n" +
+	"\aepsilon\x18\x1c \x01(\x01H\x18R\aepsilon\x88\x01\x01\x12 \n" +
+	"\tepsilon_0\x18\x1d \x01(\x01H\x19R\bepsilon0\x88\x01\x01\x12%\n" +
+	"\fbig_m_factor\x18\x1e \x01(\x01H\x1aR\n" +
+	"bigMFactor\x88\x01\x01\x12;\n" +
+	"\x17confidence_weight_floor\x18  \x01(\x01H\x1bR\x15confidenceWeightFloor\x88\x01\x01\x12#\n" +
+	"\vmip_rel_gap\x18! \x01(\x01H\x1cR\tmipRelGap\x88\x01\x01\x12(\n" +
+	"\rgravity_alpha\x18\" \x01(\x01H\x1dR\fgravityAlpha\x88\x01\x01\x12%\n" +
+	"\fipf_max_iter\x18# \x01(\x05H\x1eR\n" +
 	"ipfMaxIter\x88\x01\x01\x12(\n" +
-	"\ripf_tolerance\x18$ \x01(\x01H\"R\fipfTolerance\x88\x01\x01\x128\n" +
-	"\x16transit_time_prior_sec\x18% \x01(\x01H#R\x13transitTimePriorSec\x88\x01\x01\x124\n" +
-	"\x14dwell_time_prior_sec\x18& \x01(\x01H$R\x11dwellTimePriorSec\x88\x01\x01\x12@\n" +
-	"\x1amin_reference_sample_count\x18' \x01(\x05H%R\x17minReferenceSampleCount\x88\x01\x01\x12-\n" +
-	"\x10k_shortest_paths\x18( \x01(\x05H&R\x0ekShortestPaths\x88\x01\x01\x12&\n" +
-	"\ffallback_eta\x18) \x01(\x01H'R\vfallbackEta\x88\x01\x01\x12E\n" +
-	"\x1cfallback_baseline_stagnation\x18* \x01(\x01H(R\x1afallbackBaselineStagnation\x88\x01\x01\x12=\n" +
-	"\x18scalar_direction_enabled\x18+ \x01(\bH)R\x16scalarDirectionEnabled\x88\x01\x01\x126\n" +
-	"\x15k_shortest_paths_auto\x18, \x01(\bH*R\x12kShortestPathsAuto\x88\x01\x01\x124\n" +
-	"\x14k_shortest_paths_max\x18- \x01(\x05H+R\x11kShortestPathsMax\x88\x01\x01\x129\n" +
-	"\x16phase_feedback_enabled\x18. \x01(\bH,R\x14phaseFeedbackEnabled\x88\x01\x01\x12?\n" +
-	"\x19phase_feedback_candidates\x18/ \x01(\x05H-R\x17phaseFeedbackCandidates\x88\x01\x01\x124\n" +
+	"\ripf_tolerance\x18$ \x01(\x01H\x1fR\fipfTolerance\x88\x01\x01\x128\n" +
+	"\x16transit_time_prior_sec\x18% \x01(\x01H R\x13transitTimePriorSec\x88\x01\x01\x124\n" +
+	"\x14dwell_time_prior_sec\x18& \x01(\x01H!R\x11dwellTimePriorSec\x88\x01\x01\x12@\n" +
+	"\x1amin_reference_sample_count\x18' \x01(\x05H\"R\x17minReferenceSampleCount\x88\x01\x01\x12-\n" +
+	"\x10k_shortest_paths\x18( \x01(\x05H#R\x0ekShortestPaths\x88\x01\x01\x12&\n" +
+	"\ffallback_eta\x18) \x01(\x01H$R\vfallbackEta\x88\x01\x01\x12=\n" +
+	"\x18scalar_direction_enabled\x18+ \x01(\bH%R\x16scalarDirectionEnabled\x88\x01\x01\x126\n" +
+	"\x15k_shortest_paths_auto\x18, \x01(\bH&R\x12kShortestPathsAuto\x88\x01\x01\x124\n" +
+	"\x14k_shortest_paths_max\x18- \x01(\x05H'R\x11kShortestPathsMax\x88\x01\x01\x129\n" +
+	"\x16phase_feedback_enabled\x18. \x01(\bH(R\x14phaseFeedbackEnabled\x88\x01\x01\x12?\n" +
+	"\x19phase_feedback_candidates\x18/ \x01(\x05H)R\x17phaseFeedbackCandidates\x88\x01\x01\x124\n" +
 	"\x16attribute_tag_priority\x180 \x03(\tR\x14attributeTagPriority\x12/\n" +
-	"\x11full_weight_hours\x181 \x01(\x01H.R\x0ffullWeightHours\x88\x01\x01\x12-\n" +
-	"\x10eta_mixing_ratio\x182 \x01(\x01H/R\x0eetaMixingRatio\x88\x01\x01\x12N\n" +
+	"\x11full_weight_hours\x181 \x01(\x01H*R\x0ffullWeightHours\x88\x01\x01\x12-\n" +
+	"\x10eta_mixing_ratio\x182 \x01(\x01H+R\x0eetaMixingRatio\x88\x01\x01\x12N\n" +
 	"\x12throughput_weights\x183 \x01(\v2\x1f.tolo.flow.v1.ThroughputWeightsR\x11throughputWeights\x12N\n" +
 	"\x17throughput_max_per_edge\x184 \x03(\v2\x17.tolo.flow.v1.EdgeFloatR\x14throughputMaxPerEdge\x129\n" +
-	"\x16two_stage_optimization\x185 \x01(\bH0R\x14twoStageOptimization\x88\x01\x01\x12,\n" +
-	"\x0fbackoff_enabled\x186 \x01(\bH1R\x0ebackoffEnabled\x88\x01\x01\x128\n" +
-	"\x15improvement_threshold\x187 \x01(\x01H2R\x14improvementThreshold\x88\x01\x01\x121\n" +
-	"\x12backoff_max_factor\x188 \x01(\x05H3R\x10backoffMaxFactor\x88\x01\x01\x12+\n" +
+	"\x16two_stage_optimization\x185 \x01(\bH,R\x14twoStageOptimization\x88\x01\x01\x12,\n" +
+	"\x0fbackoff_enabled\x186 \x01(\bH-R\x0ebackoffEnabled\x88\x01\x01\x128\n" +
+	"\x15improvement_threshold\x187 \x01(\x01H.R\x14improvementThreshold\x88\x01\x01\x121\n" +
+	"\x12backoff_max_factor\x188 \x01(\x05H/R\x10backoffMaxFactor\x88\x01\x01\x12+\n" +
 	"\x11shadow_extensions\x189 \x03(\tR\x10shadowExtensions\x12;\n" +
-	"\x17delta_objective_enabled\x18: \x01(\bH4R\x15deltaObjectiveEnabled\x88\x01\x01\x123\n" +
-	"\x13node_detour_enabled\x18; \x01(\bH5R\x11nodeDetourEnabled\x88\x01\x01\x12F\n" +
-	"\x1dmilp_boundary_control_enabled\x18< \x01(\bH6R\x1amilpBoundaryControlEnabled\x88\x01\x01\x12H\n" +
-	"\x1escheduled_inflow_prior_enabled\x18= \x01(\bH7R\x1bscheduledInflowPriorEnabled\x88\x01\x01\x12'\n" +
-	"\rlog_tenant_id\x18> \x01(\bH8R\vlogTenantId\x88\x01\x01B'\n" +
+	"\x17delta_objective_enabled\x18: \x01(\bH0R\x15deltaObjectiveEnabled\x88\x01\x01\x123\n" +
+	"\x13node_detour_enabled\x18; \x01(\bH1R\x11nodeDetourEnabled\x88\x01\x01\x12F\n" +
+	"\x1dmilp_boundary_control_enabled\x18< \x01(\bH2R\x1amilpBoundaryControlEnabled\x88\x01\x01\x12H\n" +
+	"\x1escheduled_inflow_prior_enabled\x18= \x01(\bH3R\x1bscheduledInflowPriorEnabled\x88\x01\x01\x12'\n" +
+	"\rlog_tenant_id\x18> \x01(\bH4R\vlogTenantId\x88\x01\x01\x121\n" +
+	"\x12delta_min_fraction\x18? \x01(\x01H5R\x10deltaMinFraction\x88\x01\x01\x12G\n" +
+	"\x1dstale_observation_resolutions\x18@ \x01(\x01H6R\x1bstaleObservationResolutions\x88\x01\x01\x12>\n" +
+	"\x19stale_observation_floor_s\x18A \x01(\x01H7R\x16staleObservationFloorS\x88\x01\x01\x12H\n" +
+	"\x1epuncture_dwell_ratio_threshold\x18B \x01(\x01H8R\x1bpunctureDwellRatioThreshold\x88\x01\x01B'\n" +
 	"%_surge_rate_threshold_percent_per_minB\x1f\n" +
 	"\x1d_high_stagnation_duration_minB\a\n" +
-	"\x05_betaB\x0f\n" +
-	"\r_theta_demandB\x15\n" +
+	"\x05_betaB\x15\n" +
 	"\x13_min_window_samplesB\x18\n" +
 	"\x16_cooldown_duration_minB\x16\n" +
 	"\x14_warmup_duration_minB\x1e\n" +
@@ -7167,8 +7295,7 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x16_greedy_improve_marginB\x1f\n" +
 	"\x1d_restriction_proposal_enabledB\x17\n" +
 	"\x15_tau_danger_thresholdB\x1b\n" +
-	"\x19_puncture_trigger_enabledB\x1b\n" +
-	"\x19_puncture_ratio_thresholdB\x19\n" +
+	"\x19_puncture_trigger_enabledB\x19\n" +
 	"\x17_forecasting_budget_secB\x14\n" +
 	"\x12_detour_budget_secB\x1d\n" +
 	"\x1b_lightweight_opt_budget_secB\x16\n" +
@@ -7179,9 +7306,7 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\b_epsilonB\f\n" +
 	"\n" +
 	"_epsilon_0B\x0f\n" +
-	"\r_big_m_factorB\f\n" +
-	"\n" +
-	"_delta_minB\x1a\n" +
+	"\r_big_m_factorB\x1a\n" +
 	"\x18_confidence_weight_floorB\x0e\n" +
 	"\f_mip_rel_gapB\x10\n" +
 	"\x0e_gravity_alphaB\x0f\n" +
@@ -7191,8 +7316,7 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x15_dwell_time_prior_secB\x1d\n" +
 	"\x1b_min_reference_sample_countB\x13\n" +
 	"\x11_k_shortest_pathsB\x0f\n" +
-	"\r_fallback_etaB\x1f\n" +
-	"\x1d_fallback_baseline_stagnationB\x1b\n" +
+	"\r_fallback_etaB\x1b\n" +
 	"\x19_scalar_direction_enabledB\x18\n" +
 	"\x16_k_shortest_paths_autoB\x17\n" +
 	"\x15_k_shortest_paths_maxB\x19\n" +
@@ -7208,7 +7332,11 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x14_node_detour_enabledB \n" +
 	"\x1e_milp_boundary_control_enabledB!\n" +
 	"\x1f_scheduled_inflow_prior_enabledB\x10\n" +
-	"\x0e_log_tenant_id\"~\n" +
+	"\x0e_log_tenant_idB\x15\n" +
+	"\x13_delta_min_fractionB \n" +
+	"\x1e_stale_observation_resolutionsB\x1c\n" +
+	"\x1a_stale_observation_floor_sB!\n" +
+	"\x1f_puncture_dwell_ratio_thresholdJ\x04\b\x04\x10\x05J\x04\b\x15\x10\x16J\x04\b\x1f\x10 J\x04\b*\x10+R\ftheta_demandR\x18puncture_ratio_thresholdR\tdelta_minR\x1cfallback_baseline_stagnation\"~\n" +
 	"\x11ThroughputWeights\x12%\n" +
 	"\x0etrigger_origin\x18\x01 \x01(\x01R\rtriggerOrigin\x12\x1f\n" +
 	"\vdetour_path\x18\x02 \x01(\x01R\n" +
@@ -7243,7 +7371,7 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"confidence\x18\x03 \x01(\x01R\n" +
 	"confidence\x12B\n" +
 	"\vchange_type\x18\x04 \x01(\x0e2!.tolo.flow.v1.DirectionChangeTypeR\n" +
-	"changeType\"\x95\x02\n" +
+	"changeType\"\xcb\x02\n" +
 	"\x13RestrictionProposal\x12\x17\n" +
 	"\aedge_id\x18\x01 \x01(\tR\x06edgeId\x127\n" +
 	"\x06action\x18\x02 \x01(\x0e2\x1f.tolo.flow.v1.RestrictionActionR\x06action\x12$\n" +
@@ -7254,8 +7382,11 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"confidence\x18\x05 \x01(\x01R\n" +
 	"confidence\x12\x1d\n" +
 	"\n" +
-	"scope_note\x18\x06 \x01(\tR\tscopeNoteB\x0e\n" +
-	"\f_limit_value\"u\n" +
+	"scope_note\x18\x06 \x01(\tR\tscopeNote\x12$\n" +
+	"\vlimit_ratio\x18\a \x01(\x01H\x01R\n" +
+	"limitRatio\x88\x01\x01B\x0e\n" +
+	"\f_limit_valueB\x0e\n" +
+	"\f_limit_ratio\"u\n" +
 	"\x12DetourPathProposal\x12$\n" +
 	"\x0eorigin_edge_id\x18\x01 \x01(\tR\foriginEdgeId\x12\x19\n" +
 	"\bedge_ids\x18\x02 \x03(\tR\aedgeIds\x12\x1e\n" +
@@ -7378,15 +7509,23 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\fimputed_arcs\x18\x04 \x03(\tR\vimputedArcs\"j\n" +
 	"\aWarning\x12-\n" +
 	"\x04code\x18\x01 \x01(\x0e2\x19.tolo.flow.v1.WarningCodeR\x04code\x120\n" +
-	"\acontext\x18\x02 \x03(\v2\x16.tolo.flow.v1.KeyValueR\acontext\"\x9b\x03\n" +
+	"\acontext\x18\x02 \x03(\v2\x16.tolo.flow.v1.KeyValueR\acontext\"\xcd\x03\n" +
 	"\vDiagnostics\x12&\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x12.tolo.flow.v1.ModeR\x04mode\x121\n" +
 	"\bwarnings\x18\x02 \x03(\v2\x15.tolo.flow.v1.WarningR\bwarnings\x12J\n" +
 	"\x11trigger_evidences\x18\x03 \x03(\v2\x1d.tolo.flow.v1.TriggerEvidenceR\x10triggerEvidences\x12I\n" +
 	"\x11fallbacks_applied\x18\x04 \x03(\v2\x1c.tolo.flow.v1.FallbackRecordR\x10fallbacksApplied\x12?\n" +
-	"\x0esteps_executed\x18\x05 \x03(\v2\x18.tolo.flow.v1.StepRecordR\rstepsExecuted\x122\n" +
-	"\x15degraded_short_tenant\x18\x06 \x01(\bR\x13degradedShortTenant\x12%\n" +
-	"\x0eschema_version\x18\a \x01(\tR\rschemaVersion\"\x93\x03\n" +
+	"\x0esteps_executed\x18\x05 \x03(\v2\x18.tolo.flow.v1.StepRecordR\rstepsExecuted\x12%\n" +
+	"\x0eschema_version\x18\a \x01(\tR\rschemaVersion\x12G\n" +
+	"\x0eelement_states\x18\b \x03(\v2 .tolo.flow.v1.ElementStateRecordR\relementStatesJ\x04\b\x06\x10\aR\x15degraded_short_tenant\"\xfe\x01\n" +
+	"\x12ElementStateRecord\x12\x1d\n" +
+	"\n" +
+	"target_key\x18\x01 \x01(\tR\ttargetKey\x12@\n" +
+	"\vobservation\x18\x02 \x01(\x0e2\x1e.tolo.flow.v1.ObservationStateR\vobservation\x123\n" +
+	"\ahistory\x18\x03 \x01(\x0e2\x19.tolo.flow.v1.HistoryTierR\ahistory\x12\x1f\n" +
+	"\vline_points\x18\x04 \x01(\x05R\n" +
+	"linePoints\x121\n" +
+	"\askipped\x18\x05 \x03(\x0e2\x17.tolo.flow.v1.JudgementR\askipped\"\x93\x03\n" +
 	"\x0fTriggerEvidence\x12;\n" +
 	"\x06source\x18\x01 \x01(\x0e2#.tolo.flow.v1.TriggerEvidenceSourceR\x06source\x12;\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
@@ -7535,7 +7674,7 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x1bBOUNDARY_ACTION_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dBOUNDARY_ACTION_PAUSE_INGRESS\x10\x01\x12 \n" +
 	"\x1cBOUNDARY_ACTION_PAUSE_EGRESS\x10\x02\x12\x1a\n" +
-	"\x16BOUNDARY_ACTION_RESUME\x10\x03*\x80\x04\n" +
+	"\x16BOUNDARY_ACTION_RESUME\x10\x03*\xaf\x04\n" +
 	"\vWarningCode\x12\x1c\n" +
 	"\x18WARNING_CODE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16WARNING_CODE_RETRIGGER\x10\x01\x12 \n" +
@@ -7549,9 +7688,8 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	"\x1fWARNING_CODE_MANY_TRIGGER_ZONES\x10\t\x12(\n" +
 	"$WARNING_CODE_LOW_CONFIDENCE_PROPOSAL\x10\n" +
 	"\x12,\n" +
-	"(WARNING_CODE_INSUFFICIENT_WINDOW_SAMPLES\x10\v\x12%\n" +
-	"!WARNING_CODE_SURGE_PROXY_FALLBACK\x10\f\x12*\n" +
-	"&WARNING_CODE_DEGRADED_COMBINED_TRIGGER\x10\r*\xb0\x02\n" +
+	"(WARNING_CODE_INSUFFICIENT_WINDOW_SAMPLES\x10\v\x12)\n" +
+	"%WARNING_CODE_PARTIAL_COMBINED_TRIGGER\x10\x0e\"\x04\b\f\x10\f\"\x04\b\r\x10\r*!WARNING_CODE_SURGE_PROXY_FALLBACK*&WARNING_CODE_DEGRADED_COMBINED_TRIGGER*\xb0\x02\n" +
 	"\x15TriggerEvidenceSource\x12'\n" +
 	"#TRIGGER_EVIDENCE_SOURCE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dTRIGGER_EVIDENCE_SOURCE_SURGE\x10\x01\x12+\n" +
@@ -7576,7 +7714,26 @@ const file_tolo_flow_v1_flow_proto_rawDesc = "" +
 	" FALLBACK_KIND_LP_INFEASIBLE_HELD\x10\v\x12'\n" +
 	"#FALLBACK_KIND_GREEDY_NO_IMPROVEMENT\x10\f\x12%\n" +
 	"!FALLBACK_KIND_LOCALIZATION_CAPPED\x10\r\x12&\n" +
-	"\"FALLBACK_KIND_RESTRICTION_PROPOSED\x10\x0e*\xf6\x01\n" +
+	"\"FALLBACK_KIND_RESTRICTION_PROPOSED\x10\x0e*\xc9\x01\n" +
+	"\x10ObservationState\x12!\n" +
+	"\x1dOBSERVATION_STATE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cOBSERVATION_STATE_UNOBSERVED\x10\x01\x12\x1d\n" +
+	"\x19OBSERVATION_STATE_INVALID\x10\x02\x12\x1a\n" +
+	"\x16OBSERVATION_STATE_HOLD\x10\x03\x12\x1b\n" +
+	"\x17OBSERVATION_STATE_STALE\x10\x04\x12\x18\n" +
+	"\x14OBSERVATION_STATE_OK\x10\x05*\x96\x01\n" +
+	"\vHistoryTier\x12\x1c\n" +
+	"\x18HISTORY_TIER_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11HISTORY_TIER_NONE\x10\x01\x12\x1c\n" +
+	"\x18HISTORY_TIER_WINDOW_ONLY\x10\x02\x12\x16\n" +
+	"\x12HISTORY_TIER_SHORT\x10\x03\x12\x1c\n" +
+	"\x18HISTORY_TIER_ESTABLISHED\x10\x04*\x8a\x01\n" +
+	"\tJudgement\x12\x19\n" +
+	"\x15JUDGEMENT_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fJUDGEMENT_SURGE\x10\x01\x12\x1d\n" +
+	"\x19JUDGEMENT_HIGH_STAGNATION\x10\x02\x12\x16\n" +
+	"\x12JUDGEMENT_COMBINED\x10\x03\x12\x16\n" +
+	"\x12JUDGEMENT_PUNCTURE\x10\x04*\xf6\x01\n" +
 	"\bStepKind\x12\x19\n" +
 	"\x15STEP_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14STEP_KIND_VALIDATION\x10\x01\x12\x1b\n" +
@@ -7620,8 +7777,8 @@ func file_tolo_flow_v1_flow_proto_rawDescGZIP() []byte {
 	return file_tolo_flow_v1_flow_proto_rawDescData
 }
 
-var file_tolo_flow_v1_flow_proto_enumTypes = make([]protoimpl.EnumInfo, 28)
-var file_tolo_flow_v1_flow_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
+var file_tolo_flow_v1_flow_proto_enumTypes = make([]protoimpl.EnumInfo, 31)
+var file_tolo_flow_v1_flow_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
 var file_tolo_flow_v1_flow_proto_goTypes = []any{
 	(NodeKind)(0),                       // 0: tolo.flow.v1.NodeKind
 	(BoundaryDirection)(0),              // 1: tolo.flow.v1.BoundaryDirection
@@ -7647,111 +7804,113 @@ var file_tolo_flow_v1_flow_proto_goTypes = []any{
 	(WarningCode)(0),                    // 21: tolo.flow.v1.WarningCode
 	(TriggerEvidenceSource)(0),          // 22: tolo.flow.v1.TriggerEvidenceSource
 	(FallbackKind)(0),                   // 23: tolo.flow.v1.FallbackKind
-	(StepKind)(0),                       // 24: tolo.flow.v1.StepKind
-	(StepStatus)(0),                     // 25: tolo.flow.v1.StepStatus
-	(ODResolutionMode)(0),               // 26: tolo.flow.v1.ODResolutionMode
-	(ODResolutionReason)(0),             // 27: tolo.flow.v1.ODResolutionReason
-	(*OptimizeRequest)(nil),             // 28: tolo.flow.v1.OptimizeRequest
-	(*OptimizeResponse)(nil),            // 29: tolo.flow.v1.OptimizeResponse
-	(*TenantContext)(nil),               // 30: tolo.flow.v1.TenantContext
-	(*EventContext)(nil),                // 31: tolo.flow.v1.EventContext
-	(*Graph)(nil),                       // 32: tolo.flow.v1.Graph
-	(*Node)(nil),                        // 33: tolo.flow.v1.Node
-	(*Boundary)(nil),                    // 34: tolo.flow.v1.Boundary
-	(*Edge)(nil),                        // 35: tolo.flow.v1.Edge
-	(*Observations)(nil),                // 36: tolo.flow.v1.Observations
-	(*ArcFlow)(nil),                     // 37: tolo.flow.v1.ArcFlow
-	(*ArcStagnation)(nil),               // 38: tolo.flow.v1.ArcStagnation
-	(*ArcScalarFlow)(nil),               // 39: tolo.flow.v1.ArcScalarFlow
-	(*NodeOccupancy)(nil),               // 40: tolo.flow.v1.NodeOccupancy
-	(*TurningObservation)(nil),          // 41: tolo.flow.v1.TurningObservation
-	(*HistoryDigest)(nil),               // 42: tolo.flow.v1.HistoryDigest
-	(*ArcHistoryStat)(nil),              // 43: tolo.flow.v1.ArcHistoryStat
-	(*ArcWindowSeries)(nil),             // 44: tolo.flow.v1.ArcWindowSeries
-	(*DirectionalFlowSamples)(nil),      // 45: tolo.flow.v1.DirectionalFlowSamples
-	(*DirectionalSeries)(nil),           // 46: tolo.flow.v1.DirectionalSeries
-	(*TimedValue)(nil),                  // 47: tolo.flow.v1.TimedValue
-	(*DetectionState)(nil),              // 48: tolo.flow.v1.DetectionState
-	(*ArcDemandDigest)(nil),             // 49: tolo.flow.v1.ArcDemandDigest
-	(*ArcDemandDigestEntry)(nil),        // 50: tolo.flow.v1.ArcDemandDigestEntry
-	(*QueuedTrigger)(nil),               // 51: tolo.flow.v1.QueuedTrigger
-	(*ArcWatchState)(nil),               // 52: tolo.flow.v1.ArcWatchState
-	(*WarmupState)(nil),                 // 53: tolo.flow.v1.WarmupState
-	(*RetriggerEntry)(nil),              // 54: tolo.flow.v1.RetriggerEntry
-	(*Event)(nil),                       // 55: tolo.flow.v1.Event
-	(*ParamList)(nil),                   // 56: tolo.flow.v1.ParamList
-	(*KeyValue)(nil),                    // 57: tolo.flow.v1.KeyValue
-	(*ScalarValue)(nil),                 // 58: tolo.flow.v1.ScalarValue
-	(*Reference)(nil),                   // 59: tolo.flow.v1.Reference
-	(*TagReference)(nil),                // 60: tolo.flow.v1.TagReference
-	(*ThresholdDefaults)(nil),           // 61: tolo.flow.v1.ThresholdDefaults
-	(*ThresholdSet)(nil),                // 62: tolo.flow.v1.ThresholdSet
-	(*ResolvedConfig)(nil),              // 63: tolo.flow.v1.ResolvedConfig
-	(*ThroughputWeights)(nil),           // 64: tolo.flow.v1.ThroughputWeights
-	(*EdgeFloat)(nil),                   // 65: tolo.flow.v1.EdgeFloat
-	(*OptimizationResult)(nil),          // 66: tolo.flow.v1.OptimizationResult
-	(*RouteImportance)(nil),             // 67: tolo.flow.v1.RouteImportance
-	(*DirectionProposal)(nil),           // 68: tolo.flow.v1.DirectionProposal
-	(*RestrictionProposal)(nil),         // 69: tolo.flow.v1.RestrictionProposal
-	(*DetourPathProposal)(nil),          // 70: tolo.flow.v1.DetourPathProposal
-	(*BoundaryControl)(nil),             // 71: tolo.flow.v1.BoundaryControl
-	(*OptimizationObjectiveValues)(nil), // 72: tolo.flow.v1.OptimizationObjectiveValues
-	(*FeedbackValues)(nil),              // 73: tolo.flow.v1.FeedbackValues
-	(*ComputeMeta)(nil),                 // 74: tolo.flow.v1.ComputeMeta
-	(*ReachabilityConstraints)(nil),     // 75: tolo.flow.v1.ReachabilityConstraints
-	(*FeedbackObjectiveValues)(nil),     // 76: tolo.flow.v1.FeedbackObjectiveValues
-	(*TagObservation)(nil),              // 77: tolo.flow.v1.TagObservation
-	(*PredictionActualDiff)(nil),        // 78: tolo.flow.v1.PredictionActualDiff
-	(*ReferenceUsageReport)(nil),        // 79: tolo.flow.v1.ReferenceUsageReport
-	(*QualityMetrics)(nil),              // 80: tolo.flow.v1.QualityMetrics
-	(*DetourMetrics)(nil),               // 81: tolo.flow.v1.DetourMetrics
-	(*RestrictionMetrics)(nil),          // 82: tolo.flow.v1.RestrictionMetrics
-	(*RestrictionCount)(nil),            // 83: tolo.flow.v1.RestrictionCount
-	(*DirectionChangeSummary)(nil),      // 84: tolo.flow.v1.DirectionChangeSummary
-	(*AbDiff)(nil),                      // 85: tolo.flow.v1.AbDiff
-	(*ForecastSummary)(nil),             // 86: tolo.flow.v1.ForecastSummary
-	(*NodeDemand)(nil),                  // 87: tolo.flow.v1.NodeDemand
-	(*NodeResolution)(nil),              // 88: tolo.flow.v1.NodeResolution
-	(*Warning)(nil),                     // 89: tolo.flow.v1.Warning
-	(*Diagnostics)(nil),                 // 90: tolo.flow.v1.Diagnostics
-	(*TriggerEvidence)(nil),             // 91: tolo.flow.v1.TriggerEvidence
-	(*FallbackRecord)(nil),              // 92: tolo.flow.v1.FallbackRecord
-	(*StepRecord)(nil),                  // 93: tolo.flow.v1.StepRecord
-	(*timestamppb.Timestamp)(nil),       // 94: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),               // 95: google.protobuf.Empty
+	(ObservationState)(0),               // 24: tolo.flow.v1.ObservationState
+	(HistoryTier)(0),                    // 25: tolo.flow.v1.HistoryTier
+	(Judgement)(0),                      // 26: tolo.flow.v1.Judgement
+	(StepKind)(0),                       // 27: tolo.flow.v1.StepKind
+	(StepStatus)(0),                     // 28: tolo.flow.v1.StepStatus
+	(ODResolutionMode)(0),               // 29: tolo.flow.v1.ODResolutionMode
+	(ODResolutionReason)(0),             // 30: tolo.flow.v1.ODResolutionReason
+	(*OptimizeRequest)(nil),             // 31: tolo.flow.v1.OptimizeRequest
+	(*OptimizeResponse)(nil),            // 32: tolo.flow.v1.OptimizeResponse
+	(*TenantContext)(nil),               // 33: tolo.flow.v1.TenantContext
+	(*EventContext)(nil),                // 34: tolo.flow.v1.EventContext
+	(*Graph)(nil),                       // 35: tolo.flow.v1.Graph
+	(*Node)(nil),                        // 36: tolo.flow.v1.Node
+	(*Boundary)(nil),                    // 37: tolo.flow.v1.Boundary
+	(*Edge)(nil),                        // 38: tolo.flow.v1.Edge
+	(*Observations)(nil),                // 39: tolo.flow.v1.Observations
+	(*ArcFlow)(nil),                     // 40: tolo.flow.v1.ArcFlow
+	(*ArcStagnation)(nil),               // 41: tolo.flow.v1.ArcStagnation
+	(*ArcScalarFlow)(nil),               // 42: tolo.flow.v1.ArcScalarFlow
+	(*NodeOccupancy)(nil),               // 43: tolo.flow.v1.NodeOccupancy
+	(*TurningObservation)(nil),          // 44: tolo.flow.v1.TurningObservation
+	(*HistoryDigest)(nil),               // 45: tolo.flow.v1.HistoryDigest
+	(*ArcHistoryStat)(nil),              // 46: tolo.flow.v1.ArcHistoryStat
+	(*ArcWindowSeries)(nil),             // 47: tolo.flow.v1.ArcWindowSeries
+	(*DirectionalFlowSamples)(nil),      // 48: tolo.flow.v1.DirectionalFlowSamples
+	(*DirectionalSeries)(nil),           // 49: tolo.flow.v1.DirectionalSeries
+	(*TimedValue)(nil),                  // 50: tolo.flow.v1.TimedValue
+	(*DetectionState)(nil),              // 51: tolo.flow.v1.DetectionState
+	(*QueuedTrigger)(nil),               // 52: tolo.flow.v1.QueuedTrigger
+	(*ArcWatchState)(nil),               // 53: tolo.flow.v1.ArcWatchState
+	(*WarmupState)(nil),                 // 54: tolo.flow.v1.WarmupState
+	(*RetriggerEntry)(nil),              // 55: tolo.flow.v1.RetriggerEntry
+	(*Event)(nil),                       // 56: tolo.flow.v1.Event
+	(*ParamList)(nil),                   // 57: tolo.flow.v1.ParamList
+	(*KeyValue)(nil),                    // 58: tolo.flow.v1.KeyValue
+	(*ScalarValue)(nil),                 // 59: tolo.flow.v1.ScalarValue
+	(*Reference)(nil),                   // 60: tolo.flow.v1.Reference
+	(*TagReference)(nil),                // 61: tolo.flow.v1.TagReference
+	(*ThresholdDefaults)(nil),           // 62: tolo.flow.v1.ThresholdDefaults
+	(*ThresholdSet)(nil),                // 63: tolo.flow.v1.ThresholdSet
+	(*ResolvedConfig)(nil),              // 64: tolo.flow.v1.ResolvedConfig
+	(*ThroughputWeights)(nil),           // 65: tolo.flow.v1.ThroughputWeights
+	(*EdgeFloat)(nil),                   // 66: tolo.flow.v1.EdgeFloat
+	(*OptimizationResult)(nil),          // 67: tolo.flow.v1.OptimizationResult
+	(*RouteImportance)(nil),             // 68: tolo.flow.v1.RouteImportance
+	(*DirectionProposal)(nil),           // 69: tolo.flow.v1.DirectionProposal
+	(*RestrictionProposal)(nil),         // 70: tolo.flow.v1.RestrictionProposal
+	(*DetourPathProposal)(nil),          // 71: tolo.flow.v1.DetourPathProposal
+	(*BoundaryControl)(nil),             // 72: tolo.flow.v1.BoundaryControl
+	(*OptimizationObjectiveValues)(nil), // 73: tolo.flow.v1.OptimizationObjectiveValues
+	(*FeedbackValues)(nil),              // 74: tolo.flow.v1.FeedbackValues
+	(*ComputeMeta)(nil),                 // 75: tolo.flow.v1.ComputeMeta
+	(*ReachabilityConstraints)(nil),     // 76: tolo.flow.v1.ReachabilityConstraints
+	(*FeedbackObjectiveValues)(nil),     // 77: tolo.flow.v1.FeedbackObjectiveValues
+	(*TagObservation)(nil),              // 78: tolo.flow.v1.TagObservation
+	(*PredictionActualDiff)(nil),        // 79: tolo.flow.v1.PredictionActualDiff
+	(*ReferenceUsageReport)(nil),        // 80: tolo.flow.v1.ReferenceUsageReport
+	(*QualityMetrics)(nil),              // 81: tolo.flow.v1.QualityMetrics
+	(*DetourMetrics)(nil),               // 82: tolo.flow.v1.DetourMetrics
+	(*RestrictionMetrics)(nil),          // 83: tolo.flow.v1.RestrictionMetrics
+	(*RestrictionCount)(nil),            // 84: tolo.flow.v1.RestrictionCount
+	(*DirectionChangeSummary)(nil),      // 85: tolo.flow.v1.DirectionChangeSummary
+	(*AbDiff)(nil),                      // 86: tolo.flow.v1.AbDiff
+	(*ForecastSummary)(nil),             // 87: tolo.flow.v1.ForecastSummary
+	(*NodeDemand)(nil),                  // 88: tolo.flow.v1.NodeDemand
+	(*NodeResolution)(nil),              // 89: tolo.flow.v1.NodeResolution
+	(*Warning)(nil),                     // 90: tolo.flow.v1.Warning
+	(*Diagnostics)(nil),                 // 91: tolo.flow.v1.Diagnostics
+	(*ElementStateRecord)(nil),          // 92: tolo.flow.v1.ElementStateRecord
+	(*TriggerEvidence)(nil),             // 93: tolo.flow.v1.TriggerEvidence
+	(*FallbackRecord)(nil),              // 94: tolo.flow.v1.FallbackRecord
+	(*StepRecord)(nil),                  // 95: tolo.flow.v1.StepRecord
+	(*timestamppb.Timestamp)(nil),       // 96: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 97: google.protobuf.Empty
 }
 var file_tolo_flow_v1_flow_proto_depIdxs = []int32{
-	30,  // 0: tolo.flow.v1.OptimizeRequest.tenant_context:type_name -> tolo.flow.v1.TenantContext
-	32,  // 1: tolo.flow.v1.OptimizeRequest.graph:type_name -> tolo.flow.v1.Graph
-	36,  // 2: tolo.flow.v1.OptimizeRequest.observations:type_name -> tolo.flow.v1.Observations
-	42,  // 3: tolo.flow.v1.OptimizeRequest.history_digest:type_name -> tolo.flow.v1.HistoryDigest
-	48,  // 4: tolo.flow.v1.OptimizeRequest.detection_state:type_name -> tolo.flow.v1.DetectionState
-	59,  // 5: tolo.flow.v1.OptimizeRequest.references:type_name -> tolo.flow.v1.Reference
-	66,  // 6: tolo.flow.v1.OptimizeRequest.previous_result:type_name -> tolo.flow.v1.OptimizationResult
-	55,  // 7: tolo.flow.v1.OptimizeRequest.events:type_name -> tolo.flow.v1.Event
-	63,  // 8: tolo.flow.v1.OptimizeRequest.config:type_name -> tolo.flow.v1.ResolvedConfig
-	94,  // 9: tolo.flow.v1.OptimizeRequest.server_time:type_name -> google.protobuf.Timestamp
-	31,  // 10: tolo.flow.v1.OptimizeRequest.event_context:type_name -> tolo.flow.v1.EventContext
+	33,  // 0: tolo.flow.v1.OptimizeRequest.tenant_context:type_name -> tolo.flow.v1.TenantContext
+	35,  // 1: tolo.flow.v1.OptimizeRequest.graph:type_name -> tolo.flow.v1.Graph
+	39,  // 2: tolo.flow.v1.OptimizeRequest.observations:type_name -> tolo.flow.v1.Observations
+	45,  // 3: tolo.flow.v1.OptimizeRequest.history_digest:type_name -> tolo.flow.v1.HistoryDigest
+	51,  // 4: tolo.flow.v1.OptimizeRequest.detection_state:type_name -> tolo.flow.v1.DetectionState
+	60,  // 5: tolo.flow.v1.OptimizeRequest.references:type_name -> tolo.flow.v1.Reference
+	67,  // 6: tolo.flow.v1.OptimizeRequest.previous_result:type_name -> tolo.flow.v1.OptimizationResult
+	56,  // 7: tolo.flow.v1.OptimizeRequest.events:type_name -> tolo.flow.v1.Event
+	64,  // 8: tolo.flow.v1.OptimizeRequest.config:type_name -> tolo.flow.v1.ResolvedConfig
+	96,  // 9: tolo.flow.v1.OptimizeRequest.server_time:type_name -> google.protobuf.Timestamp
+	34,  // 10: tolo.flow.v1.OptimizeRequest.event_context:type_name -> tolo.flow.v1.EventContext
 	10,  // 11: tolo.flow.v1.OptimizeResponse.verdict:type_name -> tolo.flow.v1.Verdict
-	48,  // 12: tolo.flow.v1.OptimizeResponse.updated_detection_state:type_name -> tolo.flow.v1.DetectionState
-	73,  // 13: tolo.flow.v1.OptimizeResponse.feedback_values:type_name -> tolo.flow.v1.FeedbackValues
-	90,  // 14: tolo.flow.v1.OptimizeResponse.diagnostics:type_name -> tolo.flow.v1.Diagnostics
-	66,  // 15: tolo.flow.v1.OptimizeResponse.optimization_result:type_name -> tolo.flow.v1.OptimizationResult
+	51,  // 12: tolo.flow.v1.OptimizeResponse.updated_detection_state:type_name -> tolo.flow.v1.DetectionState
+	74,  // 13: tolo.flow.v1.OptimizeResponse.feedback_values:type_name -> tolo.flow.v1.FeedbackValues
+	91,  // 14: tolo.flow.v1.OptimizeResponse.diagnostics:type_name -> tolo.flow.v1.Diagnostics
+	67,  // 15: tolo.flow.v1.OptimizeResponse.optimization_result:type_name -> tolo.flow.v1.OptimizationResult
 	8,   // 16: tolo.flow.v1.EventContext.term:type_name -> tolo.flow.v1.EventTerm
-	33,  // 17: tolo.flow.v1.Graph.nodes:type_name -> tolo.flow.v1.Node
-	35,  // 18: tolo.flow.v1.Graph.edges:type_name -> tolo.flow.v1.Edge
+	36,  // 17: tolo.flow.v1.Graph.nodes:type_name -> tolo.flow.v1.Node
+	38,  // 18: tolo.flow.v1.Graph.edges:type_name -> tolo.flow.v1.Edge
 	0,   // 19: tolo.flow.v1.Node.kind:type_name -> tolo.flow.v1.NodeKind
-	34,  // 20: tolo.flow.v1.Node.boundary:type_name -> tolo.flow.v1.Boundary
+	37,  // 20: tolo.flow.v1.Node.boundary:type_name -> tolo.flow.v1.Boundary
 	1,   // 21: tolo.flow.v1.Boundary.direction:type_name -> tolo.flow.v1.BoundaryDirection
 	2,   // 22: tolo.flow.v1.Edge.direction_constraint:type_name -> tolo.flow.v1.DirectionConstraint
 	3,   // 23: tolo.flow.v1.Edge.current_direction:type_name -> tolo.flow.v1.CurrentDirection
 	4,   // 24: tolo.flow.v1.Edge.observation_type:type_name -> tolo.flow.v1.ObservationType
-	94,  // 25: tolo.flow.v1.Observations.observed_at:type_name -> google.protobuf.Timestamp
-	37,  // 26: tolo.flow.v1.Observations.arc_flows:type_name -> tolo.flow.v1.ArcFlow
-	38,  // 27: tolo.flow.v1.Observations.arc_stagnations:type_name -> tolo.flow.v1.ArcStagnation
-	39,  // 28: tolo.flow.v1.Observations.arc_scalar_flows:type_name -> tolo.flow.v1.ArcScalarFlow
-	40,  // 29: tolo.flow.v1.Observations.node_occupancies:type_name -> tolo.flow.v1.NodeOccupancy
-	41,  // 30: tolo.flow.v1.Observations.node_turning:type_name -> tolo.flow.v1.TurningObservation
+	96,  // 25: tolo.flow.v1.Observations.observed_at:type_name -> google.protobuf.Timestamp
+	40,  // 26: tolo.flow.v1.Observations.arc_flows:type_name -> tolo.flow.v1.ArcFlow
+	41,  // 27: tolo.flow.v1.Observations.arc_stagnations:type_name -> tolo.flow.v1.ArcStagnation
+	42,  // 28: tolo.flow.v1.Observations.arc_scalar_flows:type_name -> tolo.flow.v1.ArcScalarFlow
+	43,  // 29: tolo.flow.v1.Observations.node_occupancies:type_name -> tolo.flow.v1.NodeOccupancy
+	44,  // 30: tolo.flow.v1.Observations.node_turning:type_name -> tolo.flow.v1.TurningObservation
 	5,   // 31: tolo.flow.v1.ArcFlow.direction:type_name -> tolo.flow.v1.FlowDirection
 	6,   // 32: tolo.flow.v1.ArcFlow.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
 	7,   // 33: tolo.flow.v1.ArcStagnation.derivation:type_name -> tolo.flow.v1.StagnationDerivation
@@ -7759,96 +7918,98 @@ var file_tolo_flow_v1_flow_proto_depIdxs = []int32{
 	6,   // 35: tolo.flow.v1.ArcScalarFlow.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
 	6,   // 36: tolo.flow.v1.NodeOccupancy.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
 	6,   // 37: tolo.flow.v1.TurningObservation.confidence_flag:type_name -> tolo.flow.v1.ConfidenceFlag
-	43,  // 38: tolo.flow.v1.HistoryDigest.arc_stats:type_name -> tolo.flow.v1.ArcHistoryStat
-	44,  // 39: tolo.flow.v1.HistoryDigest.window_series:type_name -> tolo.flow.v1.ArcWindowSeries
-	47,  // 40: tolo.flow.v1.ArcWindowSeries.flow_samples:type_name -> tolo.flow.v1.TimedValue
-	47,  // 41: tolo.flow.v1.ArcWindowSeries.stagnation_samples:type_name -> tolo.flow.v1.TimedValue
-	45,  // 42: tolo.flow.v1.ArcWindowSeries.directional_flow_samples:type_name -> tolo.flow.v1.DirectionalFlowSamples
-	46,  // 43: tolo.flow.v1.DirectionalFlowSamples.series:type_name -> tolo.flow.v1.DirectionalSeries
+	46,  // 38: tolo.flow.v1.HistoryDigest.arc_stats:type_name -> tolo.flow.v1.ArcHistoryStat
+	47,  // 39: tolo.flow.v1.HistoryDigest.window_series:type_name -> tolo.flow.v1.ArcWindowSeries
+	50,  // 40: tolo.flow.v1.ArcWindowSeries.flow_samples:type_name -> tolo.flow.v1.TimedValue
+	50,  // 41: tolo.flow.v1.ArcWindowSeries.stagnation_samples:type_name -> tolo.flow.v1.TimedValue
+	48,  // 42: tolo.flow.v1.ArcWindowSeries.directional_flow_samples:type_name -> tolo.flow.v1.DirectionalFlowSamples
+	49,  // 43: tolo.flow.v1.DirectionalFlowSamples.series:type_name -> tolo.flow.v1.DirectionalSeries
 	5,   // 44: tolo.flow.v1.DirectionalSeries.direction:type_name -> tolo.flow.v1.FlowDirection
-	47,  // 45: tolo.flow.v1.DirectionalSeries.samples:type_name -> tolo.flow.v1.TimedValue
-	94,  // 46: tolo.flow.v1.TimedValue.at:type_name -> google.protobuf.Timestamp
-	94,  // 47: tolo.flow.v1.DetectionState.cooldown_until:type_name -> google.protobuf.Timestamp
-	51,  // 48: tolo.flow.v1.DetectionState.trigger_queue:type_name -> tolo.flow.v1.QueuedTrigger
-	52,  // 49: tolo.flow.v1.DetectionState.arc_watch_states:type_name -> tolo.flow.v1.ArcWatchState
-	49,  // 50: tolo.flow.v1.DetectionState.arc_demand_digest:type_name -> tolo.flow.v1.ArcDemandDigest
-	53,  // 51: tolo.flow.v1.DetectionState.warmup_states:type_name -> tolo.flow.v1.WarmupState
-	54,  // 52: tolo.flow.v1.DetectionState.arc_retrigger_counts:type_name -> tolo.flow.v1.RetriggerEntry
-	50,  // 53: tolo.flow.v1.ArcDemandDigest.entries:type_name -> tolo.flow.v1.ArcDemandDigestEntry
-	11,  // 54: tolo.flow.v1.QueuedTrigger.kind:type_name -> tolo.flow.v1.QueuedTriggerKind
-	94,  // 55: tolo.flow.v1.QueuedTrigger.first_fired_at:type_name -> google.protobuf.Timestamp
-	94,  // 56: tolo.flow.v1.QueuedTrigger.last_fired_at:type_name -> google.protobuf.Timestamp
-	94,  // 57: tolo.flow.v1.ArcWatchState.stagnation_watch_since:type_name -> google.protobuf.Timestamp
-	94,  // 58: tolo.flow.v1.ArcWatchState.demand_watch_since:type_name -> google.protobuf.Timestamp
-	94,  // 59: tolo.flow.v1.WarmupState.until:type_name -> google.protobuf.Timestamp
-	94,  // 60: tolo.flow.v1.RetriggerEntry.last_fired_at:type_name -> google.protobuf.Timestamp
-	12,  // 61: tolo.flow.v1.Event.kind:type_name -> tolo.flow.v1.EventKind
-	94,  // 62: tolo.flow.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	56,  // 63: tolo.flow.v1.Event.params:type_name -> tolo.flow.v1.ParamList
-	57,  // 64: tolo.flow.v1.ParamList.values:type_name -> tolo.flow.v1.KeyValue
-	58,  // 65: tolo.flow.v1.KeyValue.value:type_name -> tolo.flow.v1.ScalarValue
-	95,  // 66: tolo.flow.v1.ScalarValue.null_value:type_name -> google.protobuf.Empty
-	60,  // 67: tolo.flow.v1.Reference.by_attribute_tag:type_name -> tolo.flow.v1.TagReference
-	61,  // 68: tolo.flow.v1.Reference.default_thresholds:type_name -> tolo.flow.v1.ThresholdDefaults
-	62,  // 69: tolo.flow.v1.ThresholdDefaults.short_term:type_name -> tolo.flow.v1.ThresholdSet
-	62,  // 70: tolo.flow.v1.ThresholdDefaults.long_term:type_name -> tolo.flow.v1.ThresholdSet
-	9,   // 71: tolo.flow.v1.ResolvedConfig.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
-	64,  // 72: tolo.flow.v1.ResolvedConfig.throughput_weights:type_name -> tolo.flow.v1.ThroughputWeights
-	65,  // 73: tolo.flow.v1.ResolvedConfig.throughput_max_per_edge:type_name -> tolo.flow.v1.EdgeFloat
-	67,  // 74: tolo.flow.v1.OptimizationResult.route_importance:type_name -> tolo.flow.v1.RouteImportance
-	68,  // 75: tolo.flow.v1.OptimizationResult.direction_proposal:type_name -> tolo.flow.v1.DirectionProposal
-	69,  // 76: tolo.flow.v1.OptimizationResult.restriction_proposal:type_name -> tolo.flow.v1.RestrictionProposal
-	70,  // 77: tolo.flow.v1.OptimizationResult.detour_paths:type_name -> tolo.flow.v1.DetourPathProposal
-	71,  // 78: tolo.flow.v1.OptimizationResult.boundary_control:type_name -> tolo.flow.v1.BoundaryControl
-	72,  // 79: tolo.flow.v1.OptimizationResult.objective_values:type_name -> tolo.flow.v1.OptimizationObjectiveValues
-	15,  // 80: tolo.flow.v1.OptimizationResult.solver_status:type_name -> tolo.flow.v1.SolverStatus
-	94,  // 81: tolo.flow.v1.OptimizationResult.solved_at:type_name -> google.protobuf.Timestamp
-	16,  // 82: tolo.flow.v1.RouteImportance.direction:type_name -> tolo.flow.v1.ImportanceDirection
-	17,  // 83: tolo.flow.v1.DirectionProposal.proposed_direction:type_name -> tolo.flow.v1.ProposedDirection
-	18,  // 84: tolo.flow.v1.DirectionProposal.change_type:type_name -> tolo.flow.v1.DirectionChangeType
-	19,  // 85: tolo.flow.v1.RestrictionProposal.action:type_name -> tolo.flow.v1.RestrictionAction
-	14,  // 86: tolo.flow.v1.RestrictionProposal.reason:type_name -> tolo.flow.v1.RestrictionReason
-	20,  // 87: tolo.flow.v1.BoundaryControl.action:type_name -> tolo.flow.v1.BoundaryAction
-	74,  // 88: tolo.flow.v1.FeedbackValues.compute_meta:type_name -> tolo.flow.v1.ComputeMeta
-	76,  // 89: tolo.flow.v1.FeedbackValues.objective_values:type_name -> tolo.flow.v1.FeedbackObjectiveValues
-	77,  // 90: tolo.flow.v1.FeedbackValues.per_tag_observations:type_name -> tolo.flow.v1.TagObservation
-	78,  // 91: tolo.flow.v1.FeedbackValues.prediction_actual_diff:type_name -> tolo.flow.v1.PredictionActualDiff
-	79,  // 92: tolo.flow.v1.FeedbackValues.reference_usage:type_name -> tolo.flow.v1.ReferenceUsageReport
-	80,  // 93: tolo.flow.v1.FeedbackValues.quality_metrics:type_name -> tolo.flow.v1.QualityMetrics
-	81,  // 94: tolo.flow.v1.FeedbackValues.detour_metrics:type_name -> tolo.flow.v1.DetourMetrics
-	82,  // 95: tolo.flow.v1.FeedbackValues.restriction_metrics:type_name -> tolo.flow.v1.RestrictionMetrics
-	84,  // 96: tolo.flow.v1.FeedbackValues.direction_change_summary:type_name -> tolo.flow.v1.DirectionChangeSummary
-	85,  // 97: tolo.flow.v1.FeedbackValues.ab_diff:type_name -> tolo.flow.v1.AbDiff
-	86,  // 98: tolo.flow.v1.FeedbackValues.forecast_summary:type_name -> tolo.flow.v1.ForecastSummary
-	89,  // 99: tolo.flow.v1.FeedbackValues.warnings:type_name -> tolo.flow.v1.Warning
-	13,  // 100: tolo.flow.v1.ComputeMeta.mode:type_name -> tolo.flow.v1.Mode
-	9,   // 101: tolo.flow.v1.ComputeMeta.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
-	75,  // 102: tolo.flow.v1.ComputeMeta.reachability_constraints:type_name -> tolo.flow.v1.ReachabilityConstraints
-	83,  // 103: tolo.flow.v1.RestrictionMetrics.by_reason:type_name -> tolo.flow.v1.RestrictionCount
-	14,  // 104: tolo.flow.v1.RestrictionCount.reason:type_name -> tolo.flow.v1.RestrictionReason
-	87,  // 105: tolo.flow.v1.ForecastSummary.node_demand:type_name -> tolo.flow.v1.NodeDemand
-	88,  // 106: tolo.flow.v1.ForecastSummary.estimation_resolution:type_name -> tolo.flow.v1.NodeResolution
-	26,  // 107: tolo.flow.v1.NodeResolution.mode:type_name -> tolo.flow.v1.ODResolutionMode
-	27,  // 108: tolo.flow.v1.NodeResolution.reason:type_name -> tolo.flow.v1.ODResolutionReason
-	21,  // 109: tolo.flow.v1.Warning.code:type_name -> tolo.flow.v1.WarningCode
-	57,  // 110: tolo.flow.v1.Warning.context:type_name -> tolo.flow.v1.KeyValue
-	13,  // 111: tolo.flow.v1.Diagnostics.mode:type_name -> tolo.flow.v1.Mode
-	89,  // 112: tolo.flow.v1.Diagnostics.warnings:type_name -> tolo.flow.v1.Warning
-	91,  // 113: tolo.flow.v1.Diagnostics.trigger_evidences:type_name -> tolo.flow.v1.TriggerEvidence
-	92,  // 114: tolo.flow.v1.Diagnostics.fallbacks_applied:type_name -> tolo.flow.v1.FallbackRecord
-	93,  // 115: tolo.flow.v1.Diagnostics.steps_executed:type_name -> tolo.flow.v1.StepRecord
-	22,  // 116: tolo.flow.v1.TriggerEvidence.source:type_name -> tolo.flow.v1.TriggerEvidenceSource
-	94,  // 117: tolo.flow.v1.TriggerEvidence.occurred_at:type_name -> google.protobuf.Timestamp
-	23,  // 118: tolo.flow.v1.FallbackRecord.kind:type_name -> tolo.flow.v1.FallbackKind
-	24,  // 119: tolo.flow.v1.StepRecord.step:type_name -> tolo.flow.v1.StepKind
-	25,  // 120: tolo.flow.v1.StepRecord.status:type_name -> tolo.flow.v1.StepStatus
-	28,  // 121: tolo.flow.v1.FlowControlService.Optimize:input_type -> tolo.flow.v1.OptimizeRequest
-	29,  // 122: tolo.flow.v1.FlowControlService.Optimize:output_type -> tolo.flow.v1.OptimizeResponse
-	122, // [122:123] is the sub-list for method output_type
-	121, // [121:122] is the sub-list for method input_type
-	121, // [121:121] is the sub-list for extension type_name
-	121, // [121:121] is the sub-list for extension extendee
-	0,   // [0:121] is the sub-list for field type_name
+	50,  // 45: tolo.flow.v1.DirectionalSeries.samples:type_name -> tolo.flow.v1.TimedValue
+	96,  // 46: tolo.flow.v1.TimedValue.at:type_name -> google.protobuf.Timestamp
+	96,  // 47: tolo.flow.v1.DetectionState.cooldown_until:type_name -> google.protobuf.Timestamp
+	52,  // 48: tolo.flow.v1.DetectionState.trigger_queue:type_name -> tolo.flow.v1.QueuedTrigger
+	53,  // 49: tolo.flow.v1.DetectionState.arc_watch_states:type_name -> tolo.flow.v1.ArcWatchState
+	54,  // 50: tolo.flow.v1.DetectionState.warmup_states:type_name -> tolo.flow.v1.WarmupState
+	55,  // 51: tolo.flow.v1.DetectionState.arc_retrigger_counts:type_name -> tolo.flow.v1.RetriggerEntry
+	11,  // 52: tolo.flow.v1.QueuedTrigger.kind:type_name -> tolo.flow.v1.QueuedTriggerKind
+	96,  // 53: tolo.flow.v1.QueuedTrigger.first_fired_at:type_name -> google.protobuf.Timestamp
+	96,  // 54: tolo.flow.v1.QueuedTrigger.last_fired_at:type_name -> google.protobuf.Timestamp
+	96,  // 55: tolo.flow.v1.ArcWatchState.stagnation_watch_since:type_name -> google.protobuf.Timestamp
+	96,  // 56: tolo.flow.v1.ArcWatchState.stagnation_last_held_at:type_name -> google.protobuf.Timestamp
+	96,  // 57: tolo.flow.v1.WarmupState.until:type_name -> google.protobuf.Timestamp
+	96,  // 58: tolo.flow.v1.RetriggerEntry.last_fired_at:type_name -> google.protobuf.Timestamp
+	12,  // 59: tolo.flow.v1.Event.kind:type_name -> tolo.flow.v1.EventKind
+	96,  // 60: tolo.flow.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	57,  // 61: tolo.flow.v1.Event.params:type_name -> tolo.flow.v1.ParamList
+	58,  // 62: tolo.flow.v1.ParamList.values:type_name -> tolo.flow.v1.KeyValue
+	59,  // 63: tolo.flow.v1.KeyValue.value:type_name -> tolo.flow.v1.ScalarValue
+	97,  // 64: tolo.flow.v1.ScalarValue.null_value:type_name -> google.protobuf.Empty
+	61,  // 65: tolo.flow.v1.Reference.by_attribute_tag:type_name -> tolo.flow.v1.TagReference
+	62,  // 66: tolo.flow.v1.Reference.default_thresholds:type_name -> tolo.flow.v1.ThresholdDefaults
+	63,  // 67: tolo.flow.v1.ThresholdDefaults.short_term:type_name -> tolo.flow.v1.ThresholdSet
+	63,  // 68: tolo.flow.v1.ThresholdDefaults.long_term:type_name -> tolo.flow.v1.ThresholdSet
+	9,   // 69: tolo.flow.v1.ResolvedConfig.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
+	65,  // 70: tolo.flow.v1.ResolvedConfig.throughput_weights:type_name -> tolo.flow.v1.ThroughputWeights
+	66,  // 71: tolo.flow.v1.ResolvedConfig.throughput_max_per_edge:type_name -> tolo.flow.v1.EdgeFloat
+	68,  // 72: tolo.flow.v1.OptimizationResult.route_importance:type_name -> tolo.flow.v1.RouteImportance
+	69,  // 73: tolo.flow.v1.OptimizationResult.direction_proposal:type_name -> tolo.flow.v1.DirectionProposal
+	70,  // 74: tolo.flow.v1.OptimizationResult.restriction_proposal:type_name -> tolo.flow.v1.RestrictionProposal
+	71,  // 75: tolo.flow.v1.OptimizationResult.detour_paths:type_name -> tolo.flow.v1.DetourPathProposal
+	72,  // 76: tolo.flow.v1.OptimizationResult.boundary_control:type_name -> tolo.flow.v1.BoundaryControl
+	73,  // 77: tolo.flow.v1.OptimizationResult.objective_values:type_name -> tolo.flow.v1.OptimizationObjectiveValues
+	15,  // 78: tolo.flow.v1.OptimizationResult.solver_status:type_name -> tolo.flow.v1.SolverStatus
+	96,  // 79: tolo.flow.v1.OptimizationResult.solved_at:type_name -> google.protobuf.Timestamp
+	16,  // 80: tolo.flow.v1.RouteImportance.direction:type_name -> tolo.flow.v1.ImportanceDirection
+	17,  // 81: tolo.flow.v1.DirectionProposal.proposed_direction:type_name -> tolo.flow.v1.ProposedDirection
+	18,  // 82: tolo.flow.v1.DirectionProposal.change_type:type_name -> tolo.flow.v1.DirectionChangeType
+	19,  // 83: tolo.flow.v1.RestrictionProposal.action:type_name -> tolo.flow.v1.RestrictionAction
+	14,  // 84: tolo.flow.v1.RestrictionProposal.reason:type_name -> tolo.flow.v1.RestrictionReason
+	20,  // 85: tolo.flow.v1.BoundaryControl.action:type_name -> tolo.flow.v1.BoundaryAction
+	75,  // 86: tolo.flow.v1.FeedbackValues.compute_meta:type_name -> tolo.flow.v1.ComputeMeta
+	77,  // 87: tolo.flow.v1.FeedbackValues.objective_values:type_name -> tolo.flow.v1.FeedbackObjectiveValues
+	78,  // 88: tolo.flow.v1.FeedbackValues.per_tag_observations:type_name -> tolo.flow.v1.TagObservation
+	79,  // 89: tolo.flow.v1.FeedbackValues.prediction_actual_diff:type_name -> tolo.flow.v1.PredictionActualDiff
+	80,  // 90: tolo.flow.v1.FeedbackValues.reference_usage:type_name -> tolo.flow.v1.ReferenceUsageReport
+	81,  // 91: tolo.flow.v1.FeedbackValues.quality_metrics:type_name -> tolo.flow.v1.QualityMetrics
+	82,  // 92: tolo.flow.v1.FeedbackValues.detour_metrics:type_name -> tolo.flow.v1.DetourMetrics
+	83,  // 93: tolo.flow.v1.FeedbackValues.restriction_metrics:type_name -> tolo.flow.v1.RestrictionMetrics
+	85,  // 94: tolo.flow.v1.FeedbackValues.direction_change_summary:type_name -> tolo.flow.v1.DirectionChangeSummary
+	86,  // 95: tolo.flow.v1.FeedbackValues.ab_diff:type_name -> tolo.flow.v1.AbDiff
+	87,  // 96: tolo.flow.v1.FeedbackValues.forecast_summary:type_name -> tolo.flow.v1.ForecastSummary
+	90,  // 97: tolo.flow.v1.FeedbackValues.warnings:type_name -> tolo.flow.v1.Warning
+	13,  // 98: tolo.flow.v1.ComputeMeta.mode:type_name -> tolo.flow.v1.Mode
+	9,   // 99: tolo.flow.v1.ComputeMeta.optimization_mode:type_name -> tolo.flow.v1.OptimizationMode
+	76,  // 100: tolo.flow.v1.ComputeMeta.reachability_constraints:type_name -> tolo.flow.v1.ReachabilityConstraints
+	84,  // 101: tolo.flow.v1.RestrictionMetrics.by_reason:type_name -> tolo.flow.v1.RestrictionCount
+	14,  // 102: tolo.flow.v1.RestrictionCount.reason:type_name -> tolo.flow.v1.RestrictionReason
+	88,  // 103: tolo.flow.v1.ForecastSummary.node_demand:type_name -> tolo.flow.v1.NodeDemand
+	89,  // 104: tolo.flow.v1.ForecastSummary.estimation_resolution:type_name -> tolo.flow.v1.NodeResolution
+	29,  // 105: tolo.flow.v1.NodeResolution.mode:type_name -> tolo.flow.v1.ODResolutionMode
+	30,  // 106: tolo.flow.v1.NodeResolution.reason:type_name -> tolo.flow.v1.ODResolutionReason
+	21,  // 107: tolo.flow.v1.Warning.code:type_name -> tolo.flow.v1.WarningCode
+	58,  // 108: tolo.flow.v1.Warning.context:type_name -> tolo.flow.v1.KeyValue
+	13,  // 109: tolo.flow.v1.Diagnostics.mode:type_name -> tolo.flow.v1.Mode
+	90,  // 110: tolo.flow.v1.Diagnostics.warnings:type_name -> tolo.flow.v1.Warning
+	93,  // 111: tolo.flow.v1.Diagnostics.trigger_evidences:type_name -> tolo.flow.v1.TriggerEvidence
+	94,  // 112: tolo.flow.v1.Diagnostics.fallbacks_applied:type_name -> tolo.flow.v1.FallbackRecord
+	95,  // 113: tolo.flow.v1.Diagnostics.steps_executed:type_name -> tolo.flow.v1.StepRecord
+	92,  // 114: tolo.flow.v1.Diagnostics.element_states:type_name -> tolo.flow.v1.ElementStateRecord
+	24,  // 115: tolo.flow.v1.ElementStateRecord.observation:type_name -> tolo.flow.v1.ObservationState
+	25,  // 116: tolo.flow.v1.ElementStateRecord.history:type_name -> tolo.flow.v1.HistoryTier
+	26,  // 117: tolo.flow.v1.ElementStateRecord.skipped:type_name -> tolo.flow.v1.Judgement
+	22,  // 118: tolo.flow.v1.TriggerEvidence.source:type_name -> tolo.flow.v1.TriggerEvidenceSource
+	96,  // 119: tolo.flow.v1.TriggerEvidence.occurred_at:type_name -> google.protobuf.Timestamp
+	23,  // 120: tolo.flow.v1.FallbackRecord.kind:type_name -> tolo.flow.v1.FallbackKind
+	27,  // 121: tolo.flow.v1.StepRecord.step:type_name -> tolo.flow.v1.StepKind
+	28,  // 122: tolo.flow.v1.StepRecord.status:type_name -> tolo.flow.v1.StepStatus
+	31,  // 123: tolo.flow.v1.FlowControlService.Optimize:input_type -> tolo.flow.v1.OptimizeRequest
+	32,  // 124: tolo.flow.v1.FlowControlService.Optimize:output_type -> tolo.flow.v1.OptimizeResponse
+	124, // [124:125] is the sub-list for method output_type
+	123, // [123:124] is the sub-list for method input_type
+	123, // [123:123] is the sub-list for extension type_name
+	123, // [123:123] is the sub-list for extension extendee
+	0,   // [0:123] is the sub-list for field type_name
 }
 
 func init() { file_tolo_flow_v1_flow_proto_init() }
@@ -7872,35 +8033,35 @@ func file_tolo_flow_v1_flow_proto_init() {
 	file_tolo_flow_v1_flow_proto_msgTypes[15].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[16].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[20].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[23].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[21].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[22].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[24].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[26].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[27].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[30].OneofWrappers = []any{
+	file_tolo_flow_v1_flow_proto_msgTypes[25].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[28].OneofWrappers = []any{
 		(*ScalarValue_StringValue)(nil),
 		(*ScalarValue_DoubleValue)(nil),
 		(*ScalarValue_IntValue)(nil),
 		(*ScalarValue_BoolValue)(nil),
 		(*ScalarValue_NullValue)(nil),
 	}
-	file_tolo_flow_v1_flow_proto_msgTypes[31].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[29].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[30].OneofWrappers = []any{}
 	file_tolo_flow_v1_flow_proto_msgTypes[32].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[34].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[35].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[38].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[41].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[44].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[45].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[48].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[63].OneofWrappers = []any{}
-	file_tolo_flow_v1_flow_proto_msgTypes[65].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[33].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[36].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[39].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[42].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[43].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[46].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[62].OneofWrappers = []any{}
+	file_tolo_flow_v1_flow_proto_msgTypes[64].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tolo_flow_v1_flow_proto_rawDesc), len(file_tolo_flow_v1_flow_proto_rawDesc)),
-			NumEnums:      28,
-			NumMessages:   66,
+			NumEnums:      31,
+			NumMessages:   65,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
