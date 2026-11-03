@@ -364,6 +364,62 @@ func TestPostgresEdgeDeviceRepositoryCameraRoundTrip(t *testing.T) {
 	}
 }
 
+func TestPostgresEdgeDeviceRepositoryFindByObservationPointIDForUpdateSerializesWithUnregister(t *testing.T) {
+	repo := NewPostgresEdgeDeviceRepository(testDB)
+	ctx := withTenant(context.Background(), "tenant-camera-lock")
+	page := newDevice(t, "tenant-camera-lock", "event-camera-lock", "north")
+
+	if err := repo.Create(ctx, page); err != nil {
+		t.Fatalf("Create page: %v", err)
+	}
+
+	pointID := page.ObservationPoints[0].ID
+
+	var contenderErr error
+
+	err := repo.WithinTransaction(ctx, func(txCtx context.Context) error {
+		locked, err := repo.FindByObservationPointIDForUpdate(txCtx, pointID)
+		if err != nil {
+			return err
+		}
+
+		if err := locked.Unregister(); err != nil {
+			return err
+		}
+
+		if err := repo.Save(txCtx, locked); err != nil {
+			return err
+		}
+
+		waitCtx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+		defer cancel()
+
+		contenderErr = repo.WithinTransaction(waitCtx, func(contenderCtx context.Context) error {
+			_, err := repo.FindByObservationPointIDForUpdate(contenderCtx, pointID)
+
+			return err
+		})
+
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WithinTransaction() error = %v", err)
+	}
+
+	if contenderErr == nil {
+		t.Error("FindByObservationPointIDForUpdate() while the page was locked for unregister succeeded, want it to wait")
+	}
+
+	unregistered, err := repo.FindByObservationPointID(ctx, pointID)
+	if err != nil {
+		t.Fatalf("FindByObservationPointID after unregister: %v", err)
+	}
+
+	if !unregistered.Unregistered {
+		t.Errorf("page unregistered = false after the unregister transaction committed")
+	}
+}
+
 func TestPostgresEdgeDeviceRepositoryRejectsASecondCameraOnTheSamePoint(t *testing.T) {
 	repo := NewPostgresEdgeDeviceRepository(testDB)
 	ctx := withTenant(context.Background(), "tenant-camera-unique")

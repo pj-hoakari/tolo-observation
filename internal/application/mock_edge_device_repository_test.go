@@ -70,6 +70,21 @@ func (mr *MockEdgeDeviceRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).FindByID), ctx, id)
 }
 
+// FindByIDForUpdate mocks base method.
+func (m *MockEdgeDeviceRepository) FindByIDForUpdate(ctx context.Context, id domain.EdgeDeviceID) (domain.EdgeDevice, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByIDForUpdate", ctx, id)
+	ret0, _ := ret[0].(domain.EdgeDevice)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByIDForUpdate indicates an expected call of FindByIDForUpdate.
+func (mr *MockEdgeDeviceRepositoryMockRecorder) FindByIDForUpdate(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByIDForUpdate", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).FindByIDForUpdate), ctx, id)
+}
+
 // FindByObservationPointID mocks base method.
 func (m *MockEdgeDeviceRepository) FindByObservationPointID(ctx context.Context, id domain.ObservationPointID) (domain.EdgeDevice, error) {
 	m.ctrl.T.Helper()
@@ -83,6 +98,21 @@ func (m *MockEdgeDeviceRepository) FindByObservationPointID(ctx context.Context,
 func (mr *MockEdgeDeviceRepositoryMockRecorder) FindByObservationPointID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByObservationPointID", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).FindByObservationPointID), ctx, id)
+}
+
+// FindByObservationPointIDForUpdate mocks base method.
+func (m *MockEdgeDeviceRepository) FindByObservationPointIDForUpdate(ctx context.Context, id domain.ObservationPointID) (domain.EdgeDevice, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByObservationPointIDForUpdate", ctx, id)
+	ret0, _ := ret[0].(domain.EdgeDevice)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByObservationPointIDForUpdate indicates an expected call of FindByObservationPointIDForUpdate.
+func (mr *MockEdgeDeviceRepositoryMockRecorder) FindByObservationPointIDForUpdate(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByObservationPointIDForUpdate", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).FindByObservationPointIDForUpdate), ctx, id)
 }
 
 // ListByEvent mocks base method.
@@ -126,4 +156,18 @@ func (m *MockEdgeDeviceRepository) SaveHeartbeat(ctx context.Context, device dom
 func (mr *MockEdgeDeviceRepositoryMockRecorder) SaveHeartbeat(ctx, device any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveHeartbeat", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).SaveHeartbeat), ctx, device)
+}
+
+// WithinTransaction mocks base method.
+func (m *MockEdgeDeviceRepository) WithinTransaction(ctx context.Context, fn func(context.Context) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WithinTransaction", ctx, fn)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WithinTransaction indicates an expected call of WithinTransaction.
+func (mr *MockEdgeDeviceRepositoryMockRecorder) WithinTransaction(ctx, fn any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithinTransaction", reflect.TypeOf((*MockEdgeDeviceRepository)(nil).WithinTransaction), ctx, fn)
 }

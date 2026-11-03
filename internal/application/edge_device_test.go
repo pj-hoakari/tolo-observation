@@ -24,6 +24,20 @@ const (
 
 var testNow = time.Date(2026, time.September, 22, 12, 0, 0, 0, time.UTC)
 
+type transactionKey struct{}
+
+var inTransaction = gomock.Cond(func(ctx context.Context) bool {
+	return ctx.Value(transactionKey{}) != nil
+})
+
+func expectTransaction(devices *MockEdgeDeviceRepository) {
+	devices.EXPECT().
+		WithinTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(context.WithValue(ctx, transactionKey{}, true))
+		})
+}
+
 // withEventToken returns the context the interceptor leaves behind for an
 // event token scoped to eventPublicID.
 func withEventToken(eventPublicID string) context.Context {
@@ -114,8 +128,9 @@ func TestUnregisterEdgeDeviceRejectsAnotherEventsDevice(t *testing.T) {
 	t.Parallel()
 
 	service, devices := newService(t)
+	expectTransaction(devices)
 	devices.EXPECT().
-		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+		FindByIDForUpdate(inTransaction, domain.EdgeDeviceID("1122334455667788")).
 		Return(domain.EdgeDevice{EventID: otherEventPublicID}, nil)
 
 	_, err := service.UnregisterEdgeDevice(withEventToken(testEventPublicID), application.UnregisterEdgeDeviceInput{
@@ -405,8 +420,9 @@ func TestRegisterCameraEdgeDeviceLinksAnObservationPoint(t *testing.T) {
 	t.Parallel()
 
 	service, devices := newService(t)
+	expectTransaction(devices)
 	devices.EXPECT().
-		FindByObservationPointID(gomock.Any(), domain.ObservationPointID(testCameraLinkedPointID)).
+		FindByObservationPointIDForUpdate(inTransaction, domain.ObservationPointID(testCameraLinkedPointID)).
 		Return(domain.EdgeDevice{
 			ID:      "1122334455667788",
 			EventID: testEventPublicID,
@@ -415,7 +431,7 @@ func TestRegisterCameraEdgeDeviceLinksAnObservationPoint(t *testing.T) {
 				{ID: testCameraLinkedPointID, Name: "north", Enabled: true},
 			},
 		}, nil)
-	devices.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+	devices.EXPECT().Create(inTransaction, gomock.Any()).Return(nil)
 
 	output, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), application.RegisterEdgeDeviceInput{
 		EventID:                  testEventPublicID,
@@ -523,6 +539,11 @@ func TestRegisterCameraEdgeDeviceRejectsLinkedPointsItCannotUse(t *testing.T) {
 			want: domain.ErrObservationPointAlreadyLinked,
 		},
 		{
+			name:  "observation point owned by an unregistered page",
+			owner: domain.EdgeDevice{EventID: testEventPublicID, Kind: domain.EdgeDeviceKindObservationPage, Unregistered: true},
+			want:  domain.ErrEdgeDeviceUnregistered,
+		},
+		{
 			name:  "observation point owned by a camera",
 			owner: domain.EdgeDevice{EventID: testEventPublicID, Kind: domain.EdgeDeviceKindCamera},
 			want:  domain.ErrCameraLinkToCamera,
@@ -539,8 +560,9 @@ func TestRegisterCameraEdgeDeviceRejectsLinkedPointsItCannotUse(t *testing.T) {
 			t.Parallel()
 
 			service, devices := newService(t)
+			expectTransaction(devices)
 			devices.EXPECT().
-				FindByObservationPointID(gomock.Any(), domain.ObservationPointID(testCameraLinkedPointID)).
+				FindByObservationPointIDForUpdate(inTransaction, domain.ObservationPointID(testCameraLinkedPointID)).
 				Return(tt.owner, tt.findErr)
 
 			_, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), application.RegisterEdgeDeviceInput{
@@ -560,8 +582,9 @@ func TestUnregisterCameraEdgeDeviceRemovesLinksWithoutDisablingPoints(t *testing
 	t.Parallel()
 
 	service, devices := newService(t)
+	expectTransaction(devices)
 	devices.EXPECT().
-		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+		FindByIDForUpdate(inTransaction, domain.EdgeDeviceID("1122334455667788")).
 		Return(domain.EdgeDevice{
 			ID:      "1122334455667788",
 			EventID: testEventPublicID,
@@ -575,7 +598,7 @@ func TestUnregisterCameraEdgeDeviceRemovesLinksWithoutDisablingPoints(t *testing
 	var saved domain.EdgeDevice
 
 	devices.EXPECT().
-		Save(gomock.Any(), gomock.Any()).
+		Save(inTransaction, gomock.Any()).
 		DoAndReturn(func(_ context.Context, device domain.EdgeDevice) error {
 			saved = device
 

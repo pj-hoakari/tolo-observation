@@ -84,6 +84,10 @@ const selectEdgeDeviceColumns = `
 	d.id, d.edge_device_id, d.tenant_public_id, d.event_id, d.name,
 	d.unregistered, d.last_heartbeat_at, d.kind`
 
+func (r *PostgresEdgeDeviceRepository) WithinTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return RunInTransaction(ctx, r.db, fn)
+}
+
 func (r *PostgresEdgeDeviceRepository) Create(ctx context.Context, device domain.EdgeDevice) error {
 	return RunInTransaction(ctx, r.db, func(ctx context.Context) error {
 		executor := Executor(ctx, r.db)
@@ -119,13 +123,74 @@ func (r *PostgresEdgeDeviceRepository) Create(ctx context.Context, device domain
 }
 
 func (r *PostgresEdgeDeviceRepository) FindByID(ctx context.Context, id domain.EdgeDeviceID) (domain.EdgeDevice, error) {
-	return r.findOne(ctx, `
-		SELECT`+selectEdgeDeviceColumns+`
+	return r.findByID(ctx, id, "")
+}
+
+func (r *PostgresEdgeDeviceRepository) FindByIDForUpdate(ctx context.Context, id domain.EdgeDeviceID) (domain.EdgeDevice, error) {
+	return r.findByID(ctx, id, "FOR UPDATE")
+}
+
+func (r *PostgresEdgeDeviceRepository) findByID(
+	ctx context.Context,
+	id domain.EdgeDeviceID,
+	lockClause string,
+) (domain.EdgeDevice, error) {
+	query := `
+		SELECT` + selectEdgeDeviceColumns + `
 		FROM edge_devices d
-		WHERE d.edge_device_id = $1`, string(id))
+		WHERE d.edge_device_id = $1`
+
+	if lockClause != "" {
+		query += " " + lockClause
+	}
+
+	return r.findOne(ctx, query, string(id))
 }
 
 func (r *PostgresEdgeDeviceRepository) FindByObservationPointID(ctx context.Context, id domain.ObservationPointID) (domain.EdgeDevice, error) {
+	return r.findOne(ctx, `
+		SELECT`+selectEdgeDeviceColumns+`
+		FROM edge_devices d
+		JOIN observation_points p ON p.edge_device_id = d.id
+		WHERE p.observation_point_id = $1`, string(id))
+}
+
+func (r *PostgresEdgeDeviceRepository) FindByObservationPointIDForUpdate(
+	ctx context.Context,
+	id domain.ObservationPointID,
+) (domain.EdgeDevice, error) {
+	executor := Executor(ctx, r.db)
+
+	var ownerInternalID int64
+
+	err := sqlx.GetContext(ctx, executor, &ownerInternalID, `
+		SELECT d.id
+		FROM edge_devices d
+		JOIN observation_points p ON p.edge_device_id = d.id
+		WHERE p.observation_point_id = $1
+		FOR UPDATE OF d`, string(id))
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.EdgeDevice{}, repository.ErrEdgeDeviceNotFound
+	}
+
+	if err != nil {
+		return domain.EdgeDevice{}, fmt.Errorf("lock edge device by observation point: %w", err)
+	}
+
+	var pointInternalID int64
+
+	err = sqlx.GetContext(ctx, executor, &pointInternalID, `
+		SELECT id FROM observation_points WHERE observation_point_id = $1 FOR UPDATE`, string(id))
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.EdgeDevice{}, repository.ErrEdgeDeviceNotFound
+	}
+
+	if err != nil {
+		return domain.EdgeDevice{}, fmt.Errorf("lock observation point: %w", err)
+	}
+
 	return r.findOne(ctx, `
 		SELECT`+selectEdgeDeviceColumns+`
 		FROM edge_devices d

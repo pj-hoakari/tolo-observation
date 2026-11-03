@@ -115,14 +115,28 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 		return RegisterEdgeDeviceOutput{}, err
 	}
 
-	if device.Kind == domain.EdgeDeviceKindCamera {
-		if err := s.validateCameraLink(ctx, input.EventID, device.CameraLinks[0]); err != nil {
-			return RegisterEdgeDeviceOutput{}, err
+	create := func(ctx context.Context) error {
+		if device.Kind == domain.EdgeDeviceKindCamera {
+			if err := s.validateCameraLink(ctx, input.EventID, device.CameraLinks[0]); err != nil {
+				return err
+			}
 		}
+
+		if err := s.devices.Create(ctx, device); err != nil {
+			return fmt.Errorf("create edge device: %w", err)
+		}
+
+		return nil
 	}
 
-	if err := s.devices.Create(ctx, device); err != nil {
-		return RegisterEdgeDeviceOutput{}, fmt.Errorf("create edge device: %w", err)
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		err = s.devices.WithinTransaction(ctx, create)
+	} else {
+		err = create(ctx)
+	}
+
+	if err != nil {
+		return RegisterEdgeDeviceOutput{}, err
 	}
 
 	output := RegisterEdgeDeviceOutput{Device: s.view(device), ObservationPagePath: ""}
@@ -134,7 +148,7 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 }
 
 func (s *EdgeDeviceService) validateCameraLink(ctx context.Context, eventID string, link domain.CameraLink) error {
-	owner, err := s.devices.FindByObservationPointID(ctx, link.ObservationPointID)
+	owner, err := s.devices.FindByObservationPointIDForUpdate(ctx, link.ObservationPointID)
 	if err != nil {
 		return fmt.Errorf("find linked observation point: %w", err)
 	}
@@ -145,6 +159,10 @@ func (s *EdgeDeviceService) validateCameraLink(ctx context.Context, eventID stri
 
 	if owner.Kind == domain.EdgeDeviceKindCamera {
 		return domain.ErrCameraLinkToCamera
+	}
+
+	if owner.Unregistered {
+		return domain.ErrEdgeDeviceUnregistered
 	}
 
 	for _, existing := range owner.CameraLinks {
@@ -166,24 +184,35 @@ func (s *EdgeDeviceService) UnregisterEdgeDevice(ctx context.Context, input Unre
 		return EdgeDeviceView{}, err
 	}
 
-	device, err := s.devices.FindByID(ctx, id)
+	var view EdgeDeviceView
+
+	err = s.devices.WithinTransaction(ctx, func(ctx context.Context) error {
+		device, err := s.devices.FindByIDForUpdate(ctx, id)
+		if err != nil {
+			return fmt.Errorf("find edge device: %w", err)
+		}
+
+		if device.EventID != input.EventID {
+			return ErrForeignEvent
+		}
+
+		if err := device.Unregister(); err != nil {
+			return err
+		}
+
+		if err := s.devices.Save(ctx, device); err != nil {
+			return fmt.Errorf("save edge device: %w", err)
+		}
+
+		view = s.view(device)
+
+		return nil
+	})
 	if err != nil {
-		return EdgeDeviceView{}, fmt.Errorf("find edge device: %w", err)
-	}
-
-	if device.EventID != input.EventID {
-		return EdgeDeviceView{}, ErrForeignEvent
-	}
-
-	if err := device.Unregister(); err != nil {
 		return EdgeDeviceView{}, err
 	}
 
-	if err := s.devices.Save(ctx, device); err != nil {
-		return EdgeDeviceView{}, fmt.Errorf("save edge device: %w", err)
-	}
-
-	return s.view(device), nil
+	return view, nil
 }
 
 func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]EdgeDeviceView, error) {
