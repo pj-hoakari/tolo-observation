@@ -151,6 +151,7 @@ type flowStub struct {
 	unavailable    bool
 	result         *flowv1.OptimizationResult
 	feedback       *flowv1.FeedbackValues
+	diagnostics    *flowv1.Diagnostics
 }
 
 func startFlowStub(t *testing.T) (*flowStub, string) {
@@ -198,6 +199,7 @@ func (s *flowStub) Optimize(
 		},
 		OptimizationResult: s.result,
 		FeedbackValues:     s.feedback,
+		Diagnostics:        s.diagnostics,
 	}, nil
 }
 
@@ -207,6 +209,13 @@ func (s *flowStub) respondWith(result *flowv1.OptimizationResult, feedback *flow
 
 	s.result = result
 	s.feedback = feedback
+}
+
+func (s *flowStub) diagnoseWith(diagnostics *flowv1.Diagnostics) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.diagnostics = diagnostics
 }
 
 func (s *flowStub) setUnavailable(unavailable bool) {
@@ -1342,5 +1351,88 @@ func TestReportEdgeMeasurementsChecksTheTenant(t *testing.T) {
 
 	if got, want := connectrpc.CodeOf(report("ffffeeeeddddcccc")), connectrpc.CodePermissionDenied; got != want {
 		t.Errorf("ReportMeasurements(tenant_id of another tenant) error code = %v, want %v", got, want)
+	}
+}
+
+func TestEventOverviewShowsTheElementStatesAndWarningsOfTheLatestCycle(t *testing.T) {
+	const eventID = "d1a90000d1a90001"
+
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+
+	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-diagnostics", ObservationPointNames: []string{"corridor"}},
+	))
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	deviceID := registered.GetDevice().GetEdgeDeviceId()
+	corridor := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
+
+	flow.flow.diagnoseWith(&flowv1.Diagnostics{
+		Warnings: []*flowv1.Warning{{
+			Code: flowv1.WarningCode_WARNING_CODE_PARTIAL_COMBINED_TRIGGER,
+			Context: []*flowv1.KeyValue{
+				{Key: "edge_id", Value: &flowv1.ScalarValue{Kind: &flowv1.ScalarValue_StringValue{StringValue: "r1"}}},
+				{Key: "held", Value: &flowv1.ScalarValue{Kind: &flowv1.ScalarValue_StringValue{StringValue: "stagnation"}}},
+			},
+		}},
+		ElementStates: []*flowv1.ElementStateRecord{{
+			TargetKey:   "edge:r1",
+			Observation: flowv1.ObservationState_OBSERVATION_STATE_OK,
+			History:     flowv1.HistoryTier_HISTORY_TIER_SHORT,
+			LinePoints:  1,
+			Skipped:     []flowv1.Judgement{flowv1.Judgement_JUDGEMENT_SURGE},
+		}},
+	})
+
+	reportToken := flow.token(t, eventID, "events.report")
+
+	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
+		EventId: eventID, EdgeDeviceId: deviceID, ActiveObservationPointIds: []string{corridor},
+	})); err != nil {
+		t.Fatalf("Heartbeat() error = %v", err)
+	}
+
+	if _, err := flow.measurements.ReportMeasurements(authorized(ctx, reportToken, &observationv1.ReportMeasurementsRequest{
+		EventId:      eventID,
+		EdgeDeviceId: deviceID,
+		Measurements: []*observationv1.Measurement{edgeMeasurement(corridor, time.Now().Add(-time.Minute))},
+	})); err != nil {
+		t.Fatalf("ReportMeasurements() error = %v", err)
+	}
+
+	overview, err := flow.statusQueries.GetEventOverview(authorized(ctx,
+		flow.token(t, eventID, "events.read"),
+		&observationv1.GetEventOverviewRequest{EventId: eventID},
+	))
+	if err != nil {
+		t.Fatalf("GetEventOverview() error = %v", err)
+	}
+
+	wantStates := []*observationv1.FlowElementState{{
+		TargetKey:   "edge:r1",
+		Observation: observationv1.FlowObservationState_FLOW_OBSERVATION_STATE_OK,
+		History:     observationv1.FlowHistoryTier_FLOW_HISTORY_TIER_SHORT,
+		LinePoints:  1,
+		Skipped:     []observationv1.FlowJudgement{observationv1.FlowJudgement_FLOW_JUDGEMENT_SURGE},
+	}}
+	if got := overview.GetOverview().GetFlowElementStates(); !slices.EqualFunc(got, wantStates, func(a, b *observationv1.FlowElementState) bool {
+		return proto.Equal(a, b)
+	}) {
+		t.Errorf("flow element states = %v, want r1 with the surge judgement skipped on a one-point line %v", got, wantStates)
+	}
+
+	wantWarnings := []*observationv1.FlowWarning{{
+		Code:    observationv1.FlowWarningCode_FLOW_WARNING_CODE_PARTIAL_COMBINED_TRIGGER,
+		Context: map[string]string{"edge_id": "r1", "held": "stagnation"},
+	}}
+	if got := overview.GetOverview().GetFlowWarnings(); !slices.EqualFunc(got, wantWarnings, func(a, b *observationv1.FlowWarning) bool {
+		return proto.Equal(a, b)
+	}) {
+		t.Errorf("flow warnings = %v, want %v", got, wantWarnings)
 	}
 }

@@ -20,7 +20,7 @@ import (
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
-var previousStateOptions = protojson.UnmarshalOptions{DiscardUnknown: true}
+var storedProtoJSON = protojson.UnmarshalOptions{DiscardUnknown: true}
 
 const (
 	flowRequestSchemaVersion = "request/1"
@@ -69,12 +69,20 @@ func (c *FlowControlClient) Optimize(
 		DetectionState:     detectionState,
 		OptimizationResult: nil,
 		FeedbackValues:     nil,
+		Diagnostics:        nil,
 	}
 
 	if res.OptimizationResult != nil {
 		outcome.OptimizationResult, err = protojson.Marshal(res.GetOptimizationResult())
 		if err != nil {
 			return domain.OptimizationOutcome{}, fmt.Errorf("encode optimization result: %w", err)
+		}
+	}
+
+	if res.Diagnostics != nil {
+		outcome.Diagnostics, err = protojson.Marshal(res.GetDiagnostics())
+		if err != nil {
+			return domain.OptimizationOutcome{}, fmt.Errorf("encode diagnostics: %w", err)
 		}
 	}
 
@@ -99,13 +107,13 @@ func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeReques
 	var previousResult *flowv1.OptimizationResult
 
 	if input.Previous != nil {
-		if err := previousStateOptions.Unmarshal(input.Previous.DetectionState, detectionState); err != nil {
+		if err := storedProtoJSON.Unmarshal(input.Previous.DetectionState, detectionState); err != nil {
 			return nil, fmt.Errorf("decode previous detection state: %w", err)
 		}
 
 		if input.Previous.OptimizationResult != nil {
 			previousResult = new(flowv1.OptimizationResult)
-			if err := previousStateOptions.Unmarshal(input.Previous.OptimizationResult, previousResult); err != nil {
+			if err := storedProtoJSON.Unmarshal(input.Previous.OptimizationResult, previousResult); err != nil {
 				return nil, fmt.Errorf("decode previous optimization result: %w", err)
 			}
 		}

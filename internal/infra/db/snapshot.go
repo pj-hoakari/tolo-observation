@@ -425,6 +425,7 @@ type optimizationOutcomeRow struct {
 	Verdict            string    `db:"verdict"`
 	DetectionState     []byte    `db:"detection_state"`
 	OptimizationResult []byte    `db:"optimization_result"`
+	Diagnostics        []byte    `db:"diagnostics"`
 }
 
 func (r *PostgresSnapshotRepository) SaveOptimizationOutcome(
@@ -433,9 +434,10 @@ func (r *PostgresSnapshotRepository) SaveOptimizationOutcome(
 	outcome domain.OptimizationOutcome,
 ) error {
 	_, err := Executor(ctx, r.db).ExecContext(ctx, `
-		INSERT INTO optimization_results (event_id, snapshot_id, verdict, detection_state, optimization_result)
-		VALUES ($1, $2, $3, $4, $5)`,
-		eventID, outcome.SnapshotID, outcome.Verdict, outcome.DetectionState, nullableJSON(outcome.OptimizationResult))
+		INSERT INTO optimization_results (event_id, snapshot_id, verdict, detection_state, optimization_result, diagnostics)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		eventID, outcome.SnapshotID, outcome.Verdict, outcome.DetectionState, nullableJSON(outcome.OptimizationResult),
+		nullableJSON(outcome.Diagnostics))
 	if err != nil {
 		return fmt.Errorf("insert optimization result: %w", err)
 	}
@@ -450,7 +452,7 @@ func (r *PostgresSnapshotRepository) LatestOptimizationOutcome(
 	var row optimizationOutcomeRow
 
 	err := sqlx.GetContext(ctx, Executor(ctx, r.db), &row, `
-		SELECT o.snapshot_id, s.window_end AS server_time, o.verdict, o.detection_state, o.optimization_result
+		SELECT o.snapshot_id, s.window_end AS server_time, o.verdict, o.detection_state, o.optimization_result, o.diagnostics
 		FROM optimization_results o
 		JOIN snapshots s ON s.snapshot_id = o.snapshot_id
 		WHERE o.event_id = $1
@@ -471,6 +473,7 @@ func (r *PostgresSnapshotRepository) LatestOptimizationOutcome(
 		DetectionState:     row.DetectionState,
 		OptimizationResult: row.OptimizationResult,
 		FeedbackValues:     nil,
+		Diagnostics:        row.Diagnostics,
 	}, nil
 }
 
