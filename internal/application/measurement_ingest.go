@@ -138,6 +138,10 @@ func (s *MeasurementIngestService) resolveTenant(
 		return "", "", ErrForeignEvent
 	}
 
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		return "", "", domain.ErrEdgeDeviceCameraUnsupported
+	}
+
 	if device.Unregistered {
 		return "", "", domain.ErrEdgeDeviceUnregistered
 	}

@@ -32,7 +32,7 @@ func (r *PostgresHeartbeatLossHoldRepository) CountAcrossTenants(
 	err := sqlx.GetContext(ctx, Executor(ctx, r.db), &row, `
 		SELECT count(*) AS recent, count(*) FILTER (WHERE last_heartbeat_at < $2) AS lost
 		FROM edge_devices
-		WHERE NOT unregistered AND last_heartbeat_at >= $1`, recentSince, lostBefore)
+		WHERE kind = 'observation_page' AND NOT unregistered AND last_heartbeat_at >= $1`, recentSince, lostBefore)
 	if err != nil {
 		return domain.HeartbeatLossCount{}, fmt.Errorf("count edge devices by heartbeat: %w", err)
 	}

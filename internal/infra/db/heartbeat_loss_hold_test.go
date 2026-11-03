@@ -30,6 +30,19 @@ func TestHeartbeatLossHoldCountsAcrossTenants(t *testing.T) {
 	create("tenant-hold-b", 61*time.Second, false)
 	create("tenant-hold-a", 45*time.Second, true)
 
+	page := newDevice(t, "tenant-hold-a", "hold-count-event", "north")
+	if err := devices.Create(ctx, page); err != nil {
+		t.Fatalf("Create page: %v", err)
+	}
+
+	camera := newCamera(t, "tenant-hold-a", "hold-count-event", page.ObservationPoints[0].ID)
+	cameraHeartbeat := now.Add(-10 * time.Second)
+	camera.LastHeartbeatAt = &cameraHeartbeat
+
+	if err := devices.Create(ctx, camera); err != nil {
+		t.Fatalf("Create camera: %v", err)
+	}
+
 	got, err := holds.CountAcrossTenants(withTenant(ctx, "tenant-hold-a"), now.Add(-time.Minute), now.Add(-30*time.Second))
 	if err != nil {
 		t.Fatalf("CountAcrossTenants: %v", err)

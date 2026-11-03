@@ -16,9 +16,11 @@ import (
 var ErrForeignEvent = errors.New("resource belongs to another event")
 
 type RegisterEdgeDeviceInput struct {
-	EventID               string
-	Name                  string
-	ObservationPointNames []string
+	EventID                  string
+	Name                     string
+	ObservationPointNames    []string
+	Kind                     domain.EdgeDeviceKind
+	LinkedObservationPointID string
 }
 
 type EdgeDeviceView struct {
@@ -101,19 +103,57 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 		return RegisterEdgeDeviceOutput{}, tenantctx.ErrMissing
 	}
 
-	device, err := domain.NewEdgeDevice(tenantPublicID, input.EventID, input.Name, input.ObservationPointNames)
+	device, err := domain.NewEdgeDeviceWithKind(
+		tenantPublicID,
+		input.EventID,
+		input.Name,
+		input.Kind,
+		input.ObservationPointNames,
+		input.LinkedObservationPointID,
+	)
 	if err != nil {
 		return RegisterEdgeDeviceOutput{}, err
+	}
+
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		if err := s.validateCameraLink(ctx, input.EventID, device.CameraLinks[0]); err != nil {
+			return RegisterEdgeDeviceOutput{}, err
+		}
 	}
 
 	if err := s.devices.Create(ctx, device); err != nil {
 		return RegisterEdgeDeviceOutput{}, fmt.Errorf("create edge device: %w", err)
 	}
 
-	return RegisterEdgeDeviceOutput{
-		Device:              s.view(device),
-		ObservationPagePath: "/event/" + device.EventID + "/observation/" + string(device.ID),
-	}, nil
+	output := RegisterEdgeDeviceOutput{Device: s.view(device), ObservationPagePath: ""}
+	if device.Kind == domain.EdgeDeviceKindObservationPage {
+		output.ObservationPagePath = "/event/" + device.EventID + "/observation/" + string(device.ID)
+	}
+
+	return output, nil
+}
+
+func (s *EdgeDeviceService) validateCameraLink(ctx context.Context, eventID string, link domain.CameraLink) error {
+	owner, err := s.devices.FindByObservationPointID(ctx, link.ObservationPointID)
+	if err != nil {
+		return fmt.Errorf("find linked observation point: %w", err)
+	}
+
+	if owner.EventID != eventID {
+		return ErrForeignEvent
+	}
+
+	if owner.Kind == domain.EdgeDeviceKindCamera {
+		return domain.ErrCameraLinkToCamera
+	}
+
+	for _, existing := range owner.CameraLinks {
+		if existing.ObservationPointID == link.ObservationPointID {
+			return domain.ErrObservationPointAlreadyLinked
+		}
+	}
+
+	return nil
 }
 
 func (s *EdgeDeviceService) UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (EdgeDeviceView, error) {
@@ -196,6 +236,10 @@ func (s *EdgeDeviceService) ListEdgeDeviceObservationPoints(
 		return nil, ErrForeignEvent
 	}
 
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		return nil, domain.ErrEdgeDeviceCameraUnsupported
+	}
+
 	if device.Unregistered {
 		return nil, domain.ErrEdgeDeviceUnregistered
 	}
@@ -229,6 +273,10 @@ func (s *EdgeDeviceService) Heartbeat(ctx context.Context, input HeartbeatInput)
 
 	if device.EventID != input.EventID {
 		return ErrForeignEvent
+	}
+
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		return domain.ErrEdgeDeviceCameraUnsupported
 	}
 
 	activeIDs := make([]domain.ObservationPointID, 0, len(input.ActiveObservationPointIDs))

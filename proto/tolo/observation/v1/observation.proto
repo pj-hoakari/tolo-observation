@@ -158,6 +158,17 @@ message ReportMeasurementsResponse {
   int32 accepted_count = 1;
 }
 
+enum EdgeDeviceKind {
+  EDGE_DEVICE_KIND_UNSPECIFIED = 0;
+  EDGE_DEVICE_KIND_OBSERVATION_PAGE = 1;
+  EDGE_DEVICE_KIND_CAMERA = 2;
+}
+
+message CameraLink {
+  string camera_edge_device_id = 1;
+  string observation_point_id = 2;
+}
+
 message EdgeDevice {
   string edge_device_id = 1;
   string event_id = 2;
@@ -165,7 +176,9 @@ message EdgeDevice {
   repeated ObservationPoint observation_points = 4;
   bool unregistered = 5;
   google.protobuf.Timestamp last_heartbeat_at = 6;
-  bool online = 7;
+  optional bool online = 7;
+  EdgeDeviceKind kind = 8;
+  repeated CameraLink camera_links = 10;
 }
 
 message ObservationPoint {
@@ -185,6 +198,8 @@ message RegisterEdgeDeviceRequest {
   string event_id = 1;
   string name = 2;
   repeated string observation_point_names = 3;
+  EdgeDeviceKind kind = 4;
+  string linked_observation_point_id = 5;
 }
 
 message RegisterEdgeDeviceResponse {

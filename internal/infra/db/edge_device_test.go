@@ -28,6 +28,24 @@ func newDevice(t *testing.T, tenantPublicID, eventID string, pointNames ...strin
 	return device
 }
 
+func newCamera(t *testing.T, tenantPublicID, eventID string, pointID domain.ObservationPointID) domain.EdgeDevice {
+	t.Helper()
+
+	device, err := domain.NewEdgeDeviceWithKind(
+		tenantPublicID,
+		eventID,
+		"camera-1",
+		domain.EdgeDeviceKindCamera,
+		nil,
+		string(pointID),
+	)
+	if err != nil {
+		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
+	}
+
+	return device
+}
+
 func assertSameDevice(t *testing.T, got, want domain.EdgeDevice) {
 	t.Helper()
 
@@ -35,7 +53,7 @@ func assertSameDevice(t *testing.T, got, want domain.EdgeDevice) {
 		t.Errorf("identity mismatch: got %+v, want %+v", got, want)
 	}
 
-	if got.Name != want.Name || got.Unregistered != want.Unregistered {
+	if got.Name != want.Name || got.Unregistered != want.Unregistered || got.Kind != want.Kind {
 		t.Errorf("state mismatch: got %+v, want %+v", got, want)
 	}
 
@@ -56,6 +74,16 @@ func assertSameDevice(t *testing.T, got, want domain.EdgeDevice) {
 			got.ObservationPoints[i].Name != point.Name ||
 			got.ObservationPoints[i].Enabled != point.Enabled {
 			t.Errorf("observation point %d = %+v, want %+v", i, got.ObservationPoints[i], point)
+		}
+	}
+
+	if len(got.CameraLinks) != len(want.CameraLinks) {
+		t.Fatalf("got %d camera links, want %d", len(got.CameraLinks), len(want.CameraLinks))
+	}
+
+	for i, link := range want.CameraLinks {
+		if got.CameraLinks[i] != link {
+			t.Errorf("camera link %d = %+v, want %+v", i, got.CameraLinks[i], link)
 		}
 	}
 }
@@ -255,5 +283,103 @@ func TestPostgresEdgeDeviceRepositoryNotFound(t *testing.T) {
 
 	if err := repo.Save(ctx, missing); !errors.Is(err, repository.ErrEdgeDeviceNotFound) {
 		t.Errorf("Save(unknown) error = %v, want repository.ErrEdgeDeviceNotFound", err)
+	}
+}
+
+func TestPostgresEdgeDeviceRepositoryCameraRoundTrip(t *testing.T) {
+	repo := NewPostgresEdgeDeviceRepository(testDB)
+	ctx := withTenant(context.Background(), "tenant-camera")
+	page := newDevice(t, "tenant-camera", "event-camera", "north")
+
+	if err := repo.Create(ctx, page); err != nil {
+		t.Fatalf("Create page: %v", err)
+	}
+
+	camera := newCamera(t, "tenant-camera", "event-camera", page.ObservationPoints[0].ID)
+
+	if err := repo.Create(ctx, camera); err != nil {
+		t.Fatalf("Create camera: %v", err)
+	}
+
+	found, err := repo.FindByID(ctx, camera.ID)
+	if err != nil {
+		t.Fatalf("FindByID camera: %v", err)
+	}
+
+	assertSameDevice(t, found, camera)
+
+	pageWithLink, err := repo.FindByObservationPointID(ctx, page.ObservationPoints[0].ID)
+	if err != nil {
+		t.Fatalf("FindByObservationPointID: %v", err)
+	}
+
+	wantLink := domain.CameraLink{
+		CameraEdgeDeviceID: camera.ID,
+		ObservationPointID: page.ObservationPoints[0].ID,
+	}
+	pageWant := page
+	pageWant.CameraLinks = []domain.CameraLink{wantLink}
+	assertSameDevice(t, pageWithLink, pageWant)
+
+	devices, err := repo.ListByEvent(ctx, "event-camera", false)
+	if err != nil {
+		t.Fatalf("ListByEvent: %v", err)
+	}
+
+	if len(devices) != 2 {
+		t.Fatalf("ListByEvent returned %d devices, want 2", len(devices))
+	}
+
+	assertSameDevice(t, devices[0], pageWant)
+	assertSameDevice(t, devices[1], camera)
+
+	if err := found.Unregister(); err != nil {
+		t.Fatalf("Unregister camera: %v", err)
+	}
+
+	if err := repo.Save(ctx, found); err != nil {
+		t.Fatalf("Save unregistered camera: %v", err)
+	}
+
+	unregistered, err := repo.FindByID(ctx, camera.ID)
+	if err != nil {
+		t.Fatalf("FindByID unregistered camera: %v", err)
+	}
+
+	if !unregistered.Unregistered || len(unregistered.CameraLinks) != 0 {
+		t.Errorf("unregistered camera = %+v, want unregistered without links", unregistered)
+	}
+
+	pageAfter, err := repo.FindByID(ctx, page.ID)
+	if err != nil {
+		t.Fatalf("FindByID page after camera unregister: %v", err)
+	}
+
+	if len(pageAfter.CameraLinks) != 0 {
+		t.Errorf("page camera links = %v, want none after the camera unregistered", pageAfter.CameraLinks)
+	}
+
+	if len(pageAfter.ObservationPoints) != 1 || !pageAfter.ObservationPoints[0].Enabled {
+		t.Errorf("page observation points = %+v, want the point still enabled", pageAfter.ObservationPoints)
+	}
+}
+
+func TestPostgresEdgeDeviceRepositoryRejectsASecondCameraOnTheSamePoint(t *testing.T) {
+	repo := NewPostgresEdgeDeviceRepository(testDB)
+	ctx := withTenant(context.Background(), "tenant-camera-unique")
+	page := newDevice(t, "tenant-camera-unique", "event-camera-unique", "north")
+
+	if err := repo.Create(ctx, page); err != nil {
+		t.Fatalf("Create page: %v", err)
+	}
+
+	first := newCamera(t, "tenant-camera-unique", "event-camera-unique", page.ObservationPoints[0].ID)
+	if err := repo.Create(ctx, first); err != nil {
+		t.Fatalf("Create first camera: %v", err)
+	}
+
+	second := newCamera(t, "tenant-camera-unique", "event-camera-unique", page.ObservationPoints[0].ID)
+	if err := repo.Create(ctx, second); !errors.Is(err, domain.ErrObservationPointAlreadyLinked) {
+		t.Fatalf("Create second camera error = %v, want ErrObservationPointAlreadyLinked", err)
 	}
 }
