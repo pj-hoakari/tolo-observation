@@ -137,6 +137,7 @@ func operationFlowProposals(result *flowv1.OptimizationResult) (*operationv1.Flo
 			RouteId:    proposal.GetEdgeId(),
 			Action:     operationRestrictionActions[proposal.GetAction()],
 			LimitValue: proposal.LimitValue,
+			LimitRatio: proposal.LimitRatio,
 			Reason:     operationRestrictionReasons[proposal.GetReason()],
 			Confidence: proposal.GetConfidence(),
 		})
