@@ -216,10 +216,6 @@ func TestListEdgeDevicesReportsLiveness(t *testing.T) {
 				t.Fatalf("devices = %v, want one device", devices)
 			}
 
-			if devices[0].Online == nil {
-				t.Error("online is unset for an observation page")
-			}
-
 			if got := devices[0].GetOnline(); got != tt.wantOnline {
 				t.Errorf("online = %v, want %v", got, tt.wantOnline)
 			}
@@ -447,8 +443,8 @@ func TestRegisterCameraEdgeDevice(t *testing.T) {
 		t.Errorf("kind = %v, want camera", got)
 	}
 
-	if device.Online != nil {
-		t.Errorf("online = %v, want unset for a camera", *device.Online)
+	if device.GetOnline() {
+		t.Error("online = true, want false for a camera")
 	}
 
 	if device.GetLastHeartbeatAt() != nil {
@@ -496,8 +492,8 @@ func TestListEdgeDevicesReportsCamerasWithoutOnlineOrHeartbeat(t *testing.T) {
 		t.Errorf("kind = %v, want camera", got)
 	}
 
-	if device.Online != nil {
-		t.Errorf("online = %v, want unset for a camera", *device.Online)
+	if device.GetOnline() {
+		t.Error("online = true, want false for a camera")
 	}
 
 	if device.GetLastHeartbeatAt() != nil {

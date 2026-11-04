@@ -843,7 +843,7 @@ type EdgeDevice struct {
 	ObservationPoints []*ObservationPoint    `protobuf:"bytes,4,rep,name=observation_points,json=observationPoints,proto3" json:"observation_points,omitempty"`
 	Unregistered      bool                   `protobuf:"varint,5,opt,name=unregistered,proto3" json:"unregistered,omitempty"`
 	LastHeartbeatAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_heartbeat_at,json=lastHeartbeatAt,proto3" json:"last_heartbeat_at,omitempty"`
-	Online            *bool                  `protobuf:"varint,7,opt,name=online,proto3,oneof" json:"online,omitempty"`
+	Online            bool                   `protobuf:"varint,7,opt,name=online,proto3" json:"online,omitempty"`
 	Kind              EdgeDeviceKind         `protobuf:"varint,8,opt,name=kind,proto3,enum=tolo.observation.v1.EdgeDeviceKind" json:"kind,omitempty"`
 	CameraLinks       []*CameraLink          `protobuf:"bytes,10,rep,name=camera_links,json=cameraLinks,proto3" json:"camera_links,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -923,8 +923,8 @@ func (x *EdgeDevice) GetLastHeartbeatAt() *timestamppb.Timestamp {
 }
 
 func (x *EdgeDevice) GetOnline() bool {
-	if x != nil && x.Online != nil {
-		return *x.Online
+	if x != nil {
+		return x.Online
 	}
 	return false
 }
@@ -3061,7 +3061,7 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\n" +
 	"CameraLink\x121\n" +
 	"\x15camera_edge_device_id\x18\x01 \x01(\tR\x12cameraEdgeDeviceId\x120\n" +
-	"\x14observation_point_id\x18\x02 \x01(\tR\x12observationPointId\"\xc8\x03\n" +
+	"\x14observation_point_id\x18\x02 \x01(\tR\x12observationPointId\"\xb8\x03\n" +
 	"\n" +
 	"EdgeDevice\x12$\n" +
 	"\x0eedge_device_id\x18\x01 \x01(\tR\fedgeDeviceId\x12\x19\n" +
@@ -3069,12 +3069,11 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12T\n" +
 	"\x12observation_points\x18\x04 \x03(\v2%.tolo.observation.v1.ObservationPointR\x11observationPoints\x12\"\n" +
 	"\funregistered\x18\x05 \x01(\bR\funregistered\x12F\n" +
-	"\x11last_heartbeat_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0flastHeartbeatAt\x12\x1b\n" +
-	"\x06online\x18\a \x01(\bH\x00R\x06online\x88\x01\x01\x127\n" +
+	"\x11last_heartbeat_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0flastHeartbeatAt\x12\x16\n" +
+	"\x06online\x18\a \x01(\bR\x06online\x127\n" +
 	"\x04kind\x18\b \x01(\x0e2#.tolo.observation.v1.EdgeDeviceKindR\x04kind\x12B\n" +
 	"\fcamera_links\x18\n" +
-	" \x03(\v2\x1f.tolo.observation.v1.CameraLinkR\vcameraLinksB\t\n" +
-	"\a_online\"\xb2\x01\n" +
+	" \x03(\v2\x1f.tolo.observation.v1.CameraLinkR\vcameraLinks\"\xb2\x01\n" +
 	"\x10ObservationPoint\x120\n" +
 	"\x14observation_point_id\x18\x01 \x01(\tR\x12observationPointId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -3449,7 +3448,6 @@ func file_tolo_observation_v1_observation_proto_init() {
 		return
 	}
 	file_tolo_observation_v1_observation_proto_msgTypes[0].OneofWrappers = []any{}
-	file_tolo_observation_v1_observation_proto_msgTypes[4].OneofWrappers = []any{}
 	file_tolo_observation_v1_observation_proto_msgTypes[18].OneofWrappers = []any{}
 	file_tolo_observation_v1_observation_proto_msgTypes[24].OneofWrappers = []any{
 		(*ReportCongestionRequest_PointId)(nil),

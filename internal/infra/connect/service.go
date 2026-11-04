@@ -247,14 +247,13 @@ func newProtoEdgeDevice(view application.EdgeDeviceView) *observationv1.EdgeDevi
 
 	var lastHeartbeatAt *timestamppb.Timestamp
 
-	var online *bool
+	if device.Kind != domain.EdgeDeviceKindCamera && device.LastHeartbeatAt != nil {
+		lastHeartbeatAt = timestamppb.New(*device.LastHeartbeatAt)
+	}
 
-	if device.Kind != domain.EdgeDeviceKindCamera {
-		if device.LastHeartbeatAt != nil {
-			lastHeartbeatAt = timestamppb.New(*device.LastHeartbeatAt)
-		}
-
-		online = proto.Bool(view.Online)
+	online := view.Online
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		online = false
 	}
 
 	points := make([]*observationv1.ObservationPoint, 0, len(device.ObservationPoints))
