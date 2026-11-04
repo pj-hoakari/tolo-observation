@@ -115,7 +115,7 @@ message Measurement {
   int32 count_out = 5;  // ウィンドウ内の流出計上。source=QR のときは 0
   MeasurementSource source = 6;
   string qr_location_id = 7;  // source=QR のとき必須（設置箇所。所有はグラフ編集の QrLocation）。source=EDGE のときは空
-  optional double mean_detected_people = 8;  // ウィンドウ内の視野内検知人数（検知フレームごとの人数の平均。人）。0 以上の有限値
+  optional double mean_detected_people = 8;  // ウィンドウ内でこの観測点に割り当てた検知人数（検知フレームごとの人数の平均。人）。0 以上の有限値
 }
 
 enum MeasurementSource {
@@ -399,6 +399,8 @@ message UpdateObservationSettingsResponse {
   初めて観測されたグラフ要素では送らない。故障や観測不能化から復帰しても、観測点の組み合わせが同じなら送らない
 - 正準単位への正規化（人/分）は本サービスの責務。エッジはウィンドウ内の計上数を送る
   視野内検知人数（`mean_detected_people`）は時点の人数を表す量であり、人/分へ換算せず人数のまま扱う。停滞量スコアと人数スコアの源泉になる
+  観測ページ端末に観測点が複数あるときは、観測ページが各検知を最も近いラインの観測点に割り当て、観測点ごとの人数を送る。検知の位置はライン通過の判定と同じ足元（検知枠の下端の中央）とし、距離は点と線分の距離とする。観測点が 1 つなら視野内の全員がその観測点に入る
+  1 人の検知は 1 つの観測点にしか入らないので、同じグラフ要素で観測点の値を合算しても二重に数えない
 - 観測点はグラフのポイントと1対1ではない。スコア算出時に紐づけ（グラフ編集所有）で変換
 - 観測ページ端末の切断・登録解除は配下観測点の観測不能化に波及
   切断は Heartbeat 途絶で判定し、復帰すれば観測再開する（一時的）
@@ -439,6 +441,7 @@ message UpdateObservationSettingsResponse {
   機材の入れ替えは登録解除を伴わない。新しい機材に同じ観測ページ URL を設定すれば同一のエッジ端末として続く
   カメラ端末を登録解除した後に同じ機材を再び使う場合も、新規登録として新しい `edge_device_id` を発行する。登録解除を伴わない機材交換では、新しい機材に同じ `edge_device_id` を書き込み、Device Authorization をやり直す
   ただし、計測の水準が変わる機材の入れ替えとラインの増減では、観測点を登録し直す運用とする。本サービスはライン設定を持たず、同じ観測点のままではこれらの変化を検知できないため
+  ラインの増減は同じ端末の他の観測点の検知人数の水準も変える。各検知の割り当て先が変わるためである
 - 登録解除済みのエッジ端末の扱い: `ReportMeasurements`／`Heartbeat`／`ListEdgeDeviceObservationPoints` は `failed_precondition` を返す
   発行済みの観測ページ URL は無効となり、開いても計測値を送れない
   `ListEdgeDevices` は既定で解除済みを返さず、`include_unregistered` の指定時のみ含める
