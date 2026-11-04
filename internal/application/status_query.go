@@ -11,7 +11,8 @@ import (
 )
 
 type EventOverview struct {
-	Snapshot *domain.Snapshot
+	Snapshot    *domain.Snapshot
+	Diagnostics []byte
 }
 
 type StatusQueryUseCases interface {
@@ -38,14 +39,23 @@ func (s *StatusQueryService) GetEventOverview(ctx context.Context, eventID strin
 
 	snapshot, err := s.snapshots.LatestSnapshot(ctx, eventID)
 	if errors.Is(err, repository.ErrSnapshotNotFound) {
-		return EventOverview{Snapshot: nil}, nil
+		return EventOverview{Snapshot: nil, Diagnostics: nil}, nil
 	}
 
 	if err != nil {
 		return EventOverview{}, fmt.Errorf("find latest snapshot: %w", err)
 	}
 
-	return EventOverview{Snapshot: &snapshot}, nil
+	outcome, err := s.snapshots.LatestOptimizationOutcome(ctx, eventID)
+	if errors.Is(err, repository.ErrOptimizationOutcomeMissing) {
+		return EventOverview{Snapshot: &snapshot, Diagnostics: nil}, nil
+	}
+
+	if err != nil {
+		return EventOverview{}, fmt.Errorf("find latest optimization outcome: %w", err)
+	}
+
+	return EventOverview{Snapshot: &snapshot, Diagnostics: outcome.Diagnostics}, nil
 }
 
 func (s *StatusQueryService) GetGuestSnapshot(ctx context.Context, eventID string) (domain.GuestStatus, error) {

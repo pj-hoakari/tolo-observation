@@ -99,7 +99,7 @@ func TestOperationFlowProposals(t *testing.T) {
 			result: &flowv1.OptimizationResult{
 				RestrictionProposal: []*flowv1.RestrictionProposal{
 					{
-						EdgeId: "r1", Action: flowv1.RestrictionAction_RESTRICTION_ACTION_LIMIT, LimitValue: proto.Float64(40),
+						EdgeId: "r1", Action: flowv1.RestrictionAction_RESTRICTION_ACTION_LIMIT, LimitValue: proto.Float64(40), LimitRatio: proto.Float64(0.6),
 						Reason: flowv1.RestrictionReason_RESTRICTION_REASON_RESIDUAL_TAU, Confidence: 0.9, ScopeNote: "dropped",
 					},
 					{
@@ -127,7 +127,7 @@ func TestOperationFlowProposals(t *testing.T) {
 			want: &operationv1.FlowProposals{
 				RestrictionProposals: []*operationv1.RestrictionProposal{
 					{
-						RouteId: "r1", Action: operationv1.RestrictionAction_RESTRICTION_ACTION_LIMIT, LimitValue: proto.Float64(40),
+						RouteId: "r1", Action: operationv1.RestrictionAction_RESTRICTION_ACTION_LIMIT, LimitValue: proto.Float64(40), LimitRatio: proto.Float64(0.6),
 						Reason: operationv1.RestrictionReason_RESTRICTION_REASON_RESIDUAL_STAGNATION, Confidence: 0.9,
 					},
 					{

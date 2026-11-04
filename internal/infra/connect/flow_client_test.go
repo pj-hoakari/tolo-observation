@@ -55,6 +55,24 @@ func TestNewOptimizeRequestSendsShortFallbackEta(t *testing.T) {
 	}
 }
 
+func TestNewOptimizeRequestReadsDetectionStateSavedBeforeDemandExcessWasRemoved(t *testing.T) {
+	saved := []byte(`{"cooldownUntil":"2026-11-03T00:00:00Z","arcDemandDigest":{"entries":[{"edgeId":"r1","demand":3}]},` +
+		`"arcWatchStates":[{"edgeId":"r1","surgeBreached":true,"demandExcessBreached":true,"demandWatchSince":"2026-11-03T00:00:00Z"}]}`)
+
+	request, err := newOptimizeRequest(application.OptimizeInput{
+		Previous: &domain.OptimizationOutcome{DetectionState: saved},
+	})
+	if err != nil {
+		t.Fatalf("newOptimizeRequest() error = %v", err)
+	}
+
+	state := request.GetDetectionState()
+	if !state.GetCooldownUntil().AsTime().Equal(time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)) ||
+		len(state.GetArcWatchStates()) != 1 || !state.GetArcWatchStates()[0].GetSurgeBreached() {
+		t.Errorf("detection state = %v, want the cooldown and the surge watch kept", state)
+	}
+}
+
 func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 	people := 4.0
 	stagnation := 3.0
@@ -142,5 +160,69 @@ func TestFlowRequestLeavesOutScoresThatAreNotExhaustive(t *testing.T) {
 
 	if want := []string{"r-camera"}; !slices.Equal(series, want) {
 		t.Errorf("history window series = %v, want only the exhaustive route %v", series, want)
+	}
+}
+
+func TestNewOptimizeRequestSendsMeasurementWindowsLongerThanTheCycleAsTheResolution(t *testing.T) {
+	end := time.Unix(3600, 0)
+
+	request, err := newOptimizeRequest(application.OptimizeInput{
+		Graph: domain.Graph{
+			Points: []domain.Point{{ID: "p1"}, {ID: "p2"}},
+			Routes: []domain.Route{{ID: "r1", FromPointID: "p1", ToPointID: "p2"}, {ID: "r2", FromPointID: "p2", ToPointID: "p1"}},
+		},
+		Snapshot: domain.Snapshot{
+			WindowStart: end.Add(-time.Minute),
+			WindowEnd:   end,
+			Resolutions: map[domain.GraphAnchor]time.Duration{{RouteID: "r1"}: 2 * time.Minute, {PointID: "p1"}: 10 * time.Second},
+		},
+	})
+	if err != nil {
+		t.Fatalf("newOptimizeRequest() error = %v", err)
+	}
+
+	got := map[string]int32{}
+	for _, node := range request.GetGraph().GetNodes() {
+		got["node:"+node.GetNodeId()] = node.GetTimeResolutionS()
+	}
+
+	for _, edge := range request.GetGraph().GetEdges() {
+		got["edge:"+edge.GetEdgeId()] = edge.GetTimeResolutionS()
+	}
+
+	want := map[string]int32{"node:p1": 60, "node:p2": 60, "edge:r1": 120, "edge:r2": 60}
+	if !maps.Equal(got, want) {
+		t.Errorf("time_resolution_s = %v, want %v, never shorter than the 60s cycle that spaces the samples flow-control sees",
+			got, want)
+	}
+}
+
+func TestFlowHistoryDigestSendsFlowStatsAfterFourHoursAndTheShareOfEstablishedEdges(t *testing.T) {
+	start := time.Unix(0, 0)
+	dwell := 0.5
+
+	digest := flowHistoryDigest(nil, []domain.ArcHistory{
+		{
+			RouteID: "r1", P90Stagnation: 6, MeanStagnation: 3, FirstStart: start, LastEnd: start.Add(5 * time.Hour),
+			FlowDwell: domain.FlowDwellSummary{FlowP90: 18, FreeFlowDwellMin: &dwell, Span: 5 * time.Hour},
+		},
+		{
+			RouteID: "r2", P90Stagnation: 6, MeanStagnation: 3, FirstStart: start, LastEnd: start.Add(time.Hour),
+			FlowDwell: domain.FlowDwellSummary{FlowP90: 18, FreeFlowDwellMin: &dwell, Span: time.Hour},
+		},
+	}, map[string]bool{"r1": true, "r2": true, "r3": true, "r4": true})
+
+	stats := map[string]string{}
+	for _, stat := range digest.GetArcStats() {
+		stats[stat.GetEdgeId()] = fmt.Sprintf("%v/%v", stat.FlowP90 != nil, stat.FreeFlowDwellMin != nil)
+	}
+
+	want := map[string]string{"r1": "true/true", "r2": "false/false"}
+	if !maps.Equal(stats, want) {
+		t.Errorf("flow_p90/free_flow_dwell_min set = %v, want %v", stats, want)
+	}
+
+	if got := digest.GetCompleteness(); got != 0.25 {
+		t.Errorf("completeness = %v, want 0.25, one established edge out of four in the graph", got)
 	}
 }

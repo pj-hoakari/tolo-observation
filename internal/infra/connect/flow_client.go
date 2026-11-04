@@ -20,6 +20,8 @@ import (
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
 )
 
+var storedProtoJSON = protojson.UnmarshalOptions{DiscardUnknown: true}
+
 const (
 	flowRequestSchemaVersion = "request/1"
 	minArcHistorySpan        = 4 * time.Hour
@@ -67,12 +69,20 @@ func (c *FlowControlClient) Optimize(
 		DetectionState:     detectionState,
 		OptimizationResult: nil,
 		FeedbackValues:     nil,
+		Diagnostics:        nil,
 	}
 
 	if res.OptimizationResult != nil {
 		outcome.OptimizationResult, err = protojson.Marshal(res.GetOptimizationResult())
 		if err != nil {
 			return domain.OptimizationOutcome{}, fmt.Errorf("encode optimization result: %w", err)
+		}
+	}
+
+	if res.Diagnostics != nil {
+		outcome.Diagnostics, err = protojson.Marshal(res.GetDiagnostics())
+		if err != nil {
+			return domain.OptimizationOutcome{}, fmt.Errorf("encode diagnostics: %w", err)
 		}
 	}
 
@@ -88,20 +98,22 @@ func (c *FlowControlClient) Optimize(
 
 func newOptimizeRequest(input application.OptimizeInput) (*flowv1.OptimizeRequest, error) {
 	snapshot := input.Snapshot
-	resolution := int32(snapshot.WindowEnd.Sub(snapshot.WindowStart).Seconds())
+	resolution := func(anchor domain.GraphAnchor) *int32 {
+		return proto.Int32(int32(max(snapshot.Resolutions[anchor], snapshot.WindowEnd.Sub(snapshot.WindowStart)).Seconds()))
+	}
 
 	detectionState := new(flowv1.DetectionState)
 
 	var previousResult *flowv1.OptimizationResult
 
 	if input.Previous != nil {
-		if err := protojson.Unmarshal(input.Previous.DetectionState, detectionState); err != nil {
+		if err := storedProtoJSON.Unmarshal(input.Previous.DetectionState, detectionState); err != nil {
 			return nil, fmt.Errorf("decode previous detection state: %w", err)
 		}
 
 		if input.Previous.OptimizationResult != nil {
 			previousResult = new(flowv1.OptimizationResult)
-			if err := protojson.Unmarshal(input.Previous.OptimizationResult, previousResult); err != nil {
+			if err := storedProtoJSON.Unmarshal(input.Previous.OptimizationResult, previousResult); err != nil {
 				return nil, fmt.Errorf("decode previous optimization result: %w", err)
 			}
 		}
@@ -140,7 +152,7 @@ func flowEventTerm(eventType domain.EventType) flowv1.EventTerm {
 	return flowv1.EventTerm_EVENT_TERM_SHORT
 }
 
-func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]bool, map[string]bool) {
+func flowGraph(graph domain.Graph, resolution func(domain.GraphAnchor) *int32) (*flowv1.Graph, map[string]bool, map[string]bool) {
 	nodes := make([]*flowv1.Node, 0, len(graph.Points))
 	nodeIDs := make(map[string]bool, len(graph.Points))
 
@@ -151,7 +163,7 @@ func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]
 			Kind:            flowNodeKind(point.Type).Enum(),
 			Enabled:         proto.Bool(true),
 			AttributeTags:   nil,
-			TimeResolutionS: proto.Int32(resolution),
+			TimeResolutionS: resolution(domain.GraphAnchor{PointID: point.ID, RouteID: ""}),
 			DangerFlag:      proto.Bool(false),
 			DangerCapacity:  nil,
 			Boundary:        flowBoundary(point.Boundary),
@@ -180,9 +192,9 @@ func flowGraph(graph domain.Graph, resolution int32) (*flowv1.Graph, map[string]
 			Enabled:             proto.Bool(true),
 			ObservationType:     flowv1.ObservationType_OBSERVATION_TYPE_VECTOR.Enum(),
 			AttributeTags:       nil,
-			TimeResolutionS:     proto.Int32(resolution),
+			TimeResolutionS:     resolution(domain.GraphAnchor{PointID: "", RouteID: route.ID}),
 			DangerFlag:          proto.Bool(false),
-			DangerCapacity:      nil,
+			DangerFlowCapacity:  nil,
 			CapacityHint:        route.CapacityHint,
 		})
 	}
@@ -359,6 +371,7 @@ func flowHistoryDigest(
 ) *flowv1.HistoryDigest {
 	series := map[string]*flowv1.ArcWindowSeries{}
 	digest := new(flowv1.HistoryDigest)
+	established := 0
 
 	for _, arc := range arcHistory {
 		if !edgeIDs[arc.RouteID] {
@@ -372,6 +385,13 @@ func flowHistoryDigest(
 			BaselineStagnation: nil,
 			FlowSensitivityEta: nil,
 			AvailableSpanHours: proto.Float64(span.Hours()),
+			FlowP90:            nil,
+			FreeFlowDwellMin:   nil,
+		}
+
+		if arc.FlowDwell.Span >= minArcHistorySpan {
+			stat.FlowP90 = proto.Float64(arc.FlowDwell.FlowP90)
+			stat.FreeFlowDwellMin = arc.FlowDwell.FreeFlowDwellMin
 		}
 
 		if span >= minArcHistorySpan {
@@ -384,6 +404,14 @@ func flowHistoryDigest(
 		}
 
 		digest.ArcStats = append(digest.ArcStats, stat)
+
+		if stat.P90Stagnation != nil {
+			established++
+		}
+	}
+
+	if len(edgeIDs) > 0 {
+		digest.Completeness = float64(established) / float64(len(edgeIDs))
 	}
 
 	for _, snapshot := range history {
@@ -422,7 +450,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		SurgeRateThresholdPercentPerMin: proto.Float64(10),
 		HighStagnationDurationMin:       proto.Float64(5),
 		Beta:                            proto.Float64(1),
-		ThetaDemand:                     nil,
 		MinWindowSamples:                proto.Int32(5),
 		CooldownDurationMin:             proto.Float64(60),
 		WarmupDurationMin:               proto.Float64(60),
@@ -439,7 +466,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		RestrictionProposalEnabled:      proto.Bool(false),
 		TauDangerThreshold:              nil,
 		PunctureTriggerEnabled:          proto.Bool(false),
-		PunctureRatioThreshold:          proto.Float64(1),
 		ForecastingBudgetSec:            proto.Float64(30),
 		DetourBudgetSec:                 proto.Float64(30),
 		LightweightOptBudgetSec:         proto.Float64(120),
@@ -449,7 +475,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		Epsilon:                         proto.Float64(1e-3),
 		Epsilon_0:                       proto.Float64(1e-6),
 		BigMFactor:                      proto.Float64(1),
-		DeltaMin:                        proto.Float64(0.5),
 		ConfidenceWeightFloor:           proto.Float64(0.5),
 		MipRelGap:                       proto.Float64(0),
 		GravityAlpha:                    proto.Float64(1),
@@ -460,7 +485,6 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		MinReferenceSampleCount:         proto.Int32(5),
 		KShortestPaths:                  proto.Int32(3),
 		FallbackEta:                     proto.Float64(0.25),
-		FallbackBaselineStagnation:      proto.Float64(1),
 		ScalarDirectionEnabled:          proto.Bool(false),
 		KShortestPathsAuto:              proto.Bool(false),
 		KShortestPathsMax:               proto.Int32(3),
@@ -481,5 +505,9 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		MilpBoundaryControlEnabled:      proto.Bool(false),
 		ScheduledInflowPriorEnabled:     proto.Bool(false),
 		LogTenantId:                     proto.Bool(false),
+		DeltaMinFraction:                proto.Float64(0.01),
+		StaleObservationResolutions:     proto.Float64(2),
+		StaleObservationFloorS:          proto.Float64(60),
+		PunctureDwellRatioThreshold:     proto.Float64(1.5),
 	}
 }

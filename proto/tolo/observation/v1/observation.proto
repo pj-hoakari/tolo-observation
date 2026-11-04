@@ -359,6 +359,62 @@ message EventOverview {
   tolo.kernel.v1.ObservationSnapshot snapshot = 1;
   repeated tolo.kernel.v1.RiskLocation risks = 2;
   repeated tolo.kernel.v1.DangerFlag danger_flags = 3;
+  repeated FlowElementState flow_element_states = 4;
+  repeated FlowWarning flow_warnings = 5;
+}
+
+message FlowElementState {
+  string target_key = 1;
+  FlowObservationState observation = 2;
+  FlowHistoryTier history = 3;
+  int32 line_points = 4;
+  repeated FlowJudgement skipped = 5;
+}
+
+message FlowWarning {
+  FlowWarningCode code = 1;
+  map<string, string> context = 2;
+}
+
+enum FlowObservationState {
+  FLOW_OBSERVATION_STATE_UNSPECIFIED = 0;
+  FLOW_OBSERVATION_STATE_UNOBSERVED = 1;
+  FLOW_OBSERVATION_STATE_INVALID = 2;
+  FLOW_OBSERVATION_STATE_HOLD = 3;
+  FLOW_OBSERVATION_STATE_STALE = 4;
+  FLOW_OBSERVATION_STATE_OK = 5;
+}
+
+enum FlowHistoryTier {
+  FLOW_HISTORY_TIER_UNSPECIFIED = 0;
+  FLOW_HISTORY_TIER_NONE = 1;
+  FLOW_HISTORY_TIER_WINDOW_ONLY = 2;
+  FLOW_HISTORY_TIER_SHORT = 3;
+  FLOW_HISTORY_TIER_ESTABLISHED = 4;
+}
+
+enum FlowJudgement {
+  FLOW_JUDGEMENT_UNSPECIFIED = 0;
+  FLOW_JUDGEMENT_SURGE = 1;
+  FLOW_JUDGEMENT_HIGH_STAGNATION = 2;
+  FLOW_JUDGEMENT_COMBINED = 3;
+  FLOW_JUDGEMENT_PUNCTURE = 4;
+}
+
+enum FlowWarningCode {
+  FLOW_WARNING_CODE_UNSPECIFIED = 0;
+  FLOW_WARNING_CODE_RETRIGGER = 1;
+  FLOW_WARNING_CODE_SIZE_NEAR_LIMIT = 2;
+  FLOW_WARNING_CODE_CONSTRAINT_NEAR = 3;
+  FLOW_WARNING_CODE_LOW_COVERAGE = 4;
+  FLOW_WARNING_CODE_FALLBACK_APPLIED = 5;
+  FLOW_WARNING_CODE_QUEUE_EXPIRED = 6;
+  FLOW_WARNING_CODE_SOLVER_GIVEUP = 7;
+  FLOW_WARNING_CODE_UNDRAINABLE_EDGE = 8;
+  FLOW_WARNING_CODE_MANY_TRIGGER_ZONES = 9;
+  FLOW_WARNING_CODE_LOW_CONFIDENCE_PROPOSAL = 10;
+  FLOW_WARNING_CODE_INSUFFICIENT_WINDOW_SAMPLES = 11;
+  FLOW_WARNING_CODE_PARTIAL_COMBINED_TRIGGER = 14;
 }
 
 enum EventType {
