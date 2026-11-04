@@ -340,39 +340,50 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(ctx context.Context, in
 		return domain.ObservationPoint{}, err
 	}
 
-	device, err := s.devices.FindByObservationPointID(ctx, id)
-	if err != nil {
-		return domain.ObservationPoint{}, fmt.Errorf("find edge device by observation point: %w", err)
-	}
+	var result domain.ObservationPoint
 
-	if device.EventID != input.EventID {
-		return domain.ObservationPoint{}, ErrForeignEvent
-	}
-
-	if _, err := device.UpdateObservationPoint(id, input.Name, input.Enabled); err != nil {
-		return domain.ObservationPoint{}, err
-	}
-
-	if err := s.devices.Save(ctx, device); err != nil {
-		return domain.ObservationPoint{}, fmt.Errorf("save edge device: %w", err)
-	}
-
-	now := s.config.Now()
-
-	hold, err := s.holds.Evaluate(ctx, now)
-	if err != nil {
-		return domain.ObservationPoint{}, err
-	}
-
-	applyEffectiveEnabled(&device, hold.Connected(device, now))
-
-	for _, point := range device.ObservationPoints {
-		if point.ID == id {
-			return point, nil
+	err = s.devices.WithinTransaction(ctx, func(txCtx context.Context) error {
+		device, err := s.devices.FindByObservationPointIDForUpdate(txCtx, id)
+		if err != nil {
+			return fmt.Errorf("find edge device by observation point: %w", err)
 		}
+
+		if device.EventID != input.EventID {
+			return ErrForeignEvent
+		}
+
+		if _, err := device.UpdateObservationPoint(id, input.Name, input.Enabled); err != nil {
+			return err
+		}
+
+		if err := s.devices.Save(txCtx, device); err != nil {
+			return fmt.Errorf("save edge device: %w", err)
+		}
+
+		now := s.config.Now()
+
+		hold, err := s.holds.Evaluate(txCtx, now)
+		if err != nil {
+			return err
+		}
+
+		applyEffectiveEnabled(&device, hold.Connected(device, now))
+
+		for _, point := range device.ObservationPoints {
+			if point.ID == id {
+				result = point
+
+				return nil
+			}
+		}
+
+		return domain.ErrObservationPointNotFound
+	})
+	if err != nil {
+		return domain.ObservationPoint{}, err
 	}
 
-	return domain.ObservationPoint{}, domain.ErrObservationPointNotFound
+	return result, nil
 }
 
 func (s *EdgeDeviceService) view(device domain.EdgeDevice) EdgeDeviceView {

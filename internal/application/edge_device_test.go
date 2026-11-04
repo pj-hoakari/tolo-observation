@@ -202,8 +202,9 @@ func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 	t.Parallel()
 
 	service, devices := newService(t)
+	expectTransaction(devices)
 	devices.EXPECT().
-		FindByObservationPointID(gomock.Any(), domain.ObservationPointID("99aabbccddeeff00")).
+		FindByObservationPointIDForUpdate(inTransaction, domain.ObservationPointID("99aabbccddeeff00")).
 		Return(domain.EdgeDevice{
 			ID:              "1122334455667788",
 			EventID:         testEventPublicID,
@@ -212,7 +213,7 @@ func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 				{ID: "99aabbccddeeff00", Name: "north", Enabled: false},
 			},
 		}, nil)
-	devices.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+	devices.EXPECT().Save(inTransaction, gomock.Any()).Return(nil)
 
 	point, err := service.UpdateObservationPointConfig(
 		withEventToken(testEventPublicID),

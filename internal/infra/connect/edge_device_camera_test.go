@@ -36,6 +36,25 @@ func registerObservationPage(
 	return page
 }
 
+func TestRegisterEdgeDeviceRejectsAnUnknownKind(t *testing.T) {
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+	eventID := "c0ffee00c0ffee01"
+
+	_, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
+		flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{
+			EventId:               eventID,
+			Name:                  "unknown-kind",
+			ObservationPointNames: []string{"north"},
+			Kind:                  observationv1.EdgeDeviceKind(99),
+		},
+	))
+	if got := connectrpc.CodeOf(err); got != connectrpc.CodeInvalidArgument {
+		t.Fatalf("RegisterEdgeDevice(unknown kind) error code = %v (%v), want %v", got, err, connectrpc.CodeInvalidArgument)
+	}
+}
+
 func TestCameraRegistrationRejectsAnUnregisteredObservationPage(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()

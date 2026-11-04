@@ -128,11 +128,16 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(
 	ctx context.Context,
 	req *observationv1.RegisterEdgeDeviceRequest,
 ) (*observationv1.RegisterEdgeDeviceResponse, error) {
+	kind, err := domainEdgeDeviceKind(req.GetKind())
+	if err != nil {
+		return nil, clientError(ctx, err)
+	}
+
 	output, err := s.useCases.RegisterEdgeDevice(ctx, application.RegisterEdgeDeviceInput{
 		EventID:                  req.GetEventId(),
 		Name:                     req.GetName(),
 		ObservationPointNames:    req.GetObservationPointNames(),
-		Kind:                     domainEdgeDeviceKind(req.GetKind()),
+		Kind:                     kind,
 		LinkedObservationPointID: req.GetLinkedObservationPointId(),
 	})
 	if err != nil {
@@ -278,15 +283,15 @@ func newProtoEdgeDevice(view application.EdgeDeviceView) *observationv1.EdgeDevi
 	}
 }
 
-func domainEdgeDeviceKind(kind observationv1.EdgeDeviceKind) domain.EdgeDeviceKind {
+func domainEdgeDeviceKind(kind observationv1.EdgeDeviceKind) (domain.EdgeDeviceKind, error) {
 	switch kind {
 	case observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA:
-		return domain.EdgeDeviceKindCamera
+		return domain.EdgeDeviceKindCamera, nil
 	case observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_OBSERVATION_PAGE,
 		observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_UNSPECIFIED:
-		return domain.EdgeDeviceKindObservationPage
+		return domain.EdgeDeviceKindObservationPage, nil
 	default:
-		return domain.EdgeDeviceKindObservationPage
+		return domain.EdgeDeviceKindObservationPage, domain.ErrEdgeDeviceKindInvalid
 	}
 }
 
