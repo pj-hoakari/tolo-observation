@@ -55,6 +55,17 @@ func TestNewOptimizeRequestSendsShortFallbackEta(t *testing.T) {
 	}
 }
 
+func TestNewOptimizeRequestSendsSurgeThresholdOfFivePercentPerMinute(t *testing.T) {
+	request, err := newOptimizeRequest(application.OptimizeInput{})
+	if err != nil {
+		t.Fatalf("newOptimizeRequest() error = %v", err)
+	}
+
+	if got := request.GetConfig().GetSurgeRateThresholdPercentPerMin(); got != 5 {
+		t.Errorf("config surge_rate_threshold_percent_per_min = %v, want 5", got)
+	}
+}
+
 func TestNewOptimizeRequestReadsDetectionStateSavedBeforeDemandExcessWasRemoved(t *testing.T) {
 	saved := []byte(`{"cooldownUntil":"2026-11-03T00:00:00Z","arcDemandDigest":{"entries":[{"edgeId":"r1","demand":3}]},` +
 		`"arcWatchStates":[{"edgeId":"r1","surgeBreached":true,"demandExcessBreached":true,"demandWatchSince":"2026-11-03T00:00:00Z"}]}`)
