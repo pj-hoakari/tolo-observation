@@ -447,7 +447,7 @@ func flowHistoryDigest(
 
 func defaultFlowConfig() *flowv1.ResolvedConfig {
 	return &flowv1.ResolvedConfig{
-		SurgeRateThresholdPercentPerMin: proto.Float64(10),
+		SurgeRateThresholdPercentPerMin: proto.Float64(5),
 		HighStagnationDurationMin:       proto.Float64(5),
 		Beta:                            proto.Float64(1),
 		MinWindowSamples:                proto.Int32(5),
@@ -455,7 +455,7 @@ func defaultFlowConfig() *flowv1.ResolvedConfig {
 		WarmupDurationMin:               proto.Float64(60),
 		RetriggerWarningThreshold:       proto.Int32(3),
 		RetriggerResetQuietCycles:       proto.Int32(3),
-		QueueScoreThreshold:             proto.Float64(5),
+		QueueScoreThreshold:             proto.Float64(80),
 		QueueDiversityThreshold:         proto.Int32(3),
 		QueueFreshnessMin:               nil,
 		ThroughputTargetEdges:           nil,
