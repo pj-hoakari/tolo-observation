@@ -86,25 +86,25 @@ func TestNewSnapshot(t *testing.T) {
 
 	gotPoints := map[string]string{}
 	for _, score := range snapshot.PointScores {
-		gotPoints[score.PointID] = fmt.Sprintf("%v/%v/%v", deref(score.PeopleScore), score.OccupancyDelta, score.Exhaustive)
+		gotPoints[score.PointID] = fmt.Sprintf("%v/%v/%v", deref(score.PeopleScore), deref(score.OccupancyDelta), score.Exhaustive)
 	}
 
 	wantPoints := map[string]string{
-		"p1": "3/5/true",
-		"p4": "0/3/true",
+		"p1": "3/<nil>/true",
+		"p4": "0/<nil>/true",
 	}
 	if !maps.Equal(gotPoints, wantPoints) {
 		t.Errorf("point scores (people/occupancy delta/exhaustive) = %v, want %v", gotPoints, wantPoints)
 	}
 }
 
-func TestNewSnapshotOccupancyDeltaPerMinute(t *testing.T) {
+func TestNewSnapshotOccupancyDeltaIsTheTrendOfPeopleInTheArea(t *testing.T) {
 	t.Parallel()
 
-	end := time.Date(2026, time.October, 3, 10, 5, 0, 0, time.UTC)
+	end := time.Date(2026, time.October, 3, 10, 30, 0, 0, time.UTC)
 
-	measurement := func(pointID string, window time.Duration, countIn, countOut int32) domain.Measurement {
-		m, err := domain.NewMeasurement(pointID, end.Add(-window), end, countIn, countOut, new(1.0))
+	measurement := func(pointID string, endsBefore time.Duration, people float64) domain.Measurement {
+		m, err := domain.NewMeasurement(pointID, end.Add(-endsBefore-30*time.Second), end.Add(-endsBefore), 9, 1, &people)
 		if err != nil {
 			t.Fatalf("NewMeasurement: %v", err)
 		}
@@ -113,37 +113,56 @@ func TestNewSnapshotOccupancyDeltaPerMinute(t *testing.T) {
 	}
 
 	const (
-		shortWindow = "00000000000000a1"
-		longWindow  = "00000000000000a2"
+		rising  = "00000000000000a1"
+		short   = "00000000000000a2"
+		slow    = "00000000000000b1"
+		fast    = "00000000000000b2"
+		falling = "00000000000000c1"
 	)
 
 	measurements := []domain.Measurement{
-		measurement(shortWindow, 10*time.Second, 3, 1),
-		measurement(longWindow, 5*time.Minute, 20, 5),
+		measurement(rising, 6*time.Minute, 100),
+		measurement(rising, 4*time.Minute, 2),
+		measurement(rising, 3*time.Minute, 3),
+		measurement(rising, 2*time.Minute, 4),
+		measurement(rising, time.Minute, 5),
+		measurement(rising, 0, 6),
+		measurement(short, 2*time.Minute, 1),
+		measurement(short, 0, 9),
+		measurement(slow, 4*time.Minute, 10),
+		measurement(slow, 0, 14),
+		measurement(fast, 3*time.Minute, 0),
+		measurement(fast, 0, 9),
+		measurement(falling, 4*time.Minute, 8),
+		measurement(falling, 0, 0),
 	}
 
 	mappings := []domain.ObservationPointMapping{
-		{ObservationPointID: shortWindow, Anchor: domain.GraphAnchor{PointID: "p1"}},
-		{ObservationPointID: longWindow, Anchor: domain.GraphAnchor{PointID: "p2"}},
+		{ObservationPointID: rising, Anchor: domain.GraphAnchor{PointID: "p-rising"}},
+		{ObservationPointID: short, Anchor: domain.GraphAnchor{PointID: "p-short"}},
+		{ObservationPointID: slow, Anchor: domain.GraphAnchor{PointID: "p-two-points"}},
+		{ObservationPointID: fast, Anchor: domain.GraphAnchor{PointID: "p-two-points"}},
+		{ObservationPointID: falling, Anchor: domain.GraphAnchor{PointID: "p-falling"}},
 	}
 
+	active := domain.ObservationPointActive
 	states := map[domain.ObservationPointID]domain.ObservationPointState{
-		shortWindow: domain.ObservationPointActive, longWindow: domain.ObservationPointActive,
+		rising: active, short: active, slow: active, fast: active, falling: active,
 	}
 
-	snapshot, _, _, err := domain.NewSnapshot("event", end.Add(-5*time.Minute), end, measurements, mappings, states)
+	snapshot, _, _, err := domain.NewSnapshot("event", end.Add(-time.Minute), end, measurements, mappings, states)
 	if err != nil {
 		t.Fatalf("NewSnapshot: %v", err)
 	}
 
-	got := map[string]float64{}
+	got := map[string]any{}
 	for _, score := range snapshot.PointScores {
-		got[score.PointID] = score.OccupancyDelta
+		got[score.PointID] = deref(score.OccupancyDelta)
 	}
 
-	want := map[string]float64{"p1": 12, "p2": 3}
+	want := map[string]any{"p-rising": 1.0, "p-short": nil, "p-two-points": 2.0, "p-falling": -2.0}
 	if !maps.Equal(got, want) {
-		t.Errorf("occupancy delta per minute = %v, want %v", got, want)
+		t.Errorf("occupancy delta (people per minute over the last 5 minutes) = %v, want %v", got, want)
 	}
 }
 
@@ -242,7 +261,7 @@ func TestNewSnapshotConfidence(t *testing.T) {
 	points := func(scores []domain.PointScore) map[string]string {
 		got := map[string]string{}
 		for _, score := range scores {
-			got[score.PointID] = fmt.Sprintf("%v/%v", deref(score.PeopleScore), score.OccupancyDelta)
+			got[score.PointID] = fmt.Sprintf("%v/%v", deref(score.PeopleScore), deref(score.OccupancyDelta))
 		}
 
 		return got
@@ -270,7 +289,7 @@ func TestNewSnapshotConfidence(t *testing.T) {
 		t.Errorf("held route scores (forward/backward/stagnation) = %v, want %v", got, wantHeldRoutes)
 	}
 
-	if got, want := points(gaps.HeldPointScores), map[string]string{"p-held-at-limit": "1/8", "p-offline-10m": "2/5"}; !maps.Equal(got, want) {
+	if got, want := points(gaps.HeldPointScores), map[string]string{"p-held-at-limit": "1/<nil>", "p-offline-10m": "2/<nil>"}; !maps.Equal(got, want) {
 		t.Errorf("held point scores (people/occupancy delta) = %v, want %v", got, want)
 	}
 
@@ -462,7 +481,7 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 
 	points := map[string]string{}
 	for _, score := range snapshot.PointScores {
-		points[score.PointID] = fmt.Sprintf("%v/%v/%v", deref(score.PeopleScore), score.OccupancyDelta, score.Exhaustive)
+		points[score.PointID] = fmt.Sprintf("%v/%v/%v", deref(score.PeopleScore), deref(score.OccupancyDelta), score.Exhaustive)
 	}
 
 	wantPoints := map[string]string{"p-qr-silent": "<nil>/0/false", "p-qr-stale": "<nil>/0/false", "p-qr-queue": "<nil>/0.6/false"}

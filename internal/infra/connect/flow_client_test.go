@@ -19,8 +19,8 @@ func TestFlowObservationsLeavesOccupancyUnsetWithoutDetectedPeople(t *testing.T)
 		WindowStart: time.Unix(0, 0),
 		WindowEnd:   time.Unix(60, 0),
 		PointScores: []domain.PointScore{
-			{PointID: "p1", PeopleScore: &people, OccupancyDelta: 2, Exhaustive: true},
-			{PointID: "p2", PeopleScore: nil, OccupancyDelta: 3, Exhaustive: true},
+			{PointID: "p1", PeopleScore: &people, OccupancyDelta: new(2.0), Exhaustive: true},
+			{PointID: "p2", PeopleScore: nil, OccupancyDelta: new(3.0), Exhaustive: true},
 		},
 		RouteScores: nil,
 	}
@@ -100,7 +100,7 @@ func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 	stagnation := 3.0
 	snapshot := domain.Snapshot{ID: "snapshot", WindowStart: time.Unix(0, 0), WindowEnd: time.Unix(60, 0)}
 	gaps := domain.Gaps{
-		HeldPointScores: []domain.PointScore{{PointID: "p-held", PeopleScore: &people, OccupancyDelta: 2, Exhaustive: true}},
+		HeldPointScores: []domain.PointScore{{PointID: "p-held", PeopleScore: &people, OccupancyDelta: new(2.0), Exhaustive: true}},
 		HeldRouteScores: []domain.RouteScore{{RouteID: "r-held", Forward: 5, Backward: 1, StagnationScore: &stagnation, Exhaustive: true}},
 		InvalidPointIDs: []string{"p-invalid"},
 		InvalidRouteIDs: []string{"r-invalid"},
@@ -130,7 +130,7 @@ func TestFlowObservationsCarriesGapFlags(t *testing.T) {
 
 	want := map[string]string{
 		"p-held":                          "true/<nil>/CONFIDENCE_FLAG_HOLD",
-		"p-invalid":                       "false/0/CONFIDENCE_FLAG_INVALID",
+		"p-invalid":                       "false/<nil>/CONFIDENCE_FLAG_INVALID",
 		"r-held/FLOW_DIRECTION_A_TO_B":    "5/CONFIDENCE_FLAG_HOLD",
 		"r-held/FLOW_DIRECTION_B_TO_A":    "1/CONFIDENCE_FLAG_HOLD",
 		"r-held/stagnation":               "3/CONFIDENCE_FLAG_HOLD",
@@ -149,8 +149,8 @@ func TestFlowRequestLeavesOutScoresThatAreNotExhaustive(t *testing.T) {
 		WindowStart: time.Unix(0, 0),
 		WindowEnd:   end,
 		PointScores: []domain.PointScore{
-			{PointID: "p-camera", PeopleScore: nil, OccupancyDelta: 1, Exhaustive: true},
-			{PointID: "p-qr", PeopleScore: nil, OccupancyDelta: 4, Exhaustive: false},
+			{PointID: "p-camera", PeopleScore: nil, OccupancyDelta: new(1.0), Exhaustive: true},
+			{PointID: "p-qr", PeopleScore: nil, OccupancyDelta: new(4.0), Exhaustive: false},
 		},
 		RouteScores: []domain.RouteScore{
 			{RouteID: "r-camera", Forward: 2, Backward: 1, StagnationScore: nil, Exhaustive: true},

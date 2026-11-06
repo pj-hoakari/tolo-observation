@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	kernelv1 "github.com/pj-hoakari/tolo-kernel-proto/gen/tolo/kernel/v1"
@@ -338,7 +337,7 @@ func newProtoSnapshot(snapshot *domain.Snapshot) *kernelv1.ObservationSnapshot {
 		points = append(points, &kernelv1.PointScore{
 			PointId:        score.PointID,
 			PeopleScore:    score.PeopleScore,
-			OccupancyDelta: proto.Float64(score.OccupancyDelta),
+			OccupancyDelta: score.OccupancyDelta,
 			Exhaustive:     score.Exhaustive,
 		})
 	}

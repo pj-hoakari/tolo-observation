@@ -259,7 +259,7 @@ func TestPostgresSnapshotRepositoryKeepsMissingAnchorsOutOfHistory(t *testing.T)
 		EventID:     "event-missing",
 		WindowStart: windowEnd.Add(-time.Minute),
 		WindowEnd:   windowEnd,
-		PointScores: []domain.PointScore{{PointID: "p1", PeopleScore: new(2.0), OccupancyDelta: 1, Exhaustive: true}},
+		PointScores: []domain.PointScore{{PointID: "p1", PeopleScore: new(2.0), OccupancyDelta: new(1.0), Exhaustive: true}},
 		RouteScores: []domain.RouteScore{{RouteID: "r1", Forward: 1, Backward: 1, StagnationScore: new(3.0), Exhaustive: true}},
 		Missing:     domain.MissingAnchors{PointIDs: []string{"p2"}, RouteIDs: []string{"r2"}},
 	}
