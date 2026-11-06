@@ -30,7 +30,7 @@ func TestNewSnapshot(t *testing.T) {
 		routePointB = "00000000000000a2"
 		nodePoint   = "00000000000000b1"
 		unmapped    = "00000000000000c1"
-		silentPoint = "00000000000000e1"
+		frameless   = "00000000000000e1"
 		emptyPoint  = "00000000000000f1"
 	)
 
@@ -41,7 +41,7 @@ func TestNewSnapshot(t *testing.T) {
 		measurement(routePointB, time.Minute, 4, 1, new(2.0)),
 		measurement(nodePoint, time.Minute, 9, 4, new(3.0)),
 		measurement(unmapped, time.Minute, 50, 50, new(40.0)),
-		measurement(silentPoint, time.Minute, 2, 1, nil),
+		measurement(frameless, time.Minute, 2, 1, nil),
 		measurement(emptyPoint, time.Minute, 3, 0, new(0.0)),
 	}
 
@@ -50,15 +50,15 @@ func TestNewSnapshot(t *testing.T) {
 		{ObservationPointID: routePointB, Anchor: domain.GraphAnchor{RouteID: "r1"}},
 		{ObservationPointID: nodePoint, Anchor: domain.GraphAnchor{PointID: "p1"}},
 		{ObservationPointID: "00000000000000d1", Anchor: domain.GraphAnchor{RouteID: "r2"}},
-		{ObservationPointID: silentPoint, Anchor: domain.GraphAnchor{RouteID: "r3"}},
+		{ObservationPointID: frameless, Anchor: domain.GraphAnchor{RouteID: "r3"}},
 		{ObservationPointID: emptyPoint, Anchor: domain.GraphAnchor{RouteID: "r4"}},
-		{ObservationPointID: silentPoint, Anchor: domain.GraphAnchor{PointID: "p3"}},
+		{ObservationPointID: frameless, Anchor: domain.GraphAnchor{PointID: "p3"}},
 		{ObservationPointID: emptyPoint, Anchor: domain.GraphAnchor{PointID: "p4"}},
 	}
 
 	active := domain.ObservationPointActive
 	states := map[domain.ObservationPointID]domain.ObservationPointState{
-		routePointA: active, routePointB: active, nodePoint: active, unmapped: active, silentPoint: active, emptyPoint: active,
+		routePointA: active, routePointB: active, nodePoint: active, unmapped: active, frameless: active, emptyPoint: active,
 	}
 
 	snapshot, _, _, err := domain.NewSnapshot("event", start, start.Add(2*time.Minute), measurements, mappings, states)
@@ -77,8 +77,7 @@ func TestNewSnapshot(t *testing.T) {
 	}
 
 	wantRoutes := map[string]string{
-		"r1": "10/3/7/true/false",
-		"r3": "2/1/<nil>/true/false",
+		"r1": "5/1.5/3.5/true/false",
 		"r4": "3/0/0/true/true",
 	}
 	if !maps.Equal(gotRoutes, wantRoutes) {
@@ -92,7 +91,6 @@ func TestNewSnapshot(t *testing.T) {
 
 	wantPoints := map[string]string{
 		"p1": "3/5/true",
-		"p3": "<nil>/1/true",
 		"p4": "0/3/true",
 	}
 	if !maps.Equal(gotPoints, wantPoints) {
@@ -106,7 +104,7 @@ func TestNewSnapshotOccupancyDeltaPerMinute(t *testing.T) {
 	end := time.Date(2026, time.October, 3, 10, 5, 0, 0, time.UTC)
 
 	measurement := func(pointID string, window time.Duration, countIn, countOut int32) domain.Measurement {
-		m, err := domain.NewMeasurement(pointID, end.Add(-window), end, countIn, countOut, nil)
+		m, err := domain.NewMeasurement(pointID, end.Add(-window), end, countIn, countOut, new(1.0))
 		if err != nil {
 			t.Fatalf("NewMeasurement: %v", err)
 		}
@@ -183,7 +181,7 @@ func TestNewSnapshotConfidence(t *testing.T) {
 		measurement(fresh, end, 6, 2, new(3.0)),
 		measurement(heldRecent, end.Add(-11*time.Minute), 1, 1, new(9.0)),
 		measurement(heldRecent, end.Add(-10*time.Minute), 4, 2, new(5.0)),
-		measurement(heldAtLimit, end.Add(-domain.MaxHold), 8, 0, nil),
+		measurement(heldAtLimit, end.Add(-domain.MaxHold), 8, 0, new(1.0)),
 		measurement(expired, end.Add(-domain.MaxHold-time.Microsecond), 7, 7, new(1.0)),
 		measurement(disabled, end, 5, 5, new(2.0)),
 		measurement(composite, end.Add(-3*time.Minute), 2, 1, new(1.0)),
@@ -201,10 +199,18 @@ func TestNewSnapshotConfidence(t *testing.T) {
 		{ObservationPointID: expired, Anchor: domain.GraphAnchor{RouteID: "r-expired"}},
 		{ObservationPointID: disabled, Anchor: domain.GraphAnchor{PointID: "p-disabled"}},
 		{ObservationPointID: silent, Anchor: domain.GraphAnchor{PointID: "p-silent"}},
-		{ObservationPointID: fresh, Anchor: domain.GraphAnchor{RouteID: "r-composite"}},
-		{ObservationPointID: composite, Anchor: domain.GraphAnchor{RouteID: "r-composite"}},
-		{ObservationPointID: fresh, Anchor: domain.GraphAnchor{RouteID: "r-partly-invalid"}},
-		{ObservationPointID: silent, Anchor: domain.GraphAnchor{RouteID: "r-partly-invalid"}},
+		{ObservationPointID: fresh, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-held"}},
+		{ObservationPointID: composite, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-held"}},
+		{ObservationPointID: fresh, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-silent"}},
+		{ObservationPointID: silent, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-silent"}},
+		{ObservationPointID: fresh, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-disabled"}},
+		{ObservationPointID: disabled, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-disabled"}},
+		{ObservationPointID: fresh, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-frameless"}},
+		{ObservationPointID: noPeople, Anchor: domain.GraphAnchor{RouteID: "r-fresh-and-frameless"}},
+		{ObservationPointID: fresh, Anchor: domain.GraphAnchor{RouteID: "r-two-fresh"}},
+		{ObservationPointID: offlineNow, Anchor: domain.GraphAnchor{RouteID: "r-two-fresh"}},
+		{ObservationPointID: heldRecent, Anchor: domain.GraphAnchor{RouteID: "r-held-and-expired"}},
+		{ObservationPointID: expired, Anchor: domain.GraphAnchor{RouteID: "r-held-and-expired"}},
 		{ObservationPointID: unknown, Anchor: domain.GraphAnchor{RouteID: "r-unknown"}},
 		{ObservationPointID: noPeople, Anchor: domain.GraphAnchor{PointID: "p-no-people"}},
 		{ObservationPointID: offline10, Anchor: domain.GraphAnchor{PointID: "p-offline-10m"}},
@@ -242,28 +248,37 @@ func TestNewSnapshotConfidence(t *testing.T) {
 		return got
 	}
 
-	if got, want := routes(snapshot.RouteScores), map[string]string{"r-offline-fresh": "4/0/7", "r-ok": "6/2/3"}; !maps.Equal(got, want) {
-		t.Errorf("OK route scores (forward/backward/stagnation) = %v, want %v", got, want)
+	wantRoutes := map[string]string{
+		"r-offline-fresh":       "4/0/7",
+		"r-ok":                  "6/2/3",
+		"r-fresh-and-held":      "6/2/3",
+		"r-fresh-and-silent":    "6/2/3",
+		"r-fresh-and-disabled":  "6/2/3",
+		"r-fresh-and-frameless": "6/2/3",
+		"r-two-fresh":           "5/1/5",
+	}
+	if got := routes(snapshot.RouteScores); !maps.Equal(got, wantRoutes) {
+		t.Errorf("OK route scores (forward/backward/stagnation) = %v, want %v", got, wantRoutes)
 	}
 
-	if got, want := points(snapshot.PointScores), map[string]string{"p-no-people": "<nil>/2"}; !maps.Equal(got, want) {
-		t.Errorf("OK point scores (people/occupancy delta) = %v, want %v", got, want)
+	if got := points(snapshot.PointScores); len(got) != 0 {
+		t.Errorf("OK point scores (people/occupancy delta) = %v, want none", got)
 	}
 
-	wantHeldRoutes := map[string]string{"r-held": "4/2/5", "r-composite": "8/3/4"}
+	wantHeldRoutes := map[string]string{"r-held": "4/2/5", "r-held-and-expired": "4/2/5"}
 	if got := routes(gaps.HeldRouteScores); !maps.Equal(got, wantHeldRoutes) {
 		t.Errorf("held route scores (forward/backward/stagnation) = %v, want %v", got, wantHeldRoutes)
 	}
 
-	if got, want := points(gaps.HeldPointScores), map[string]string{"p-held-at-limit": "<nil>/8", "p-offline-10m": "2/5"}; !maps.Equal(got, want) {
+	if got, want := points(gaps.HeldPointScores), map[string]string{"p-held-at-limit": "1/8", "p-offline-10m": "2/5"}; !maps.Equal(got, want) {
 		t.Errorf("held point scores (people/occupancy delta) = %v, want %v", got, want)
 	}
 
-	if got, want := gaps.InvalidRouteIDs, []string{"r-expired", "r-partly-invalid"}; !slices.Equal(got, want) {
+	if got, want := gaps.InvalidRouteIDs, []string{"r-expired"}; !slices.Equal(got, want) {
 		t.Errorf("invalid routes = %v, want %v", got, want)
 	}
 
-	if got, want := gaps.InvalidPointIDs, []string{"p-disabled", "p-offline-16m", "p-silent"}; !slices.Equal(got, want) {
+	if got, want := gaps.InvalidPointIDs, []string{"p-disabled", "p-no-people", "p-offline-16m", "p-silent"}; !slices.Equal(got, want) {
 		t.Errorf("invalid points = %v, want %v", got, want)
 	}
 }
@@ -405,8 +420,13 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 		queue   = "00000000000000b4"
 	)
 
+	cameraMeasurement, err := domain.NewMeasurement(camera, end.Add(-time.Minute), end, 6, 2, new(1.0))
+	if err != nil {
+		t.Fatalf("NewMeasurement: %v", err)
+	}
+
 	measurements := []domain.Measurement{
-		measurement(camera, end, 6, 2),
+		cameraMeasurement,
 		measurement(batched, end.Add(-4*time.Minute), 4, 0),
 		measurement(batched, end.Add(-time.Minute), 6, 5),
 		measurement(batched, start, 100, 100),
@@ -435,7 +455,7 @@ func TestNewSnapshotQRObservationPoints(t *testing.T) {
 			score.Forward, score.Backward, deref(score.ScalarFlow), deref(score.StagnationScore), score.Exhaustive)
 	}
 
-	wantRoutes := map[string]string{"r-camera": "6/2/<nil>/<nil>/true", "r-qr": "0/0/2/<nil>/false"}
+	wantRoutes := map[string]string{"r-camera": "6/2/<nil>/1/true", "r-qr": "0/0/2/<nil>/false"}
 	if !maps.Equal(routes, wantRoutes) {
 		t.Errorf("route scores (forward/backward/scalar/stagnation/exhaustive) = %v, want %v", routes, wantRoutes)
 	}

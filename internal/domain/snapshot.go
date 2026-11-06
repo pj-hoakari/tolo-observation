@@ -191,14 +191,27 @@ type reading struct {
 	countIn  int64
 }
 
+type cameraScore struct {
+	rateIn   float64
+	rateOut  float64
+	detected float64
+}
+
 type anchorScore struct {
+	fresh      []cameraScore
+	held       []cameraScore
+	cameras    int
+	qrRateIn   float64
+	sensors    []ObservationPointID
+	qr         bool
+	resolution time.Duration
+}
+
+type composedScore struct {
 	confidence confidence
 	rateIn     float64
 	rateOut    float64
 	detected   *float64
-	sensors    []ObservationPointID
-	qr         bool
-	resolution time.Duration
 }
 
 func NewSnapshot(
@@ -225,8 +238,10 @@ func NewSnapshot(
 
 	for _, measurement := range measurements {
 		state, known := states[measurement.ObservationPointID]
-		if (!known || state == ObservationPointDisabled) && !qr[measurement.ObservationPointID] ||
-			windowEnd.Sub(measurement.WindowEnd) > MaxHold {
+
+		usable := qr[measurement.ObservationPointID] ||
+			known && state != ObservationPointDisabled && measurement.MeanDetectedPeople != nil
+		if !usable || windowEnd.Sub(measurement.WindowEnd) > MaxHold {
 			continue
 		}
 
@@ -262,7 +277,7 @@ func NewSnapshot(
 		score, ok := anchors[mapping.Anchor]
 		if !ok {
 			score = &anchorScore{
-				confidence: confidenceOK, rateIn: 0, rateOut: 0, detected: nil, sensors: nil, qr: false, resolution: 0,
+				fresh: nil, held: nil, cameras: 0, qrRateIn: 0, sensors: nil, qr: false, resolution: 0,
 			}
 			anchors[mapping.Anchor] = score
 		}
@@ -278,31 +293,29 @@ func NewSnapshot(
 			score.qr = true
 
 			if ok {
-				score.rateIn += float64(current.countIn) / windowMinutes
+				score.qrRateIn += float64(current.countIn) / windowMinutes
 			}
 
 			continue
 		}
+
+		score.cameras++
 
 		if !ok {
-			score.confidence = confidenceInvalid
+			continue
+		}
+
+		if current.latest.WindowEnd.After(windowStart) {
+			score.fresh = append(score.fresh, cameraScore{
+				rateIn: current.latest.RateIn(), rateOut: current.latest.RateOut(), detected: mean(current.detected),
+			})
 
 			continue
 		}
 
-		detected := current.detected
-		if !current.latest.WindowEnd.After(windowStart) {
-			score.confidence = max(score.confidence, confidenceHold)
-
-			detected = nil
-			if current.latest.MeanDetectedPeople != nil {
-				detected = []float64{*current.latest.MeanDetectedPeople}
-			}
-		}
-
-		score.rateIn += current.latest.RateIn()
-		score.rateOut += current.latest.RateOut()
-		score.detected = addMean(score.detected, detected)
+		score.held = append(score.held, cameraScore{
+			rateIn: current.latest.RateIn(), rateOut: current.latest.RateOut(), detected: *current.latest.MeanDetectedPeople,
+		})
 	}
 
 	snapshot := Snapshot{
@@ -323,29 +336,30 @@ func NewSnapshot(
 
 	for _, anchor := range slices.SortedFunc(maps.Keys(anchors), compareAnchors) {
 		score := anchors[anchor]
+		composed := score.compose()
 
 		if score.resolution > 0 {
 			snapshot.Resolutions[anchor] = score.resolution
 		}
 
 		switch {
-		case anchor.RouteID != "" && score.confidence == confidenceInvalid:
+		case anchor.RouteID != "" && composed.confidence == confidenceInvalid:
 			gaps.InvalidRouteIDs = append(gaps.InvalidRouteIDs, anchor.RouteID)
 			snapshot.Missing.RouteIDs = append(snapshot.Missing.RouteIDs, anchor.RouteID)
-		case anchor.RouteID != "" && score.confidence == confidenceHold:
-			gaps.HeldRouteScores = append(gaps.HeldRouteScores, score.route(anchor.RouteID))
+		case anchor.RouteID != "" && composed.confidence == confidenceHold:
+			gaps.HeldRouteScores = append(gaps.HeldRouteScores, score.route(anchor.RouteID, composed))
 			snapshot.Missing.RouteIDs = append(snapshot.Missing.RouteIDs, anchor.RouteID)
 		case anchor.RouteID != "":
-			snapshot.RouteScores = append(snapshot.RouteScores, score.route(anchor.RouteID))
+			snapshot.RouteScores = append(snapshot.RouteScores, score.route(anchor.RouteID, composed))
 			sensors = append(sensors, score.sensorSet(anchor))
-		case anchor.PointID != "" && score.confidence == confidenceInvalid:
+		case anchor.PointID != "" && composed.confidence == confidenceInvalid:
 			gaps.InvalidPointIDs = append(gaps.InvalidPointIDs, anchor.PointID)
 			snapshot.Missing.PointIDs = append(snapshot.Missing.PointIDs, anchor.PointID)
-		case anchor.PointID != "" && score.confidence == confidenceHold:
-			gaps.HeldPointScores = append(gaps.HeldPointScores, score.point(anchor.PointID))
+		case anchor.PointID != "" && composed.confidence == confidenceHold:
+			gaps.HeldPointScores = append(gaps.HeldPointScores, score.point(anchor.PointID, composed))
 			snapshot.Missing.PointIDs = append(snapshot.Missing.PointIDs, anchor.PointID)
 		case anchor.PointID != "":
-			snapshot.PointScores = append(snapshot.PointScores, score.point(anchor.PointID))
+			snapshot.PointScores = append(snapshot.PointScores, score.point(anchor.PointID, composed))
 			sensors = append(sensors, score.sensorSet(anchor))
 		}
 	}
@@ -357,19 +371,48 @@ func compareAnchors(a, b GraphAnchor) int {
 	return cmp.Or(cmp.Compare(a.RouteID, b.RouteID), cmp.Compare(a.PointID, b.PointID))
 }
 
-func (s anchorScore) route(routeID string) RouteScore {
+func (s anchorScore) compose() composedScore {
+	switch {
+	case len(s.fresh) > 0:
+		return averageCameraScores(confidenceOK, s.fresh, s.qrRateIn)
+	case len(s.held) > 0:
+		return averageCameraScores(confidenceHold, s.held, s.qrRateIn)
+	case s.cameras > 0:
+		return composedScore{confidence: confidenceInvalid, rateIn: 0, rateOut: 0, detected: nil}
+	default:
+		return composedScore{confidence: confidenceOK, rateIn: s.qrRateIn, rateOut: 0, detected: nil}
+	}
+}
+
+func averageCameraScores(level confidence, scores []cameraScore, qrRateIn float64) composedScore {
+	var rateIn, rateOut, detected float64
+
+	for _, score := range scores {
+		rateIn += score.rateIn
+		rateOut += score.rateOut
+		detected += score.detected
+	}
+
+	count := float64(len(scores))
+	detected /= count
+
+	return composedScore{confidence: level, rateIn: rateIn/count + qrRateIn, rateOut: rateOut / count, detected: &detected}
+}
+
+func (s anchorScore) route(routeID string, composed composedScore) RouteScore {
 	if s.qr {
-		scalar := s.rateIn + s.rateOut
+		scalar := composed.rateIn + composed.rateOut
 
 		return RouteScore{
-			RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: &scalar, StagnationScore: s.detected, Exhaustive: false,
+			RouteID: routeID, Forward: 0, Backward: 0, ScalarFlow: &scalar, StagnationScore: composed.detected, Exhaustive: false,
 			SameSensorFlow: false,
 		}
 	}
 
 	return RouteScore{
-		RouteID: routeID, Forward: s.rateIn, Backward: s.rateOut, ScalarFlow: nil, StagnationScore: s.detected, Exhaustive: true,
-		SameSensorFlow: s.detected != nil && len(s.distinctSensors()) == 1,
+		RouteID: routeID, Forward: composed.rateIn, Backward: composed.rateOut, ScalarFlow: nil,
+		StagnationScore: composed.detected, Exhaustive: true,
+		SameSensorFlow: composed.detected != nil && len(s.distinctSensors()) == 1,
 	}
 }
 
@@ -381,26 +424,19 @@ func (s anchorScore) distinctSensors() []ObservationPointID {
 	return slices.Compact(slices.Sorted(slices.Values(s.sensors)))
 }
 
-func (s anchorScore) point(pointID string) PointScore {
-	return PointScore{PointID: pointID, PeopleScore: s.detected, OccupancyDelta: s.rateIn - s.rateOut, Exhaustive: !s.qr}
+func (s anchorScore) point(pointID string, composed composedScore) PointScore {
+	return PointScore{
+		PointID: pointID, PeopleScore: composed.detected, OccupancyDelta: composed.rateIn - composed.rateOut, Exhaustive: !s.qr,
+	}
 }
 
-func addMean(total *float64, values []float64) *float64 {
-	if len(values) == 0 {
-		return total
-	}
-
+func mean(values []float64) float64 {
 	var sum float64
 	for _, value := range values {
 		sum += value
 	}
 
-	result := sum / float64(len(values))
-	if total != nil {
-		result += *total
-	}
-
-	return &result
+	return sum / float64(len(values))
 }
 
 type OptimizationOutcome struct {
