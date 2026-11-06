@@ -858,34 +858,59 @@ func TestObservationCycleSensorSetChanges(t *testing.T) {
 			t.Errorf("events = %v, want none", got)
 		}
 
-		if got := r1Flows(request); !slices.Equal(got, []float64{20}) {
-			t.Errorf("r1 flow samples = %v, want only the corridor and aisle sample from the change on", got)
+		if got := r1Flows(request); !slices.Equal(got, []float64{10}) {
+			t.Errorf("r1 flow samples = %v, want only the average of the corridor and aisle from the change on", got)
 		}
 	})
 
-	t.Run("keeps a route recovering from INVALID with the same points continuous", func(t *testing.T) {
-		setEnabled := func(t *testing.T, enabled bool) {
+	t.Run("keeps a route continuous while its observation points are disabled and after they recover", func(t *testing.T) {
+		setEnabled := func(t *testing.T, pointID, name string, enabled bool) {
 			t.Helper()
 
 			if _, err := flow.edgeDevices.UpdateObservationPointConfig(authorized(ctx,
 				flow.token(t, eventID, "events.operate"),
 				&observationv1.UpdateObservationPointConfigRequest{
-					EventId: eventID, ObservationPointId: corridor, Name: "corridor", Enabled: enabled,
+					EventId: eventID, ObservationPointId: pointID, Name: name, Enabled: enabled,
 				},
 			)); err != nil {
 				t.Fatalf("UpdateObservationPointConfig() error = %v", err)
 			}
 		}
 
-		setEnabled(t, false)
+		r1Confidence := func(request *flowv1.OptimizeRequest) []flowv1.ConfidenceFlag {
+			var got []flowv1.ConfidenceFlag
 
-		request := cycle(t)
-		if flows := request.GetObservations().GetArcFlows(); len(flows) == 0 || flows[0].GetEdgeId() != "r1" ||
-			flows[0].GetConfidenceFlag() != flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID {
-			t.Fatalf("arc flows = %v, want r1 INVALID while the corridor is disabled", flows)
+			for _, arc := range request.GetObservations().GetArcFlows() {
+				if arc.GetEdgeId() == "r1" {
+					got = append(got, arc.GetConfidenceFlag())
+				}
+			}
+
+			return got
 		}
 
-		setEnabled(t, true)
+		ok := flowv1.ConfidenceFlag_CONFIDENCE_FLAG_OK
+		invalid := flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID
+
+		setEnabled(t, corridor, "corridor", false)
+
+		request := cycle(t)
+		if got := r1Confidence(request); !slices.Equal(got, []flowv1.ConfidenceFlag{ok, ok}) {
+			t.Errorf("r1 confidence = %v, want OK from the aisle alone while the corridor is disabled", got)
+		}
+
+		if got := events(request); len(got) != 0 {
+			t.Errorf("events = %v, want none while the corridor is disabled", got)
+		}
+
+		setEnabled(t, aisle, "aisle", false)
+
+		if got := r1Confidence(cycle(t)); !slices.Equal(got, []flowv1.ConfidenceFlag{invalid, invalid}) {
+			t.Errorf("r1 confidence = %v, want INVALID while both points are disabled", got)
+		}
+
+		setEnabled(t, corridor, "corridor", true)
+		setEnabled(t, aisle, "aisle", true)
 
 		if got := events(cycle(t)); len(got) != 0 {
 			t.Errorf("events = %v, want none for a recovery with the same observation points", got)
@@ -1081,7 +1106,7 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
-			EventId: eventID, Name: "gate-gaps", ObservationPointNames: []string{"door", "window", "hall", "lobby"},
+			EventId: eventID, Name: "gate-gaps", ObservationPointNames: []string{"door", "window", "hall", "lobby", "porch"},
 		},
 	))
 	if err != nil {
@@ -1094,16 +1119,18 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 	window := points[1].GetObservationPointId()
 	hall := points[2].GetObservationPointId()
 	lobby := points[3].GetObservationPointId()
+	porch := points[4].GetObservationPointId()
 
 	flow.graph.mapTo(door, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
 	flow.graph.mapTo(window, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
 	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p1"}})
 	flow.graph.mapTo(lobby, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p2"}})
+	flow.graph.mapTo(porch, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r2"}})
 
 	reportToken := flow.token(t, eventID, "events.report")
 
 	if _, err := flow.edgeDevices.Heartbeat(authorized(ctx, reportToken, &observationv1.HeartbeatRequest{
-		EventId: eventID, EdgeDeviceId: deviceID, ActiveObservationPointIds: []string{door, window, hall, lobby},
+		EventId: eventID, EdgeDeviceId: deviceID, ActiveObservationPointIds: []string{door, window, hall, lobby, porch},
 	})); err != nil {
 		t.Fatalf("Heartbeat() error = %v", err)
 	}
@@ -1116,6 +1143,7 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 			edgeMeasurement(window, time.Now().Add(-5*time.Minute)),
 			edgeMeasurement(hall, time.Now().Add(-time.Minute)),
 			edgeMeasurement(lobby, time.Now().Add(-domain.MaxHold-2*time.Minute)),
+			edgeMeasurement(porch, time.Now().Add(-5*time.Minute)),
 		},
 	})); err != nil {
 		t.Fatalf("ReportMeasurements() error = %v", err)
@@ -1141,8 +1169,18 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 		pointScores[point.GetPointId()] = point
 	}
 
-	if got, want := routes["r1"], (&kernelv1.RouteScore{RouteId: "r1"}); len(routes) != 1 || !proto.Equal(got, want) {
-		t.Errorf("route scores = %v, want only r1 (door fresh, window held) as missing %v", routes, want)
+	wantR1 := &kernelv1.RouteScore{
+		RouteId:         "r1",
+		Flow:            &kernelv1.RouteScore_DirectionalFlow{DirectionalFlow: &kernelv1.DirectionalFlow{Forward: 7, Backward: 3}},
+		StagnationScore: proto.Float64(2.5),
+		Exhaustive:      true,
+	}
+	if got := routes["r1"]; !proto.Equal(got, wantR1) {
+		t.Errorf("r1 (door fresh, window held) = %v, want the door alone %v", got, wantR1)
+	}
+
+	if got, want := routes["r2"], (&kernelv1.RouteScore{RouteId: "r2"}); len(routes) != 2 || !proto.Equal(got, want) {
+		t.Errorf("route scores = %v, want r2 (porch held) as missing %v next to r1", routes, want)
 	}
 
 	if got, want := pointScores["p2"], (&kernelv1.PointScore{PointId: "p2"}); !proto.Equal(got, want) {
