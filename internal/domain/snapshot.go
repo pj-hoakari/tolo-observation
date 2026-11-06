@@ -72,7 +72,7 @@ type ObservationPointMapping struct {
 type PointScore struct {
 	PointID        string
 	PeopleScore    *float64
-	OccupancyDelta float64
+	OccupancyDelta *float64
 	Exhaustive     bool
 }
 
@@ -162,6 +162,8 @@ func (r FlowRegression) eta() (float64, bool) {
 
 const MaxHold = 15 * time.Minute
 
+const OccupancyTrendSpan = 5 * time.Minute
+
 type Gaps struct {
 	HeldPointScores []PointScore
 	HeldRouteScores []RouteScore
@@ -188,13 +190,20 @@ const (
 type reading struct {
 	latest   Measurement
 	detected []float64
+	trend    []peopleSample
 	countIn  int64
+}
+
+type peopleSample struct {
+	at     time.Time
+	people float64
 }
 
 type cameraScore struct {
 	rateIn   float64
 	rateOut  float64
 	detected float64
+	trend    *float64
 }
 
 type anchorScore struct {
@@ -208,10 +217,11 @@ type anchorScore struct {
 }
 
 type composedScore struct {
-	confidence confidence
-	rateIn     float64
-	rateOut    float64
-	detected   *float64
+	confidence     confidence
+	rateIn         float64
+	rateOut        float64
+	detected       *float64
+	occupancyDelta *float64
 }
 
 func NewSnapshot(
@@ -247,7 +257,7 @@ func NewSnapshot(
 
 		current, ok := readings[measurement.ObservationPointID]
 		if !ok {
-			current = &reading{latest: measurement, detected: nil, countIn: 0}
+			current = &reading{latest: measurement, detected: nil, trend: nil, countIn: 0}
 			readings[measurement.ObservationPointID] = current
 		}
 
@@ -257,6 +267,10 @@ func NewSnapshot(
 
 		if measurement.WindowEnd.After(current.latest.WindowEnd) {
 			current.latest = measurement
+		}
+
+		if measurement.MeanDetectedPeople != nil && windowEnd.Sub(measurement.WindowEnd) < OccupancyTrendSpan {
+			current.trend = append(current.trend, peopleSample{at: measurement.WindowEnd, people: *measurement.MeanDetectedPeople})
 		}
 
 		if measurement.MeanDetectedPeople != nil && measurement.WindowEnd.After(windowStart) {
@@ -308,6 +322,7 @@ func NewSnapshot(
 		if current.latest.WindowEnd.After(windowStart) {
 			score.fresh = append(score.fresh, cameraScore{
 				rateIn: current.latest.RateIn(), rateOut: current.latest.RateOut(), detected: mean(current.detected),
+				trend: peopleTrend(current.trend),
 			})
 
 			continue
@@ -315,6 +330,7 @@ func NewSnapshot(
 
 		score.held = append(score.held, cameraScore{
 			rateIn: current.latest.RateIn(), rateOut: current.latest.RateOut(), detected: *current.latest.MeanDetectedPeople,
+			trend: peopleTrend(current.trend),
 		})
 	}
 
@@ -378,25 +394,41 @@ func (s anchorScore) compose() composedScore {
 	case len(s.held) > 0:
 		return averageCameraScores(confidenceHold, s.held, s.qrRateIn)
 	case s.cameras > 0:
-		return composedScore{confidence: confidenceInvalid, rateIn: 0, rateOut: 0, detected: nil}
+		return composedScore{confidence: confidenceInvalid, rateIn: 0, rateOut: 0, detected: nil, occupancyDelta: nil}
 	default:
-		return composedScore{confidence: confidenceOK, rateIn: s.qrRateIn, rateOut: 0, detected: nil}
+		delta := s.qrRateIn
+
+		return composedScore{confidence: confidenceOK, rateIn: s.qrRateIn, rateOut: 0, detected: nil, occupancyDelta: &delta}
 	}
 }
 
 func averageCameraScores(level confidence, scores []cameraScore, qrRateIn float64) composedScore {
 	var rateIn, rateOut, detected float64
 
+	var trends []float64
+
 	for _, score := range scores {
 		rateIn += score.rateIn
 		rateOut += score.rateOut
 		detected += score.detected
+
+		if score.trend != nil {
+			trends = append(trends, *score.trend)
+		}
 	}
 
 	count := float64(len(scores))
 	detected /= count
 
-	return composedScore{confidence: level, rateIn: rateIn/count + qrRateIn, rateOut: rateOut / count, detected: &detected}
+	var occupancyDelta *float64
+	if len(trends) > 0 {
+		occupancyDelta = new(mean(trends))
+	}
+
+	return composedScore{
+		confidence: level, rateIn: rateIn/count + qrRateIn, rateOut: rateOut / count, detected: &detected,
+		occupancyDelta: occupancyDelta,
+	}
 }
 
 func (s anchorScore) route(routeID string, composed composedScore) RouteScore {
@@ -426,8 +458,51 @@ func (s anchorScore) distinctSensors() []ObservationPointID {
 
 func (s anchorScore) point(pointID string, composed composedScore) PointScore {
 	return PointScore{
-		PointID: pointID, PeopleScore: composed.detected, OccupancyDelta: composed.rateIn - composed.rateOut, Exhaustive: !s.qr,
+		PointID: pointID, PeopleScore: composed.detected, OccupancyDelta: composed.occupancyDelta, Exhaustive: !s.qr,
 	}
+}
+
+func peopleTrend(samples []peopleSample) *float64 {
+	if len(samples) < 2 {
+		return nil
+	}
+
+	first, last := samples[0].at, samples[0].at
+	for _, sample := range samples {
+		if sample.at.Before(first) {
+			first = sample.at
+		}
+
+		if sample.at.After(last) {
+			last = sample.at
+		}
+	}
+
+	if last.Sub(first) < OccupancyTrendSpan/2 {
+		return nil
+	}
+
+	var meanAt, meanPeople float64
+	for _, sample := range samples {
+		meanAt += sample.at.Sub(first).Minutes()
+		meanPeople += sample.people
+	}
+
+	count := float64(len(samples))
+	meanAt /= count
+	meanPeople /= count
+
+	var covariance, variance float64
+
+	for _, sample := range samples {
+		at := sample.at.Sub(first).Minutes() - meanAt
+		covariance += at * (sample.people - meanPeople)
+		variance += at * at
+	}
+
+	slope := covariance / variance
+
+	return &slope
 }
 
 func mean(values []float64) float64 {

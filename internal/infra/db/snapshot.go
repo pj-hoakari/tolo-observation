@@ -36,7 +36,7 @@ type missingAnchorsJSON struct {
 type pointScoreJSON struct {
 	PointID        string   `json:"point_id"`
 	PeopleScore    *float64 `json:"people_score"`
-	OccupancyDelta float64  `json:"occupancy_delta"`
+	OccupancyDelta *float64 `json:"occupancy_delta"`
 	Exhaustive     bool     `json:"exhaustive"`
 }
 

@@ -262,7 +262,7 @@ func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeI
 
 	addPoint := func(score domain.PointScore, flag flowv1.ConfidenceFlag) {
 		if nodeIDs[score.PointID] && score.Exhaustive {
-			delta := proto.Float64(score.OccupancyDelta)
+			delta := score.OccupancyDelta
 			if flag == flowv1.ConfidenceFlag_CONFIDENCE_FLAG_HOLD {
 				delta = nil
 			}
@@ -300,7 +300,7 @@ func flowObservations(snapshot domain.Snapshot, gaps domain.Gaps, nodeIDs, edgeI
 	}
 
 	for _, pointID := range gaps.InvalidPointIDs {
-		addPoint(domain.PointScore{PointID: pointID, PeopleScore: nil, OccupancyDelta: 0, Exhaustive: true},
+		addPoint(domain.PointScore{PointID: pointID, PeopleScore: nil, OccupancyDelta: nil, Exhaustive: true},
 			flowv1.ConfidenceFlag_CONFIDENCE_FLAG_INVALID)
 	}
 

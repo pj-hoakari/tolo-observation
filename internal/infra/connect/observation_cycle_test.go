@@ -344,8 +344,8 @@ func TestObservationCycle(t *testing.T) {
 
 	occupancies := optimize.GetObservations().GetNodeOccupancies()
 	if len(occupancies) != 1 || occupancies[0].GetNodeId() != "p2" ||
-		occupancies[0].GetOccupancy() != 2.5 || occupancies[0].GetOccupancyDelta() != 4 {
-		t.Errorf("Optimize node occupancies = %v, want 2.5 people and a delta of 4 on p2", occupancies)
+		occupancies[0].GetOccupancy() != 2.5 || occupancies[0].OccupancyDelta != nil {
+		t.Errorf("Optimize node occupancies = %v, want 2.5 people and no delta from one measurement on p2", occupancies)
 	}
 
 	stagnations := optimize.GetObservations().GetArcStagnations()
@@ -1088,8 +1088,8 @@ func TestObservationCycleOfflineObservationPoints(t *testing.T) {
 
 	want := map[string]string{
 		"p1": "CONFIDENCE_FLAG_HOLD/occupancy_delta_set=false/occupancy=2.5",
-		"p2": "CONFIDENCE_FLAG_INVALID/occupancy_delta_set=true/occupancy=0",
-		"p3": "CONFIDENCE_FLAG_INVALID/occupancy_delta_set=true/occupancy=0",
+		"p2": "CONFIDENCE_FLAG_INVALID/occupancy_delta_set=false/occupancy=0",
+		"p3": "CONFIDENCE_FLAG_INVALID/occupancy_delta_set=false/occupancy=0",
 	}
 	if !maps.Equal(got, want) {
 		t.Errorf("node occupancies of a device without heartbeats "+
@@ -1187,7 +1187,7 @@ func TestEventOverviewShowsAnchorsWithGapsAsMissing(t *testing.T) {
 		t.Errorf("p2 (lobby silent past the hold) = %v, want missing %v", got, want)
 	}
 
-	want := &kernelv1.PointScore{PointId: "p1", PeopleScore: proto.Float64(2.5), OccupancyDelta: proto.Float64(4), Exhaustive: true}
+	want := &kernelv1.PointScore{PointId: "p1", PeopleScore: proto.Float64(2.5), OccupancyDelta: nil, Exhaustive: true}
 	if got := pointScores["p1"]; len(pointScores) != 2 || !proto.Equal(got, want) {
 		t.Errorf("point scores = %v, want p1 %v next to the missing p2", pointScores, want)
 	}
