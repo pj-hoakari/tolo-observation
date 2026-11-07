@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -198,6 +199,38 @@ func (s *EdgeDeviceService) UnregisterEdgeDevice(ctx context.Context, input Unre
 
 		if err := device.Unregister(); err != nil {
 			return err
+		}
+
+		if device.Kind == domain.EdgeDeviceKindObservationPage {
+			cameraIDs := make([]domain.EdgeDeviceID, 0, len(device.CameraLinks))
+			for _, link := range device.CameraLinks {
+				cameraIDs = append(cameraIDs, link.CameraEdgeDeviceID)
+			}
+
+			slices.Sort(cameraIDs)
+			cameraIDs = slices.Compact(cameraIDs)
+
+			for _, cameraID := range cameraIDs {
+				camera, err := s.devices.FindByIDForUpdate(ctx, cameraID)
+				if err != nil {
+					return fmt.Errorf("find linked camera: %w", err)
+				}
+				// A concurrent camera unregister may have removed the link while
+				// this transaction was waiting for the camera row lock.
+				if camera.Unregistered {
+					continue
+				}
+
+				if err := camera.Unregister(); err != nil {
+					return err
+				}
+
+				if err := s.devices.Save(ctx, camera); err != nil {
+					return fmt.Errorf("save linked camera: %w", err)
+				}
+			}
+
+			device.CameraLinks = nil
 		}
 
 		if err := s.devices.Save(ctx, device); err != nil {

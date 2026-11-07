@@ -123,7 +123,9 @@ func (r *PostgresEdgeDeviceRepository) Create(ctx context.Context, device domain
 }
 
 func (r *PostgresEdgeDeviceRepository) FindByID(ctx context.Context, id domain.EdgeDeviceID) (domain.EdgeDevice, error) {
-	return r.findByID(ctx, id, "")
+	return readSnapshot(ctx, r.db, func(ctx context.Context) (domain.EdgeDevice, error) {
+		return r.findByID(ctx, id, "")
+	})
 }
 
 func (r *PostgresEdgeDeviceRepository) FindByIDForUpdate(ctx context.Context, id domain.EdgeDeviceID) (domain.EdgeDevice, error) {
@@ -148,11 +150,13 @@ func (r *PostgresEdgeDeviceRepository) findByID(
 }
 
 func (r *PostgresEdgeDeviceRepository) FindByObservationPointID(ctx context.Context, id domain.ObservationPointID) (domain.EdgeDevice, error) {
-	return r.findOne(ctx, `
+	return readSnapshot(ctx, r.db, func(ctx context.Context) (domain.EdgeDevice, error) {
+		return r.findOne(ctx, `
 		SELECT`+selectEdgeDeviceColumns+`
 		FROM edge_devices d
 		JOIN observation_points p ON p.edge_device_id = d.id
 		WHERE p.observation_point_id = $1`, string(id))
+	})
 }
 
 func (r *PostgresEdgeDeviceRepository) FindByObservationPointIDForUpdate(
@@ -199,6 +203,12 @@ func (r *PostgresEdgeDeviceRepository) FindByObservationPointIDForUpdate(
 }
 
 func (r *PostgresEdgeDeviceRepository) ListByEvent(ctx context.Context, eventID string, includeUnregistered bool) ([]domain.EdgeDevice, error) {
+	return readSnapshot(ctx, r.db, func(ctx context.Context) ([]domain.EdgeDevice, error) {
+		return r.listByEvent(ctx, eventID, includeUnregistered)
+	})
+}
+
+func (r *PostgresEdgeDeviceRepository) listByEvent(ctx context.Context, eventID string, includeUnregistered bool) ([]domain.EdgeDevice, error) {
 	var rows []edgeDeviceRow
 
 	err := sqlx.SelectContext(ctx, Executor(ctx, r.db), &rows, `

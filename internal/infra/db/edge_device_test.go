@@ -364,6 +364,66 @@ func TestPostgresEdgeDeviceRepositoryCameraRoundTrip(t *testing.T) {
 	}
 }
 
+func TestEdgeDeviceReadsUseOneSnapshot(t *testing.T) {
+	repo := NewPostgresEdgeDeviceRepository(testDB)
+	ctx := withTenant(context.Background(), "tenant-camera-snapshot")
+
+	page := newDevice(t, "tenant-camera-snapshot", "event-camera-snapshot", "north")
+	if err := repo.Create(ctx, page); err != nil {
+		t.Fatal(err)
+	}
+
+	camera := newCamera(t, "tenant-camera-snapshot", "event-camera-snapshot", page.ObservationPoints[0].ID)
+
+	_, err := readSnapshot(ctx, testDB, func(snapshot context.Context) (struct{}, error) {
+		// Establish the snapshot before a camera is committed on another connection.
+		before, err := repo.FindByID(snapshot, page.ID)
+		if err != nil {
+			return struct{}{}, err
+		}
+
+		if len(before.CameraLinks) != 0 {
+			t.Fatalf("unexpected initial links: %v", before.CameraLinks)
+		}
+
+		if err := repo.Create(ctx, camera); err != nil {
+			return struct{}{}, err
+		}
+
+		devices, err := repo.ListByEvent(snapshot, page.EventID, false)
+		if err != nil {
+			return struct{}{}, err
+		}
+
+		if len(devices) != 1 || len(devices[0].CameraLinks) != 0 {
+			t.Errorf("snapshot saw a partial camera registration: %+v", devices)
+		}
+
+		owner, err := repo.FindByObservationPointID(snapshot, page.ObservationPoints[0].ID)
+		if err != nil {
+			return struct{}{}, err
+		}
+
+		if len(owner.CameraLinks) != 0 {
+			t.Errorf("snapshot saw new link: %v", owner.CameraLinks)
+		}
+
+		return struct{}{}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	devices, err := repo.ListByEvent(ctx, page.EventID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(devices) != 2 || len(devices[0].CameraLinks) != 1 || len(devices[1].CameraLinks) != 1 {
+		t.Errorf("fresh snapshot did not see the complete registration: %+v", devices)
+	}
+}
+
 func TestPostgresEdgeDeviceRepositoryFindByObservationPointIDForUpdateSerializesWithUnregister(t *testing.T) {
 	repo := NewPostgresEdgeDeviceRepository(testDB)
 	ctx := withTenant(context.Background(), "tenant-camera-lock")
