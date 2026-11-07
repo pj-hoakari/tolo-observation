@@ -73,6 +73,55 @@ func (MeasurementSource) EnumDescriptor() ([]byte, []int) {
 	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{0}
 }
 
+type EdgeDeviceKind int32
+
+const (
+	EdgeDeviceKind_EDGE_DEVICE_KIND_UNSPECIFIED      EdgeDeviceKind = 0
+	EdgeDeviceKind_EDGE_DEVICE_KIND_OBSERVATION_PAGE EdgeDeviceKind = 1
+	EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA           EdgeDeviceKind = 2
+)
+
+// Enum value maps for EdgeDeviceKind.
+var (
+	EdgeDeviceKind_name = map[int32]string{
+		0: "EDGE_DEVICE_KIND_UNSPECIFIED",
+		1: "EDGE_DEVICE_KIND_OBSERVATION_PAGE",
+		2: "EDGE_DEVICE_KIND_CAMERA",
+	}
+	EdgeDeviceKind_value = map[string]int32{
+		"EDGE_DEVICE_KIND_UNSPECIFIED":      0,
+		"EDGE_DEVICE_KIND_OBSERVATION_PAGE": 1,
+		"EDGE_DEVICE_KIND_CAMERA":           2,
+	}
+)
+
+func (x EdgeDeviceKind) Enum() *EdgeDeviceKind {
+	p := new(EdgeDeviceKind)
+	*p = x
+	return p
+}
+
+func (x EdgeDeviceKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EdgeDeviceKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_tolo_observation_v1_observation_proto_enumTypes[1].Descriptor()
+}
+
+func (EdgeDeviceKind) Type() protoreflect.EnumType {
+	return &file_tolo_observation_v1_observation_proto_enumTypes[1]
+}
+
+func (x EdgeDeviceKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EdgeDeviceKind.Descriptor instead.
+func (EdgeDeviceKind) EnumDescriptor() ([]byte, []int) {
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{1}
+}
+
 type MeasurementMethod int32
 
 const (
@@ -106,11 +155,11 @@ func (x MeasurementMethod) String() string {
 }
 
 func (MeasurementMethod) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[1].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[2].Descriptor()
 }
 
 func (MeasurementMethod) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[1]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[2]
 }
 
 func (x MeasurementMethod) Number() protoreflect.EnumNumber {
@@ -119,7 +168,7 @@ func (x MeasurementMethod) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MeasurementMethod.Descriptor instead.
 func (MeasurementMethod) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{1}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{2}
 }
 
 type CongestionLevel int32
@@ -158,11 +207,11 @@ func (x CongestionLevel) String() string {
 }
 
 func (CongestionLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[2].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[3].Descriptor()
 }
 
 func (CongestionLevel) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[2]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[3]
 }
 
 func (x CongestionLevel) Number() protoreflect.EnumNumber {
@@ -171,7 +220,7 @@ func (x CongestionLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CongestionLevel.Descriptor instead.
 func (CongestionLevel) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{2}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{3}
 }
 
 type CrowdLevel int32
@@ -210,11 +259,11 @@ func (x CrowdLevel) String() string {
 }
 
 func (CrowdLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[3].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[4].Descriptor()
 }
 
 func (CrowdLevel) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[3]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[4]
 }
 
 func (x CrowdLevel) Number() protoreflect.EnumNumber {
@@ -223,7 +272,7 @@ func (x CrowdLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CrowdLevel.Descriptor instead.
 func (CrowdLevel) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{3}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{4}
 }
 
 type FlowObservationState int32
@@ -268,11 +317,11 @@ func (x FlowObservationState) String() string {
 }
 
 func (FlowObservationState) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[4].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[5].Descriptor()
 }
 
 func (FlowObservationState) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[4]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[5]
 }
 
 func (x FlowObservationState) Number() protoreflect.EnumNumber {
@@ -281,7 +330,7 @@ func (x FlowObservationState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FlowObservationState.Descriptor instead.
 func (FlowObservationState) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{4}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{5}
 }
 
 type FlowHistoryTier int32
@@ -323,11 +372,11 @@ func (x FlowHistoryTier) String() string {
 }
 
 func (FlowHistoryTier) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[5].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[6].Descriptor()
 }
 
 func (FlowHistoryTier) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[5]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[6]
 }
 
 func (x FlowHistoryTier) Number() protoreflect.EnumNumber {
@@ -336,7 +385,7 @@ func (x FlowHistoryTier) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FlowHistoryTier.Descriptor instead.
 func (FlowHistoryTier) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{5}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{6}
 }
 
 type FlowJudgement int32
@@ -378,11 +427,11 @@ func (x FlowJudgement) String() string {
 }
 
 func (FlowJudgement) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[6].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[7].Descriptor()
 }
 
 func (FlowJudgement) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[6]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[7]
 }
 
 func (x FlowJudgement) Number() protoreflect.EnumNumber {
@@ -391,7 +440,7 @@ func (x FlowJudgement) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FlowJudgement.Descriptor instead.
 func (FlowJudgement) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{6}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{7}
 }
 
 type FlowWarningCode int32
@@ -457,11 +506,11 @@ func (x FlowWarningCode) String() string {
 }
 
 func (FlowWarningCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[7].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[8].Descriptor()
 }
 
 func (FlowWarningCode) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[7]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[8]
 }
 
 func (x FlowWarningCode) Number() protoreflect.EnumNumber {
@@ -470,7 +519,7 @@ func (x FlowWarningCode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FlowWarningCode.Descriptor instead.
 func (FlowWarningCode) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{7}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{8}
 }
 
 type EventType int32
@@ -506,11 +555,11 @@ func (x EventType) String() string {
 }
 
 func (EventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_tolo_observation_v1_observation_proto_enumTypes[8].Descriptor()
+	return file_tolo_observation_v1_observation_proto_enumTypes[9].Descriptor()
 }
 
 func (EventType) Type() protoreflect.EnumType {
-	return &file_tolo_observation_v1_observation_proto_enumTypes[8]
+	return &file_tolo_observation_v1_observation_proto_enumTypes[9]
 }
 
 func (x EventType) Number() protoreflect.EnumNumber {
@@ -519,7 +568,7 @@ func (x EventType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EventType.Descriptor instead.
 func (EventType) EnumDescriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{8}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{9}
 }
 
 type Measurement struct {
@@ -734,6 +783,58 @@ func (x *ReportMeasurementsResponse) GetAcceptedCount() int32 {
 	return 0
 }
 
+type CameraLink struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	CameraEdgeDeviceId string                 `protobuf:"bytes,1,opt,name=camera_edge_device_id,json=cameraEdgeDeviceId,proto3" json:"camera_edge_device_id,omitempty"`
+	ObservationPointId string                 `protobuf:"bytes,2,opt,name=observation_point_id,json=observationPointId,proto3" json:"observation_point_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *CameraLink) Reset() {
+	*x = CameraLink{}
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CameraLink) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CameraLink) ProtoMessage() {}
+
+func (x *CameraLink) ProtoReflect() protoreflect.Message {
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CameraLink.ProtoReflect.Descriptor instead.
+func (*CameraLink) Descriptor() ([]byte, []int) {
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CameraLink) GetCameraEdgeDeviceId() string {
+	if x != nil {
+		return x.CameraEdgeDeviceId
+	}
+	return ""
+}
+
+func (x *CameraLink) GetObservationPointId() string {
+	if x != nil {
+		return x.ObservationPointId
+	}
+	return ""
+}
+
 type EdgeDevice struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	EdgeDeviceId      string                 `protobuf:"bytes,1,opt,name=edge_device_id,json=edgeDeviceId,proto3" json:"edge_device_id,omitempty"`
@@ -743,13 +844,15 @@ type EdgeDevice struct {
 	Unregistered      bool                   `protobuf:"varint,5,opt,name=unregistered,proto3" json:"unregistered,omitempty"`
 	LastHeartbeatAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_heartbeat_at,json=lastHeartbeatAt,proto3" json:"last_heartbeat_at,omitempty"`
 	Online            bool                   `protobuf:"varint,7,opt,name=online,proto3" json:"online,omitempty"`
+	Kind              EdgeDeviceKind         `protobuf:"varint,8,opt,name=kind,proto3,enum=tolo.observation.v1.EdgeDeviceKind" json:"kind,omitempty"`
+	CameraLinks       []*CameraLink          `protobuf:"bytes,10,rep,name=camera_links,json=cameraLinks,proto3" json:"camera_links,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
 
 func (x *EdgeDevice) Reset() {
 	*x = EdgeDevice{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[3]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -761,7 +864,7 @@ func (x *EdgeDevice) String() string {
 func (*EdgeDevice) ProtoMessage() {}
 
 func (x *EdgeDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[3]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -774,7 +877,7 @@ func (x *EdgeDevice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EdgeDevice.ProtoReflect.Descriptor instead.
 func (*EdgeDevice) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{3}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *EdgeDevice) GetEdgeDeviceId() string {
@@ -826,6 +929,20 @@ func (x *EdgeDevice) GetOnline() bool {
 	return false
 }
 
+func (x *EdgeDevice) GetKind() EdgeDeviceKind {
+	if x != nil {
+		return x.Kind
+	}
+	return EdgeDeviceKind_EDGE_DEVICE_KIND_UNSPECIFIED
+}
+
+func (x *EdgeDevice) GetCameraLinks() []*CameraLink {
+	if x != nil {
+		return x.CameraLinks
+	}
+	return nil
+}
+
 type ObservationPoint struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	ObservationPointId string                 `protobuf:"bytes,1,opt,name=observation_point_id,json=observationPointId,proto3" json:"observation_point_id,omitempty"`
@@ -838,7 +955,7 @@ type ObservationPoint struct {
 
 func (x *ObservationPoint) Reset() {
 	*x = ObservationPoint{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[4]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -850,7 +967,7 @@ func (x *ObservationPoint) String() string {
 func (*ObservationPoint) ProtoMessage() {}
 
 func (x *ObservationPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[4]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -863,7 +980,7 @@ func (x *ObservationPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObservationPoint.ProtoReflect.Descriptor instead.
 func (*ObservationPoint) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{4}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ObservationPoint) GetObservationPointId() string {
@@ -895,17 +1012,19 @@ func (x *ObservationPoint) GetMethod() MeasurementMethod {
 }
 
 type RegisterEdgeDeviceRequest struct {
-	state                 protoimpl.MessageState `protogen:"open.v1"`
-	EventId               string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Name                  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ObservationPointNames []string               `protobuf:"bytes,3,rep,name=observation_point_names,json=observationPointNames,proto3" json:"observation_point_names,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	EventId                  string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Name                     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ObservationPointNames    []string               `protobuf:"bytes,3,rep,name=observation_point_names,json=observationPointNames,proto3" json:"observation_point_names,omitempty"`
+	Kind                     EdgeDeviceKind         `protobuf:"varint,4,opt,name=kind,proto3,enum=tolo.observation.v1.EdgeDeviceKind" json:"kind,omitempty"`
+	LinkedObservationPointId string                 `protobuf:"bytes,5,opt,name=linked_observation_point_id,json=linkedObservationPointId,proto3" json:"linked_observation_point_id,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *RegisterEdgeDeviceRequest) Reset() {
 	*x = RegisterEdgeDeviceRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[5]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -917,7 +1036,7 @@ func (x *RegisterEdgeDeviceRequest) String() string {
 func (*RegisterEdgeDeviceRequest) ProtoMessage() {}
 
 func (x *RegisterEdgeDeviceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[5]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -930,7 +1049,7 @@ func (x *RegisterEdgeDeviceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterEdgeDeviceRequest.ProtoReflect.Descriptor instead.
 func (*RegisterEdgeDeviceRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{5}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RegisterEdgeDeviceRequest) GetEventId() string {
@@ -954,6 +1073,20 @@ func (x *RegisterEdgeDeviceRequest) GetObservationPointNames() []string {
 	return nil
 }
 
+func (x *RegisterEdgeDeviceRequest) GetKind() EdgeDeviceKind {
+	if x != nil {
+		return x.Kind
+	}
+	return EdgeDeviceKind_EDGE_DEVICE_KIND_UNSPECIFIED
+}
+
+func (x *RegisterEdgeDeviceRequest) GetLinkedObservationPointId() string {
+	if x != nil {
+		return x.LinkedObservationPointId
+	}
+	return ""
+}
+
 type RegisterEdgeDeviceResponse struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Device              *EdgeDevice            `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
@@ -964,7 +1097,7 @@ type RegisterEdgeDeviceResponse struct {
 
 func (x *RegisterEdgeDeviceResponse) Reset() {
 	*x = RegisterEdgeDeviceResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[6]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -976,7 +1109,7 @@ func (x *RegisterEdgeDeviceResponse) String() string {
 func (*RegisterEdgeDeviceResponse) ProtoMessage() {}
 
 func (x *RegisterEdgeDeviceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[6]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -989,7 +1122,7 @@ func (x *RegisterEdgeDeviceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterEdgeDeviceResponse.ProtoReflect.Descriptor instead.
 func (*RegisterEdgeDeviceResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{6}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RegisterEdgeDeviceResponse) GetDevice() *EdgeDevice {
@@ -1016,7 +1149,7 @@ type UnregisterEdgeDeviceRequest struct {
 
 func (x *UnregisterEdgeDeviceRequest) Reset() {
 	*x = UnregisterEdgeDeviceRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[7]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1028,7 +1161,7 @@ func (x *UnregisterEdgeDeviceRequest) String() string {
 func (*UnregisterEdgeDeviceRequest) ProtoMessage() {}
 
 func (x *UnregisterEdgeDeviceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[7]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1041,7 +1174,7 @@ func (x *UnregisterEdgeDeviceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnregisterEdgeDeviceRequest.ProtoReflect.Descriptor instead.
 func (*UnregisterEdgeDeviceRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{7}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UnregisterEdgeDeviceRequest) GetEventId() string {
@@ -1067,7 +1200,7 @@ type UnregisterEdgeDeviceResponse struct {
 
 func (x *UnregisterEdgeDeviceResponse) Reset() {
 	*x = UnregisterEdgeDeviceResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[8]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1079,7 +1212,7 @@ func (x *UnregisterEdgeDeviceResponse) String() string {
 func (*UnregisterEdgeDeviceResponse) ProtoMessage() {}
 
 func (x *UnregisterEdgeDeviceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[8]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1092,7 +1225,7 @@ func (x *UnregisterEdgeDeviceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnregisterEdgeDeviceResponse.ProtoReflect.Descriptor instead.
 func (*UnregisterEdgeDeviceResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{8}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UnregisterEdgeDeviceResponse) GetDevice() *EdgeDevice {
@@ -1112,7 +1245,7 @@ type ListEdgeDevicesRequest struct {
 
 func (x *ListEdgeDevicesRequest) Reset() {
 	*x = ListEdgeDevicesRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[9]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1124,7 +1257,7 @@ func (x *ListEdgeDevicesRequest) String() string {
 func (*ListEdgeDevicesRequest) ProtoMessage() {}
 
 func (x *ListEdgeDevicesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[9]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1137,7 +1270,7 @@ func (x *ListEdgeDevicesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEdgeDevicesRequest.ProtoReflect.Descriptor instead.
 func (*ListEdgeDevicesRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{9}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListEdgeDevicesRequest) GetEventId() string {
@@ -1163,7 +1296,7 @@ type ListEdgeDevicesResponse struct {
 
 func (x *ListEdgeDevicesResponse) Reset() {
 	*x = ListEdgeDevicesResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[10]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +1308,7 @@ func (x *ListEdgeDevicesResponse) String() string {
 func (*ListEdgeDevicesResponse) ProtoMessage() {}
 
 func (x *ListEdgeDevicesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[10]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +1321,7 @@ func (x *ListEdgeDevicesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEdgeDevicesResponse.ProtoReflect.Descriptor instead.
 func (*ListEdgeDevicesResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{10}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListEdgeDevicesResponse) GetDevices() []*EdgeDevice {
@@ -1208,7 +1341,7 @@ type ListEdgeDeviceObservationPointsRequest struct {
 
 func (x *ListEdgeDeviceObservationPointsRequest) Reset() {
 	*x = ListEdgeDeviceObservationPointsRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[11]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1220,7 +1353,7 @@ func (x *ListEdgeDeviceObservationPointsRequest) String() string {
 func (*ListEdgeDeviceObservationPointsRequest) ProtoMessage() {}
 
 func (x *ListEdgeDeviceObservationPointsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[11]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1233,7 +1366,7 @@ func (x *ListEdgeDeviceObservationPointsRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use ListEdgeDeviceObservationPointsRequest.ProtoReflect.Descriptor instead.
 func (*ListEdgeDeviceObservationPointsRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{11}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListEdgeDeviceObservationPointsRequest) GetEventId() string {
@@ -1259,7 +1392,7 @@ type ListEdgeDeviceObservationPointsResponse struct {
 
 func (x *ListEdgeDeviceObservationPointsResponse) Reset() {
 	*x = ListEdgeDeviceObservationPointsResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[12]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1271,7 +1404,7 @@ func (x *ListEdgeDeviceObservationPointsResponse) String() string {
 func (*ListEdgeDeviceObservationPointsResponse) ProtoMessage() {}
 
 func (x *ListEdgeDeviceObservationPointsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[12]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1284,7 +1417,7 @@ func (x *ListEdgeDeviceObservationPointsResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use ListEdgeDeviceObservationPointsResponse.ProtoReflect.Descriptor instead.
 func (*ListEdgeDeviceObservationPointsResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{12}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListEdgeDeviceObservationPointsResponse) GetObservationPoints() []*ObservationPoint {
@@ -1305,7 +1438,7 @@ type HeartbeatRequest struct {
 
 func (x *HeartbeatRequest) Reset() {
 	*x = HeartbeatRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[13]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1317,7 +1450,7 @@ func (x *HeartbeatRequest) String() string {
 func (*HeartbeatRequest) ProtoMessage() {}
 
 func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[13]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1330,7 +1463,7 @@ func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{13}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *HeartbeatRequest) GetEventId() string {
@@ -1362,7 +1495,7 @@ type HeartbeatResponse struct {
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[14]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1374,7 +1507,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[14]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1387,7 +1520,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{14}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{15}
 }
 
 type UpdateObservationPointConfigRequest struct {
@@ -1402,7 +1535,7 @@ type UpdateObservationPointConfigRequest struct {
 
 func (x *UpdateObservationPointConfigRequest) Reset() {
 	*x = UpdateObservationPointConfigRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[15]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1414,7 +1547,7 @@ func (x *UpdateObservationPointConfigRequest) String() string {
 func (*UpdateObservationPointConfigRequest) ProtoMessage() {}
 
 func (x *UpdateObservationPointConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[15]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1427,7 +1560,7 @@ func (x *UpdateObservationPointConfigRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use UpdateObservationPointConfigRequest.ProtoReflect.Descriptor instead.
 func (*UpdateObservationPointConfigRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{15}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UpdateObservationPointConfigRequest) GetEventId() string {
@@ -1467,7 +1600,7 @@ type UpdateObservationPointConfigResponse struct {
 
 func (x *UpdateObservationPointConfigResponse) Reset() {
 	*x = UpdateObservationPointConfigResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[16]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1479,7 +1612,7 @@ func (x *UpdateObservationPointConfigResponse) String() string {
 func (*UpdateObservationPointConfigResponse) ProtoMessage() {}
 
 func (x *UpdateObservationPointConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[16]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1492,7 +1625,7 @@ func (x *UpdateObservationPointConfigResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use UpdateObservationPointConfigResponse.ProtoReflect.Descriptor instead.
 func (*UpdateObservationPointConfigResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{16}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UpdateObservationPointConfigResponse) GetPoint() *ObservationPoint {
@@ -1514,7 +1647,7 @@ type OperateGateRequest struct {
 
 func (x *OperateGateRequest) Reset() {
 	*x = OperateGateRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[17]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1526,7 +1659,7 @@ func (x *OperateGateRequest) String() string {
 func (*OperateGateRequest) ProtoMessage() {}
 
 func (x *OperateGateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[17]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1539,7 +1672,7 @@ func (x *OperateGateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperateGateRequest.ProtoReflect.Descriptor instead.
 func (*OperateGateRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{17}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *OperateGateRequest) GetEventId() string {
@@ -1578,7 +1711,7 @@ type OperateGateResponse struct {
 
 func (x *OperateGateResponse) Reset() {
 	*x = OperateGateResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[18]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1590,7 +1723,7 @@ func (x *OperateGateResponse) String() string {
 func (*OperateGateResponse) ProtoMessage() {}
 
 func (x *OperateGateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[18]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1603,7 +1736,7 @@ func (x *OperateGateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperateGateResponse.ProtoReflect.Descriptor instead.
 func (*OperateGateResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{18}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{19}
 }
 
 type ToggleDangerFlagRequest struct {
@@ -1616,7 +1749,7 @@ type ToggleDangerFlagRequest struct {
 
 func (x *ToggleDangerFlagRequest) Reset() {
 	*x = ToggleDangerFlagRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[19]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1628,7 +1761,7 @@ func (x *ToggleDangerFlagRequest) String() string {
 func (*ToggleDangerFlagRequest) ProtoMessage() {}
 
 func (x *ToggleDangerFlagRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[19]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1641,7 +1774,7 @@ func (x *ToggleDangerFlagRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToggleDangerFlagRequest.ProtoReflect.Descriptor instead.
 func (*ToggleDangerFlagRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{19}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ToggleDangerFlagRequest) GetEventId() string {
@@ -1666,7 +1799,7 @@ type ToggleDangerFlagResponse struct {
 
 func (x *ToggleDangerFlagResponse) Reset() {
 	*x = ToggleDangerFlagResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[20]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1678,7 +1811,7 @@ func (x *ToggleDangerFlagResponse) String() string {
 func (*ToggleDangerFlagResponse) ProtoMessage() {}
 
 func (x *ToggleDangerFlagResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[20]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1691,7 +1824,7 @@ func (x *ToggleDangerFlagResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToggleDangerFlagResponse.ProtoReflect.Descriptor instead.
 func (*ToggleDangerFlagResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{20}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{21}
 }
 
 type RegisterScheduleEventRequest struct {
@@ -1706,7 +1839,7 @@ type RegisterScheduleEventRequest struct {
 
 func (x *RegisterScheduleEventRequest) Reset() {
 	*x = RegisterScheduleEventRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[21]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1718,7 +1851,7 @@ func (x *RegisterScheduleEventRequest) String() string {
 func (*RegisterScheduleEventRequest) ProtoMessage() {}
 
 func (x *RegisterScheduleEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[21]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1731,7 +1864,7 @@ func (x *RegisterScheduleEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterScheduleEventRequest.ProtoReflect.Descriptor instead.
 func (*RegisterScheduleEventRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{21}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RegisterScheduleEventRequest) GetEventId() string {
@@ -1770,7 +1903,7 @@ type RegisterScheduleEventResponse struct {
 
 func (x *RegisterScheduleEventResponse) Reset() {
 	*x = RegisterScheduleEventResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[22]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1782,7 +1915,7 @@ func (x *RegisterScheduleEventResponse) String() string {
 func (*RegisterScheduleEventResponse) ProtoMessage() {}
 
 func (x *RegisterScheduleEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[22]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1795,7 +1928,7 @@ func (x *RegisterScheduleEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterScheduleEventResponse.ProtoReflect.Descriptor instead.
 func (*RegisterScheduleEventResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{22}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{23}
 }
 
 type ReportCongestionRequest struct {
@@ -1813,7 +1946,7 @@ type ReportCongestionRequest struct {
 
 func (x *ReportCongestionRequest) Reset() {
 	*x = ReportCongestionRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[23]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1825,7 +1958,7 @@ func (x *ReportCongestionRequest) String() string {
 func (*ReportCongestionRequest) ProtoMessage() {}
 
 func (x *ReportCongestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[23]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1838,7 +1971,7 @@ func (x *ReportCongestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportCongestionRequest.ProtoReflect.Descriptor instead.
 func (*ReportCongestionRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{23}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ReportCongestionRequest) GetEventId() string {
@@ -1904,7 +2037,7 @@ type ReportCongestionResponse struct {
 
 func (x *ReportCongestionResponse) Reset() {
 	*x = ReportCongestionResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[24]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1916,7 +2049,7 @@ func (x *ReportCongestionResponse) String() string {
 func (*ReportCongestionResponse) ProtoMessage() {}
 
 func (x *ReportCongestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[24]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1929,7 +2062,7 @@ func (x *ReportCongestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportCongestionResponse.ProtoReflect.Descriptor instead.
 func (*ReportCongestionResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{24}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{25}
 }
 
 type CorrectQueueRequest struct {
@@ -1944,7 +2077,7 @@ type CorrectQueueRequest struct {
 
 func (x *CorrectQueueRequest) Reset() {
 	*x = CorrectQueueRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[25]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1956,7 +2089,7 @@ func (x *CorrectQueueRequest) String() string {
 func (*CorrectQueueRequest) ProtoMessage() {}
 
 func (x *CorrectQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[25]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1969,7 +2102,7 @@ func (x *CorrectQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CorrectQueueRequest.ProtoReflect.Descriptor instead.
 func (*CorrectQueueRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{25}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *CorrectQueueRequest) GetEventId() string {
@@ -2008,7 +2141,7 @@ type CorrectQueueResponse struct {
 
 func (x *CorrectQueueResponse) Reset() {
 	*x = CorrectQueueResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[26]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2020,7 +2153,7 @@ func (x *CorrectQueueResponse) String() string {
 func (*CorrectQueueResponse) ProtoMessage() {}
 
 func (x *CorrectQueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[26]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2033,7 +2166,7 @@ func (x *CorrectQueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CorrectQueueResponse.ProtoReflect.Descriptor instead.
 func (*CorrectQueueResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{26}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{27}
 }
 
 type GetGuestSnapshotRequest struct {
@@ -2045,7 +2178,7 @@ type GetGuestSnapshotRequest struct {
 
 func (x *GetGuestSnapshotRequest) Reset() {
 	*x = GetGuestSnapshotRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[27]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2057,7 +2190,7 @@ func (x *GetGuestSnapshotRequest) String() string {
 func (*GetGuestSnapshotRequest) ProtoMessage() {}
 
 func (x *GetGuestSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[27]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2070,7 +2203,7 @@ func (x *GetGuestSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGuestSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*GetGuestSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{27}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetGuestSnapshotRequest) GetEventId() string {
@@ -2089,7 +2222,7 @@ type GetGuestSnapshotResponse struct {
 
 func (x *GetGuestSnapshotResponse) Reset() {
 	*x = GetGuestSnapshotResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[28]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2101,7 +2234,7 @@ func (x *GetGuestSnapshotResponse) String() string {
 func (*GetGuestSnapshotResponse) ProtoMessage() {}
 
 func (x *GetGuestSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[28]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2114,7 +2247,7 @@ func (x *GetGuestSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGuestSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*GetGuestSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{28}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetGuestSnapshotResponse) GetStatus() *GuestStatus {
@@ -2137,7 +2270,7 @@ type GuestStatus struct {
 
 func (x *GuestStatus) Reset() {
 	*x = GuestStatus{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[29]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2149,7 +2282,7 @@ func (x *GuestStatus) String() string {
 func (*GuestStatus) ProtoMessage() {}
 
 func (x *GuestStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[29]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2162,7 +2295,7 @@ func (x *GuestStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GuestStatus.ProtoReflect.Descriptor instead.
 func (*GuestStatus) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{29}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GuestStatus) GetEventId() string {
@@ -2215,7 +2348,7 @@ type CrowdStatus struct {
 
 func (x *CrowdStatus) Reset() {
 	*x = CrowdStatus{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[30]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2227,7 +2360,7 @@ func (x *CrowdStatus) String() string {
 func (*CrowdStatus) ProtoMessage() {}
 
 func (x *CrowdStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[30]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2240,7 +2373,7 @@ func (x *CrowdStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CrowdStatus.ProtoReflect.Descriptor instead.
 func (*CrowdStatus) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{30}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *CrowdStatus) GetTarget() isCrowdStatus_Target {
@@ -2311,7 +2444,7 @@ type QueueStatus struct {
 
 func (x *QueueStatus) Reset() {
 	*x = QueueStatus{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[31]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2323,7 +2456,7 @@ func (x *QueueStatus) String() string {
 func (*QueueStatus) ProtoMessage() {}
 
 func (x *QueueStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[31]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2336,7 +2469,7 @@ func (x *QueueStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatus.ProtoReflect.Descriptor instead.
 func (*QueueStatus) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{31}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *QueueStatus) GetQueueId() string {
@@ -2383,7 +2516,7 @@ type GetEventOverviewRequest struct {
 
 func (x *GetEventOverviewRequest) Reset() {
 	*x = GetEventOverviewRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[32]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2395,7 +2528,7 @@ func (x *GetEventOverviewRequest) String() string {
 func (*GetEventOverviewRequest) ProtoMessage() {}
 
 func (x *GetEventOverviewRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[32]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2408,7 +2541,7 @@ func (x *GetEventOverviewRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEventOverviewRequest.ProtoReflect.Descriptor instead.
 func (*GetEventOverviewRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{32}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetEventOverviewRequest) GetEventId() string {
@@ -2427,7 +2560,7 @@ type GetEventOverviewResponse struct {
 
 func (x *GetEventOverviewResponse) Reset() {
 	*x = GetEventOverviewResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[33]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2439,7 +2572,7 @@ func (x *GetEventOverviewResponse) String() string {
 func (*GetEventOverviewResponse) ProtoMessage() {}
 
 func (x *GetEventOverviewResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[33]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2452,7 +2585,7 @@ func (x *GetEventOverviewResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEventOverviewResponse.ProtoReflect.Descriptor instead.
 func (*GetEventOverviewResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{33}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetEventOverviewResponse) GetOverview() *EventOverview {
@@ -2475,7 +2608,7 @@ type EventOverview struct {
 
 func (x *EventOverview) Reset() {
 	*x = EventOverview{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[34]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2487,7 +2620,7 @@ func (x *EventOverview) String() string {
 func (*EventOverview) ProtoMessage() {}
 
 func (x *EventOverview) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[34]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2500,7 +2633,7 @@ func (x *EventOverview) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EventOverview.ProtoReflect.Descriptor instead.
 func (*EventOverview) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{34}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *EventOverview) GetSnapshot() *v1.ObservationSnapshot {
@@ -2551,7 +2684,7 @@ type FlowElementState struct {
 
 func (x *FlowElementState) Reset() {
 	*x = FlowElementState{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[35]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2563,7 +2696,7 @@ func (x *FlowElementState) String() string {
 func (*FlowElementState) ProtoMessage() {}
 
 func (x *FlowElementState) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[35]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2576,7 +2709,7 @@ func (x *FlowElementState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlowElementState.ProtoReflect.Descriptor instead.
 func (*FlowElementState) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{35}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *FlowElementState) GetTargetKey() string {
@@ -2624,7 +2757,7 @@ type FlowWarning struct {
 
 func (x *FlowWarning) Reset() {
 	*x = FlowWarning{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[36]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2636,7 +2769,7 @@ func (x *FlowWarning) String() string {
 func (*FlowWarning) ProtoMessage() {}
 
 func (x *FlowWarning) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[36]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2649,7 +2782,7 @@ func (x *FlowWarning) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlowWarning.ProtoReflect.Descriptor instead.
 func (*FlowWarning) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{36}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *FlowWarning) GetCode() FlowWarningCode {
@@ -2676,7 +2809,7 @@ type ObservationSettings struct {
 
 func (x *ObservationSettings) Reset() {
 	*x = ObservationSettings{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[37]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2688,7 +2821,7 @@ func (x *ObservationSettings) String() string {
 func (*ObservationSettings) ProtoMessage() {}
 
 func (x *ObservationSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[37]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2701,7 +2834,7 @@ func (x *ObservationSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObservationSettings.ProtoReflect.Descriptor instead.
 func (*ObservationSettings) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{37}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ObservationSettings) GetHistoryWindowDays() int32 {
@@ -2727,7 +2860,7 @@ type GetObservationSettingsRequest struct {
 
 func (x *GetObservationSettingsRequest) Reset() {
 	*x = GetObservationSettingsRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[38]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2739,7 +2872,7 @@ func (x *GetObservationSettingsRequest) String() string {
 func (*GetObservationSettingsRequest) ProtoMessage() {}
 
 func (x *GetObservationSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[38]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2752,7 +2885,7 @@ func (x *GetObservationSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObservationSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetObservationSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{38}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *GetObservationSettingsRequest) GetEventId() string {
@@ -2771,7 +2904,7 @@ type GetObservationSettingsResponse struct {
 
 func (x *GetObservationSettingsResponse) Reset() {
 	*x = GetObservationSettingsResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[39]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2783,7 +2916,7 @@ func (x *GetObservationSettingsResponse) String() string {
 func (*GetObservationSettingsResponse) ProtoMessage() {}
 
 func (x *GetObservationSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[39]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2796,7 +2929,7 @@ func (x *GetObservationSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObservationSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetObservationSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{39}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *GetObservationSettingsResponse) GetSettings() *ObservationSettings {
@@ -2816,7 +2949,7 @@ type UpdateObservationSettingsRequest struct {
 
 func (x *UpdateObservationSettingsRequest) Reset() {
 	*x = UpdateObservationSettingsRequest{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[40]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2828,7 +2961,7 @@ func (x *UpdateObservationSettingsRequest) String() string {
 func (*UpdateObservationSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateObservationSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[40]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2841,7 +2974,7 @@ func (x *UpdateObservationSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateObservationSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateObservationSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{40}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *UpdateObservationSettingsRequest) GetEventId() string {
@@ -2867,7 +3000,7 @@ type UpdateObservationSettingsResponse struct {
 
 func (x *UpdateObservationSettingsResponse) Reset() {
 	*x = UpdateObservationSettingsResponse{}
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[41]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2879,7 +3012,7 @@ func (x *UpdateObservationSettingsResponse) String() string {
 func (*UpdateObservationSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateObservationSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tolo_observation_v1_observation_proto_msgTypes[41]
+	mi := &file_tolo_observation_v1_observation_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2892,7 +3025,7 @@ func (x *UpdateObservationSettingsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use UpdateObservationSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateObservationSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{41}
+	return file_tolo_observation_v1_observation_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UpdateObservationSettingsResponse) GetSettings() *ObservationSettings {
@@ -2924,7 +3057,11 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\fmeasurements\x18\x03 \x03(\v2 .tolo.observation.v1.MeasurementR\fmeasurements\x12\x1b\n" +
 	"\ttenant_id\x18\x04 \x01(\tR\btenantId\"C\n" +
 	"\x1aReportMeasurementsResponse\x12%\n" +
-	"\x0eaccepted_count\x18\x01 \x01(\x05R\racceptedCount\"\xbb\x02\n" +
+	"\x0eaccepted_count\x18\x01 \x01(\x05R\racceptedCount\"q\n" +
+	"\n" +
+	"CameraLink\x121\n" +
+	"\x15camera_edge_device_id\x18\x01 \x01(\tR\x12cameraEdgeDeviceId\x120\n" +
+	"\x14observation_point_id\x18\x02 \x01(\tR\x12observationPointId\"\xb8\x03\n" +
 	"\n" +
 	"EdgeDevice\x12$\n" +
 	"\x0eedge_device_id\x18\x01 \x01(\tR\fedgeDeviceId\x12\x19\n" +
@@ -2933,16 +3070,21 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\x12observation_points\x18\x04 \x03(\v2%.tolo.observation.v1.ObservationPointR\x11observationPoints\x12\"\n" +
 	"\funregistered\x18\x05 \x01(\bR\funregistered\x12F\n" +
 	"\x11last_heartbeat_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0flastHeartbeatAt\x12\x16\n" +
-	"\x06online\x18\a \x01(\bR\x06online\"\xb2\x01\n" +
+	"\x06online\x18\a \x01(\bR\x06online\x127\n" +
+	"\x04kind\x18\b \x01(\x0e2#.tolo.observation.v1.EdgeDeviceKindR\x04kind\x12B\n" +
+	"\fcamera_links\x18\n" +
+	" \x03(\v2\x1f.tolo.observation.v1.CameraLinkR\vcameraLinks\"\xb2\x01\n" +
 	"\x10ObservationPoint\x120\n" +
 	"\x14observation_point_id\x18\x01 \x01(\tR\x12observationPointId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\aenabled\x18\x03 \x01(\bR\aenabled\x12>\n" +
-	"\x06method\x18\x04 \x01(\x0e2&.tolo.observation.v1.MeasurementMethodR\x06method\"\x82\x01\n" +
+	"\x06method\x18\x04 \x01(\x0e2&.tolo.observation.v1.MeasurementMethodR\x06method\"\xfa\x01\n" +
 	"\x19RegisterEdgeDeviceRequest\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x126\n" +
-	"\x17observation_point_names\x18\x03 \x03(\tR\x15observationPointNames\"\xa5\x01\n" +
+	"\x17observation_point_names\x18\x03 \x03(\tR\x15observationPointNames\x127\n" +
+	"\x04kind\x18\x04 \x01(\x0e2#.tolo.observation.v1.EdgeDeviceKindR\x04kind\x12=\n" +
+	"\x1blinked_observation_point_id\x18\x05 \x01(\tR\x18linkedObservationPointId\"\xa5\x01\n" +
 	"\x1aRegisterEdgeDeviceResponse\x127\n" +
 	"\x06device\x18\x01 \x01(\v2\x1f.tolo.observation.v1.EdgeDeviceR\x06device\x122\n" +
 	"\x15observation_page_path\x18\x03 \x01(\tR\x13observationPagePathJ\x04\b\x02\x10\x03R\x14observation_page_url\"^\n" +
@@ -3067,7 +3209,11 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\x11MeasurementSource\x12\"\n" +
 	"\x1eMEASUREMENT_SOURCE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17MEASUREMENT_SOURCE_EDGE\x10\x01\x12\x19\n" +
-	"\x15MEASUREMENT_SOURCE_QR\x10\x02*q\n" +
+	"\x15MEASUREMENT_SOURCE_QR\x10\x02*v\n" +
+	"\x0eEdgeDeviceKind\x12 \n" +
+	"\x1cEDGE_DEVICE_KIND_UNSPECIFIED\x10\x00\x12%\n" +
+	"!EDGE_DEVICE_KIND_OBSERVATION_PAGE\x10\x01\x12\x1b\n" +
+	"\x17EDGE_DEVICE_KIND_CAMERA\x10\x02*q\n" +
 	"\x11MeasurementMethod\x12\"\n" +
 	"\x1eMEASUREMENT_METHOD_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19MEASUREMENT_METHOD_CAMERA\x10\x01\x12\x19\n" +
@@ -3156,139 +3302,144 @@ func file_tolo_observation_v1_observation_proto_rawDescGZIP() []byte {
 	return file_tolo_observation_v1_observation_proto_rawDescData
 }
 
-var file_tolo_observation_v1_observation_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_tolo_observation_v1_observation_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
+var file_tolo_observation_v1_observation_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_tolo_observation_v1_observation_proto_msgTypes = make([]protoimpl.MessageInfo, 44)
 var file_tolo_observation_v1_observation_proto_goTypes = []any{
 	(MeasurementSource)(0),                          // 0: tolo.observation.v1.MeasurementSource
-	(MeasurementMethod)(0),                          // 1: tolo.observation.v1.MeasurementMethod
-	(CongestionLevel)(0),                            // 2: tolo.observation.v1.CongestionLevel
-	(CrowdLevel)(0),                                 // 3: tolo.observation.v1.CrowdLevel
-	(FlowObservationState)(0),                       // 4: tolo.observation.v1.FlowObservationState
-	(FlowHistoryTier)(0),                            // 5: tolo.observation.v1.FlowHistoryTier
-	(FlowJudgement)(0),                              // 6: tolo.observation.v1.FlowJudgement
-	(FlowWarningCode)(0),                            // 7: tolo.observation.v1.FlowWarningCode
-	(EventType)(0),                                  // 8: tolo.observation.v1.EventType
-	(*Measurement)(nil),                             // 9: tolo.observation.v1.Measurement
-	(*ReportMeasurementsRequest)(nil),               // 10: tolo.observation.v1.ReportMeasurementsRequest
-	(*ReportMeasurementsResponse)(nil),              // 11: tolo.observation.v1.ReportMeasurementsResponse
-	(*EdgeDevice)(nil),                              // 12: tolo.observation.v1.EdgeDevice
-	(*ObservationPoint)(nil),                        // 13: tolo.observation.v1.ObservationPoint
-	(*RegisterEdgeDeviceRequest)(nil),               // 14: tolo.observation.v1.RegisterEdgeDeviceRequest
-	(*RegisterEdgeDeviceResponse)(nil),              // 15: tolo.observation.v1.RegisterEdgeDeviceResponse
-	(*UnregisterEdgeDeviceRequest)(nil),             // 16: tolo.observation.v1.UnregisterEdgeDeviceRequest
-	(*UnregisterEdgeDeviceResponse)(nil),            // 17: tolo.observation.v1.UnregisterEdgeDeviceResponse
-	(*ListEdgeDevicesRequest)(nil),                  // 18: tolo.observation.v1.ListEdgeDevicesRequest
-	(*ListEdgeDevicesResponse)(nil),                 // 19: tolo.observation.v1.ListEdgeDevicesResponse
-	(*ListEdgeDeviceObservationPointsRequest)(nil),  // 20: tolo.observation.v1.ListEdgeDeviceObservationPointsRequest
-	(*ListEdgeDeviceObservationPointsResponse)(nil), // 21: tolo.observation.v1.ListEdgeDeviceObservationPointsResponse
-	(*HeartbeatRequest)(nil),                        // 22: tolo.observation.v1.HeartbeatRequest
-	(*HeartbeatResponse)(nil),                       // 23: tolo.observation.v1.HeartbeatResponse
-	(*UpdateObservationPointConfigRequest)(nil),     // 24: tolo.observation.v1.UpdateObservationPointConfigRequest
-	(*UpdateObservationPointConfigResponse)(nil),    // 25: tolo.observation.v1.UpdateObservationPointConfigResponse
-	(*OperateGateRequest)(nil),                      // 26: tolo.observation.v1.OperateGateRequest
-	(*OperateGateResponse)(nil),                     // 27: tolo.observation.v1.OperateGateResponse
-	(*ToggleDangerFlagRequest)(nil),                 // 28: tolo.observation.v1.ToggleDangerFlagRequest
-	(*ToggleDangerFlagResponse)(nil),                // 29: tolo.observation.v1.ToggleDangerFlagResponse
-	(*RegisterScheduleEventRequest)(nil),            // 30: tolo.observation.v1.RegisterScheduleEventRequest
-	(*RegisterScheduleEventResponse)(nil),           // 31: tolo.observation.v1.RegisterScheduleEventResponse
-	(*ReportCongestionRequest)(nil),                 // 32: tolo.observation.v1.ReportCongestionRequest
-	(*ReportCongestionResponse)(nil),                // 33: tolo.observation.v1.ReportCongestionResponse
-	(*CorrectQueueRequest)(nil),                     // 34: tolo.observation.v1.CorrectQueueRequest
-	(*CorrectQueueResponse)(nil),                    // 35: tolo.observation.v1.CorrectQueueResponse
-	(*GetGuestSnapshotRequest)(nil),                 // 36: tolo.observation.v1.GetGuestSnapshotRequest
-	(*GetGuestSnapshotResponse)(nil),                // 37: tolo.observation.v1.GetGuestSnapshotResponse
-	(*GuestStatus)(nil),                             // 38: tolo.observation.v1.GuestStatus
-	(*CrowdStatus)(nil),                             // 39: tolo.observation.v1.CrowdStatus
-	(*QueueStatus)(nil),                             // 40: tolo.observation.v1.QueueStatus
-	(*GetEventOverviewRequest)(nil),                 // 41: tolo.observation.v1.GetEventOverviewRequest
-	(*GetEventOverviewResponse)(nil),                // 42: tolo.observation.v1.GetEventOverviewResponse
-	(*EventOverview)(nil),                           // 43: tolo.observation.v1.EventOverview
-	(*FlowElementState)(nil),                        // 44: tolo.observation.v1.FlowElementState
-	(*FlowWarning)(nil),                             // 45: tolo.observation.v1.FlowWarning
-	(*ObservationSettings)(nil),                     // 46: tolo.observation.v1.ObservationSettings
-	(*GetObservationSettingsRequest)(nil),           // 47: tolo.observation.v1.GetObservationSettingsRequest
-	(*GetObservationSettingsResponse)(nil),          // 48: tolo.observation.v1.GetObservationSettingsResponse
-	(*UpdateObservationSettingsRequest)(nil),        // 49: tolo.observation.v1.UpdateObservationSettingsRequest
-	(*UpdateObservationSettingsResponse)(nil),       // 50: tolo.observation.v1.UpdateObservationSettingsResponse
-	nil,                            // 51: tolo.observation.v1.FlowWarning.ContextEntry
-	(*timestamppb.Timestamp)(nil),  // 52: google.protobuf.Timestamp
-	(*v1.DangerFlag)(nil),          // 53: tolo.kernel.v1.DangerFlag
-	(*v1.ObservationSnapshot)(nil), // 54: tolo.kernel.v1.ObservationSnapshot
-	(*v1.RiskLocation)(nil),        // 55: tolo.kernel.v1.RiskLocation
+	(EdgeDeviceKind)(0),                             // 1: tolo.observation.v1.EdgeDeviceKind
+	(MeasurementMethod)(0),                          // 2: tolo.observation.v1.MeasurementMethod
+	(CongestionLevel)(0),                            // 3: tolo.observation.v1.CongestionLevel
+	(CrowdLevel)(0),                                 // 4: tolo.observation.v1.CrowdLevel
+	(FlowObservationState)(0),                       // 5: tolo.observation.v1.FlowObservationState
+	(FlowHistoryTier)(0),                            // 6: tolo.observation.v1.FlowHistoryTier
+	(FlowJudgement)(0),                              // 7: tolo.observation.v1.FlowJudgement
+	(FlowWarningCode)(0),                            // 8: tolo.observation.v1.FlowWarningCode
+	(EventType)(0),                                  // 9: tolo.observation.v1.EventType
+	(*Measurement)(nil),                             // 10: tolo.observation.v1.Measurement
+	(*ReportMeasurementsRequest)(nil),               // 11: tolo.observation.v1.ReportMeasurementsRequest
+	(*ReportMeasurementsResponse)(nil),              // 12: tolo.observation.v1.ReportMeasurementsResponse
+	(*CameraLink)(nil),                              // 13: tolo.observation.v1.CameraLink
+	(*EdgeDevice)(nil),                              // 14: tolo.observation.v1.EdgeDevice
+	(*ObservationPoint)(nil),                        // 15: tolo.observation.v1.ObservationPoint
+	(*RegisterEdgeDeviceRequest)(nil),               // 16: tolo.observation.v1.RegisterEdgeDeviceRequest
+	(*RegisterEdgeDeviceResponse)(nil),              // 17: tolo.observation.v1.RegisterEdgeDeviceResponse
+	(*UnregisterEdgeDeviceRequest)(nil),             // 18: tolo.observation.v1.UnregisterEdgeDeviceRequest
+	(*UnregisterEdgeDeviceResponse)(nil),            // 19: tolo.observation.v1.UnregisterEdgeDeviceResponse
+	(*ListEdgeDevicesRequest)(nil),                  // 20: tolo.observation.v1.ListEdgeDevicesRequest
+	(*ListEdgeDevicesResponse)(nil),                 // 21: tolo.observation.v1.ListEdgeDevicesResponse
+	(*ListEdgeDeviceObservationPointsRequest)(nil),  // 22: tolo.observation.v1.ListEdgeDeviceObservationPointsRequest
+	(*ListEdgeDeviceObservationPointsResponse)(nil), // 23: tolo.observation.v1.ListEdgeDeviceObservationPointsResponse
+	(*HeartbeatRequest)(nil),                        // 24: tolo.observation.v1.HeartbeatRequest
+	(*HeartbeatResponse)(nil),                       // 25: tolo.observation.v1.HeartbeatResponse
+	(*UpdateObservationPointConfigRequest)(nil),     // 26: tolo.observation.v1.UpdateObservationPointConfigRequest
+	(*UpdateObservationPointConfigResponse)(nil),    // 27: tolo.observation.v1.UpdateObservationPointConfigResponse
+	(*OperateGateRequest)(nil),                      // 28: tolo.observation.v1.OperateGateRequest
+	(*OperateGateResponse)(nil),                     // 29: tolo.observation.v1.OperateGateResponse
+	(*ToggleDangerFlagRequest)(nil),                 // 30: tolo.observation.v1.ToggleDangerFlagRequest
+	(*ToggleDangerFlagResponse)(nil),                // 31: tolo.observation.v1.ToggleDangerFlagResponse
+	(*RegisterScheduleEventRequest)(nil),            // 32: tolo.observation.v1.RegisterScheduleEventRequest
+	(*RegisterScheduleEventResponse)(nil),           // 33: tolo.observation.v1.RegisterScheduleEventResponse
+	(*ReportCongestionRequest)(nil),                 // 34: tolo.observation.v1.ReportCongestionRequest
+	(*ReportCongestionResponse)(nil),                // 35: tolo.observation.v1.ReportCongestionResponse
+	(*CorrectQueueRequest)(nil),                     // 36: tolo.observation.v1.CorrectQueueRequest
+	(*CorrectQueueResponse)(nil),                    // 37: tolo.observation.v1.CorrectQueueResponse
+	(*GetGuestSnapshotRequest)(nil),                 // 38: tolo.observation.v1.GetGuestSnapshotRequest
+	(*GetGuestSnapshotResponse)(nil),                // 39: tolo.observation.v1.GetGuestSnapshotResponse
+	(*GuestStatus)(nil),                             // 40: tolo.observation.v1.GuestStatus
+	(*CrowdStatus)(nil),                             // 41: tolo.observation.v1.CrowdStatus
+	(*QueueStatus)(nil),                             // 42: tolo.observation.v1.QueueStatus
+	(*GetEventOverviewRequest)(nil),                 // 43: tolo.observation.v1.GetEventOverviewRequest
+	(*GetEventOverviewResponse)(nil),                // 44: tolo.observation.v1.GetEventOverviewResponse
+	(*EventOverview)(nil),                           // 45: tolo.observation.v1.EventOverview
+	(*FlowElementState)(nil),                        // 46: tolo.observation.v1.FlowElementState
+	(*FlowWarning)(nil),                             // 47: tolo.observation.v1.FlowWarning
+	(*ObservationSettings)(nil),                     // 48: tolo.observation.v1.ObservationSettings
+	(*GetObservationSettingsRequest)(nil),           // 49: tolo.observation.v1.GetObservationSettingsRequest
+	(*GetObservationSettingsResponse)(nil),          // 50: tolo.observation.v1.GetObservationSettingsResponse
+	(*UpdateObservationSettingsRequest)(nil),        // 51: tolo.observation.v1.UpdateObservationSettingsRequest
+	(*UpdateObservationSettingsResponse)(nil),       // 52: tolo.observation.v1.UpdateObservationSettingsResponse
+	nil,                            // 53: tolo.observation.v1.FlowWarning.ContextEntry
+	(*timestamppb.Timestamp)(nil),  // 54: google.protobuf.Timestamp
+	(*v1.DangerFlag)(nil),          // 55: tolo.kernel.v1.DangerFlag
+	(*v1.ObservationSnapshot)(nil), // 56: tolo.kernel.v1.ObservationSnapshot
+	(*v1.RiskLocation)(nil),        // 57: tolo.kernel.v1.RiskLocation
 }
 var file_tolo_observation_v1_observation_proto_depIdxs = []int32{
-	52, // 0: tolo.observation.v1.Measurement.window_start:type_name -> google.protobuf.Timestamp
-	52, // 1: tolo.observation.v1.Measurement.window_end:type_name -> google.protobuf.Timestamp
+	54, // 0: tolo.observation.v1.Measurement.window_start:type_name -> google.protobuf.Timestamp
+	54, // 1: tolo.observation.v1.Measurement.window_end:type_name -> google.protobuf.Timestamp
 	0,  // 2: tolo.observation.v1.Measurement.source:type_name -> tolo.observation.v1.MeasurementSource
-	9,  // 3: tolo.observation.v1.ReportMeasurementsRequest.measurements:type_name -> tolo.observation.v1.Measurement
-	13, // 4: tolo.observation.v1.EdgeDevice.observation_points:type_name -> tolo.observation.v1.ObservationPoint
-	52, // 5: tolo.observation.v1.EdgeDevice.last_heartbeat_at:type_name -> google.protobuf.Timestamp
-	1,  // 6: tolo.observation.v1.ObservationPoint.method:type_name -> tolo.observation.v1.MeasurementMethod
-	12, // 7: tolo.observation.v1.RegisterEdgeDeviceResponse.device:type_name -> tolo.observation.v1.EdgeDevice
-	12, // 8: tolo.observation.v1.UnregisterEdgeDeviceResponse.device:type_name -> tolo.observation.v1.EdgeDevice
-	12, // 9: tolo.observation.v1.ListEdgeDevicesResponse.devices:type_name -> tolo.observation.v1.EdgeDevice
-	13, // 10: tolo.observation.v1.ListEdgeDeviceObservationPointsResponse.observation_points:type_name -> tolo.observation.v1.ObservationPoint
-	13, // 11: tolo.observation.v1.UpdateObservationPointConfigResponse.point:type_name -> tolo.observation.v1.ObservationPoint
-	53, // 12: tolo.observation.v1.ToggleDangerFlagRequest.flag:type_name -> tolo.kernel.v1.DangerFlag
-	52, // 13: tolo.observation.v1.RegisterScheduleEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
-	2,  // 14: tolo.observation.v1.ReportCongestionRequest.level:type_name -> tolo.observation.v1.CongestionLevel
-	38, // 15: tolo.observation.v1.GetGuestSnapshotResponse.status:type_name -> tolo.observation.v1.GuestStatus
-	52, // 16: tolo.observation.v1.GuestStatus.taken_at:type_name -> google.protobuf.Timestamp
-	39, // 17: tolo.observation.v1.GuestStatus.crowd:type_name -> tolo.observation.v1.CrowdStatus
-	40, // 18: tolo.observation.v1.GuestStatus.queues:type_name -> tolo.observation.v1.QueueStatus
-	3,  // 19: tolo.observation.v1.CrowdStatus.level:type_name -> tolo.observation.v1.CrowdLevel
-	43, // 20: tolo.observation.v1.GetEventOverviewResponse.overview:type_name -> tolo.observation.v1.EventOverview
-	54, // 21: tolo.observation.v1.EventOverview.snapshot:type_name -> tolo.kernel.v1.ObservationSnapshot
-	55, // 22: tolo.observation.v1.EventOverview.risks:type_name -> tolo.kernel.v1.RiskLocation
-	53, // 23: tolo.observation.v1.EventOverview.danger_flags:type_name -> tolo.kernel.v1.DangerFlag
-	44, // 24: tolo.observation.v1.EventOverview.flow_element_states:type_name -> tolo.observation.v1.FlowElementState
-	45, // 25: tolo.observation.v1.EventOverview.flow_warnings:type_name -> tolo.observation.v1.FlowWarning
-	4,  // 26: tolo.observation.v1.FlowElementState.observation:type_name -> tolo.observation.v1.FlowObservationState
-	5,  // 27: tolo.observation.v1.FlowElementState.history:type_name -> tolo.observation.v1.FlowHistoryTier
-	6,  // 28: tolo.observation.v1.FlowElementState.skipped:type_name -> tolo.observation.v1.FlowJudgement
-	7,  // 29: tolo.observation.v1.FlowWarning.code:type_name -> tolo.observation.v1.FlowWarningCode
-	51, // 30: tolo.observation.v1.FlowWarning.context:type_name -> tolo.observation.v1.FlowWarning.ContextEntry
-	8,  // 31: tolo.observation.v1.ObservationSettings.event_type:type_name -> tolo.observation.v1.EventType
-	46, // 32: tolo.observation.v1.GetObservationSettingsResponse.settings:type_name -> tolo.observation.v1.ObservationSettings
-	46, // 33: tolo.observation.v1.UpdateObservationSettingsRequest.settings:type_name -> tolo.observation.v1.ObservationSettings
-	46, // 34: tolo.observation.v1.UpdateObservationSettingsResponse.settings:type_name -> tolo.observation.v1.ObservationSettings
-	10, // 35: tolo.observation.v1.MeasurementIngestService.ReportMeasurements:input_type -> tolo.observation.v1.ReportMeasurementsRequest
-	14, // 36: tolo.observation.v1.EdgeDeviceService.RegisterEdgeDevice:input_type -> tolo.observation.v1.RegisterEdgeDeviceRequest
-	16, // 37: tolo.observation.v1.EdgeDeviceService.UnregisterEdgeDevice:input_type -> tolo.observation.v1.UnregisterEdgeDeviceRequest
-	18, // 38: tolo.observation.v1.EdgeDeviceService.ListEdgeDevices:input_type -> tolo.observation.v1.ListEdgeDevicesRequest
-	20, // 39: tolo.observation.v1.EdgeDeviceService.ListEdgeDeviceObservationPoints:input_type -> tolo.observation.v1.ListEdgeDeviceObservationPointsRequest
-	22, // 40: tolo.observation.v1.EdgeDeviceService.Heartbeat:input_type -> tolo.observation.v1.HeartbeatRequest
-	24, // 41: tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig:input_type -> tolo.observation.v1.UpdateObservationPointConfigRequest
-	26, // 42: tolo.observation.v1.ManualInterventionService.OperateGate:input_type -> tolo.observation.v1.OperateGateRequest
-	28, // 43: tolo.observation.v1.ManualInterventionService.ToggleDangerFlag:input_type -> tolo.observation.v1.ToggleDangerFlagRequest
-	30, // 44: tolo.observation.v1.ManualInterventionService.RegisterScheduleEvent:input_type -> tolo.observation.v1.RegisterScheduleEventRequest
-	32, // 45: tolo.observation.v1.ManualInterventionService.ReportCongestion:input_type -> tolo.observation.v1.ReportCongestionRequest
-	34, // 46: tolo.observation.v1.ManualInterventionService.CorrectQueue:input_type -> tolo.observation.v1.CorrectQueueRequest
-	36, // 47: tolo.observation.v1.StatusQueryService.GetGuestSnapshot:input_type -> tolo.observation.v1.GetGuestSnapshotRequest
-	41, // 48: tolo.observation.v1.StatusQueryService.GetEventOverview:input_type -> tolo.observation.v1.GetEventOverviewRequest
-	47, // 49: tolo.observation.v1.ObservationSettingsService.GetObservationSettings:input_type -> tolo.observation.v1.GetObservationSettingsRequest
-	49, // 50: tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings:input_type -> tolo.observation.v1.UpdateObservationSettingsRequest
-	11, // 51: tolo.observation.v1.MeasurementIngestService.ReportMeasurements:output_type -> tolo.observation.v1.ReportMeasurementsResponse
-	15, // 52: tolo.observation.v1.EdgeDeviceService.RegisterEdgeDevice:output_type -> tolo.observation.v1.RegisterEdgeDeviceResponse
-	17, // 53: tolo.observation.v1.EdgeDeviceService.UnregisterEdgeDevice:output_type -> tolo.observation.v1.UnregisterEdgeDeviceResponse
-	19, // 54: tolo.observation.v1.EdgeDeviceService.ListEdgeDevices:output_type -> tolo.observation.v1.ListEdgeDevicesResponse
-	21, // 55: tolo.observation.v1.EdgeDeviceService.ListEdgeDeviceObservationPoints:output_type -> tolo.observation.v1.ListEdgeDeviceObservationPointsResponse
-	23, // 56: tolo.observation.v1.EdgeDeviceService.Heartbeat:output_type -> tolo.observation.v1.HeartbeatResponse
-	25, // 57: tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig:output_type -> tolo.observation.v1.UpdateObservationPointConfigResponse
-	27, // 58: tolo.observation.v1.ManualInterventionService.OperateGate:output_type -> tolo.observation.v1.OperateGateResponse
-	29, // 59: tolo.observation.v1.ManualInterventionService.ToggleDangerFlag:output_type -> tolo.observation.v1.ToggleDangerFlagResponse
-	31, // 60: tolo.observation.v1.ManualInterventionService.RegisterScheduleEvent:output_type -> tolo.observation.v1.RegisterScheduleEventResponse
-	33, // 61: tolo.observation.v1.ManualInterventionService.ReportCongestion:output_type -> tolo.observation.v1.ReportCongestionResponse
-	35, // 62: tolo.observation.v1.ManualInterventionService.CorrectQueue:output_type -> tolo.observation.v1.CorrectQueueResponse
-	37, // 63: tolo.observation.v1.StatusQueryService.GetGuestSnapshot:output_type -> tolo.observation.v1.GetGuestSnapshotResponse
-	42, // 64: tolo.observation.v1.StatusQueryService.GetEventOverview:output_type -> tolo.observation.v1.GetEventOverviewResponse
-	48, // 65: tolo.observation.v1.ObservationSettingsService.GetObservationSettings:output_type -> tolo.observation.v1.GetObservationSettingsResponse
-	50, // 66: tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings:output_type -> tolo.observation.v1.UpdateObservationSettingsResponse
-	51, // [51:67] is the sub-list for method output_type
-	35, // [35:51] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	10, // 3: tolo.observation.v1.ReportMeasurementsRequest.measurements:type_name -> tolo.observation.v1.Measurement
+	15, // 4: tolo.observation.v1.EdgeDevice.observation_points:type_name -> tolo.observation.v1.ObservationPoint
+	54, // 5: tolo.observation.v1.EdgeDevice.last_heartbeat_at:type_name -> google.protobuf.Timestamp
+	1,  // 6: tolo.observation.v1.EdgeDevice.kind:type_name -> tolo.observation.v1.EdgeDeviceKind
+	13, // 7: tolo.observation.v1.EdgeDevice.camera_links:type_name -> tolo.observation.v1.CameraLink
+	2,  // 8: tolo.observation.v1.ObservationPoint.method:type_name -> tolo.observation.v1.MeasurementMethod
+	1,  // 9: tolo.observation.v1.RegisterEdgeDeviceRequest.kind:type_name -> tolo.observation.v1.EdgeDeviceKind
+	14, // 10: tolo.observation.v1.RegisterEdgeDeviceResponse.device:type_name -> tolo.observation.v1.EdgeDevice
+	14, // 11: tolo.observation.v1.UnregisterEdgeDeviceResponse.device:type_name -> tolo.observation.v1.EdgeDevice
+	14, // 12: tolo.observation.v1.ListEdgeDevicesResponse.devices:type_name -> tolo.observation.v1.EdgeDevice
+	15, // 13: tolo.observation.v1.ListEdgeDeviceObservationPointsResponse.observation_points:type_name -> tolo.observation.v1.ObservationPoint
+	15, // 14: tolo.observation.v1.UpdateObservationPointConfigResponse.point:type_name -> tolo.observation.v1.ObservationPoint
+	55, // 15: tolo.observation.v1.ToggleDangerFlagRequest.flag:type_name -> tolo.kernel.v1.DangerFlag
+	54, // 16: tolo.observation.v1.RegisterScheduleEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
+	3,  // 17: tolo.observation.v1.ReportCongestionRequest.level:type_name -> tolo.observation.v1.CongestionLevel
+	40, // 18: tolo.observation.v1.GetGuestSnapshotResponse.status:type_name -> tolo.observation.v1.GuestStatus
+	54, // 19: tolo.observation.v1.GuestStatus.taken_at:type_name -> google.protobuf.Timestamp
+	41, // 20: tolo.observation.v1.GuestStatus.crowd:type_name -> tolo.observation.v1.CrowdStatus
+	42, // 21: tolo.observation.v1.GuestStatus.queues:type_name -> tolo.observation.v1.QueueStatus
+	4,  // 22: tolo.observation.v1.CrowdStatus.level:type_name -> tolo.observation.v1.CrowdLevel
+	45, // 23: tolo.observation.v1.GetEventOverviewResponse.overview:type_name -> tolo.observation.v1.EventOverview
+	56, // 24: tolo.observation.v1.EventOverview.snapshot:type_name -> tolo.kernel.v1.ObservationSnapshot
+	57, // 25: tolo.observation.v1.EventOverview.risks:type_name -> tolo.kernel.v1.RiskLocation
+	55, // 26: tolo.observation.v1.EventOverview.danger_flags:type_name -> tolo.kernel.v1.DangerFlag
+	46, // 27: tolo.observation.v1.EventOverview.flow_element_states:type_name -> tolo.observation.v1.FlowElementState
+	47, // 28: tolo.observation.v1.EventOverview.flow_warnings:type_name -> tolo.observation.v1.FlowWarning
+	5,  // 29: tolo.observation.v1.FlowElementState.observation:type_name -> tolo.observation.v1.FlowObservationState
+	6,  // 30: tolo.observation.v1.FlowElementState.history:type_name -> tolo.observation.v1.FlowHistoryTier
+	7,  // 31: tolo.observation.v1.FlowElementState.skipped:type_name -> tolo.observation.v1.FlowJudgement
+	8,  // 32: tolo.observation.v1.FlowWarning.code:type_name -> tolo.observation.v1.FlowWarningCode
+	53, // 33: tolo.observation.v1.FlowWarning.context:type_name -> tolo.observation.v1.FlowWarning.ContextEntry
+	9,  // 34: tolo.observation.v1.ObservationSettings.event_type:type_name -> tolo.observation.v1.EventType
+	48, // 35: tolo.observation.v1.GetObservationSettingsResponse.settings:type_name -> tolo.observation.v1.ObservationSettings
+	48, // 36: tolo.observation.v1.UpdateObservationSettingsRequest.settings:type_name -> tolo.observation.v1.ObservationSettings
+	48, // 37: tolo.observation.v1.UpdateObservationSettingsResponse.settings:type_name -> tolo.observation.v1.ObservationSettings
+	11, // 38: tolo.observation.v1.MeasurementIngestService.ReportMeasurements:input_type -> tolo.observation.v1.ReportMeasurementsRequest
+	16, // 39: tolo.observation.v1.EdgeDeviceService.RegisterEdgeDevice:input_type -> tolo.observation.v1.RegisterEdgeDeviceRequest
+	18, // 40: tolo.observation.v1.EdgeDeviceService.UnregisterEdgeDevice:input_type -> tolo.observation.v1.UnregisterEdgeDeviceRequest
+	20, // 41: tolo.observation.v1.EdgeDeviceService.ListEdgeDevices:input_type -> tolo.observation.v1.ListEdgeDevicesRequest
+	22, // 42: tolo.observation.v1.EdgeDeviceService.ListEdgeDeviceObservationPoints:input_type -> tolo.observation.v1.ListEdgeDeviceObservationPointsRequest
+	24, // 43: tolo.observation.v1.EdgeDeviceService.Heartbeat:input_type -> tolo.observation.v1.HeartbeatRequest
+	26, // 44: tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig:input_type -> tolo.observation.v1.UpdateObservationPointConfigRequest
+	28, // 45: tolo.observation.v1.ManualInterventionService.OperateGate:input_type -> tolo.observation.v1.OperateGateRequest
+	30, // 46: tolo.observation.v1.ManualInterventionService.ToggleDangerFlag:input_type -> tolo.observation.v1.ToggleDangerFlagRequest
+	32, // 47: tolo.observation.v1.ManualInterventionService.RegisterScheduleEvent:input_type -> tolo.observation.v1.RegisterScheduleEventRequest
+	34, // 48: tolo.observation.v1.ManualInterventionService.ReportCongestion:input_type -> tolo.observation.v1.ReportCongestionRequest
+	36, // 49: tolo.observation.v1.ManualInterventionService.CorrectQueue:input_type -> tolo.observation.v1.CorrectQueueRequest
+	38, // 50: tolo.observation.v1.StatusQueryService.GetGuestSnapshot:input_type -> tolo.observation.v1.GetGuestSnapshotRequest
+	43, // 51: tolo.observation.v1.StatusQueryService.GetEventOverview:input_type -> tolo.observation.v1.GetEventOverviewRequest
+	49, // 52: tolo.observation.v1.ObservationSettingsService.GetObservationSettings:input_type -> tolo.observation.v1.GetObservationSettingsRequest
+	51, // 53: tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings:input_type -> tolo.observation.v1.UpdateObservationSettingsRequest
+	12, // 54: tolo.observation.v1.MeasurementIngestService.ReportMeasurements:output_type -> tolo.observation.v1.ReportMeasurementsResponse
+	17, // 55: tolo.observation.v1.EdgeDeviceService.RegisterEdgeDevice:output_type -> tolo.observation.v1.RegisterEdgeDeviceResponse
+	19, // 56: tolo.observation.v1.EdgeDeviceService.UnregisterEdgeDevice:output_type -> tolo.observation.v1.UnregisterEdgeDeviceResponse
+	21, // 57: tolo.observation.v1.EdgeDeviceService.ListEdgeDevices:output_type -> tolo.observation.v1.ListEdgeDevicesResponse
+	23, // 58: tolo.observation.v1.EdgeDeviceService.ListEdgeDeviceObservationPoints:output_type -> tolo.observation.v1.ListEdgeDeviceObservationPointsResponse
+	25, // 59: tolo.observation.v1.EdgeDeviceService.Heartbeat:output_type -> tolo.observation.v1.HeartbeatResponse
+	27, // 60: tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig:output_type -> tolo.observation.v1.UpdateObservationPointConfigResponse
+	29, // 61: tolo.observation.v1.ManualInterventionService.OperateGate:output_type -> tolo.observation.v1.OperateGateResponse
+	31, // 62: tolo.observation.v1.ManualInterventionService.ToggleDangerFlag:output_type -> tolo.observation.v1.ToggleDangerFlagResponse
+	33, // 63: tolo.observation.v1.ManualInterventionService.RegisterScheduleEvent:output_type -> tolo.observation.v1.RegisterScheduleEventResponse
+	35, // 64: tolo.observation.v1.ManualInterventionService.ReportCongestion:output_type -> tolo.observation.v1.ReportCongestionResponse
+	37, // 65: tolo.observation.v1.ManualInterventionService.CorrectQueue:output_type -> tolo.observation.v1.CorrectQueueResponse
+	39, // 66: tolo.observation.v1.StatusQueryService.GetGuestSnapshot:output_type -> tolo.observation.v1.GetGuestSnapshotResponse
+	44, // 67: tolo.observation.v1.StatusQueryService.GetEventOverview:output_type -> tolo.observation.v1.GetEventOverviewResponse
+	50, // 68: tolo.observation.v1.ObservationSettingsService.GetObservationSettings:output_type -> tolo.observation.v1.GetObservationSettingsResponse
+	52, // 69: tolo.observation.v1.ObservationSettingsService.UpdateObservationSettings:output_type -> tolo.observation.v1.UpdateObservationSettingsResponse
+	54, // [54:70] is the sub-list for method output_type
+	38, // [38:54] is the sub-list for method input_type
+	38, // [38:38] is the sub-list for extension type_name
+	38, // [38:38] is the sub-list for extension extendee
+	0,  // [0:38] is the sub-list for field type_name
 }
 
 func init() { file_tolo_observation_v1_observation_proto_init() }
@@ -3297,13 +3448,13 @@ func file_tolo_observation_v1_observation_proto_init() {
 		return
 	}
 	file_tolo_observation_v1_observation_proto_msgTypes[0].OneofWrappers = []any{}
-	file_tolo_observation_v1_observation_proto_msgTypes[17].OneofWrappers = []any{}
-	file_tolo_observation_v1_observation_proto_msgTypes[23].OneofWrappers = []any{
+	file_tolo_observation_v1_observation_proto_msgTypes[18].OneofWrappers = []any{}
+	file_tolo_observation_v1_observation_proto_msgTypes[24].OneofWrappers = []any{
 		(*ReportCongestionRequest_PointId)(nil),
 		(*ReportCongestionRequest_RouteId)(nil),
 	}
-	file_tolo_observation_v1_observation_proto_msgTypes[25].OneofWrappers = []any{}
-	file_tolo_observation_v1_observation_proto_msgTypes[30].OneofWrappers = []any{
+	file_tolo_observation_v1_observation_proto_msgTypes[26].OneofWrappers = []any{}
+	file_tolo_observation_v1_observation_proto_msgTypes[31].OneofWrappers = []any{
 		(*CrowdStatus_PointId)(nil),
 		(*CrowdStatus_RouteId)(nil),
 	}
@@ -3312,8 +3463,8 @@ func file_tolo_observation_v1_observation_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tolo_observation_v1_observation_proto_rawDesc), len(file_tolo_observation_v1_observation_proto_rawDesc)),
-			NumEnums:      9,
-			NumMessages:   43,
+			NumEnums:      10,
+			NumMessages:   44,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

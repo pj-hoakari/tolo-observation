@@ -238,3 +238,29 @@ func TestReportMeasurementsRejectsTheWholeBatchOnAnInvalidWindow(t *testing.T) {
 		t.Fatalf("ReportMeasurements() error = %v, want %v", err, domain.ErrInvalidMeasurementWindow)
 	}
 }
+
+func TestReportMeasurementsRejectsACameraEdgeDevice(t *testing.T) {
+	t.Parallel()
+
+	service, devices, _ := newIngestService(t)
+
+	device := registeredDevice()
+	device.Kind = domain.EdgeDeviceKindCamera
+	device.ObservationPoints = nil
+
+	devices.EXPECT().
+		FindByID(gomock.Any(), domain.EdgeDeviceID(testEdgeDeviceID)).
+		Return(device, nil)
+
+	_, err := service.ReportMeasurements(
+		withEventToken(testEventPublicID),
+		application.ReportMeasurementsInput{
+			EventID:      testEventPublicID,
+			EdgeDeviceID: testEdgeDeviceID,
+			Measurements: []application.MeasurementInput{edgeMeasurement(testPointID)},
+		},
+	)
+	if !errors.Is(err, domain.ErrEdgeDeviceCameraUnsupported) {
+		t.Fatalf("ReportMeasurements() error = %v, want %v", err, domain.ErrEdgeDeviceCameraUnsupported)
+	}
+}

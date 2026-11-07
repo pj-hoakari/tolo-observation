@@ -24,6 +24,20 @@ const (
 
 var testNow = time.Date(2026, time.September, 22, 12, 0, 0, 0, time.UTC)
 
+type transactionKey struct{}
+
+var inTransaction = gomock.Cond(func(ctx context.Context) bool {
+	return ctx.Value(transactionKey{}) != nil
+})
+
+func expectTransaction(devices *MockEdgeDeviceRepository) {
+	devices.EXPECT().
+		WithinTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(context.WithValue(ctx, transactionKey{}, true))
+		})
+}
+
 // withEventToken returns the context the interceptor leaves behind for an
 // event token scoped to eventPublicID.
 func withEventToken(eventPublicID string) context.Context {
@@ -114,8 +128,9 @@ func TestUnregisterEdgeDeviceRejectsAnotherEventsDevice(t *testing.T) {
 	t.Parallel()
 
 	service, devices := newService(t)
+	expectTransaction(devices)
 	devices.EXPECT().
-		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+		FindByIDForUpdate(inTransaction, domain.EdgeDeviceID("1122334455667788")).
 		Return(domain.EdgeDevice{EventID: otherEventPublicID}, nil)
 
 	_, err := service.UnregisterEdgeDevice(withEventToken(testEventPublicID), application.UnregisterEdgeDeviceInput{
@@ -187,8 +202,9 @@ func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 	t.Parallel()
 
 	service, devices := newService(t)
+	expectTransaction(devices)
 	devices.EXPECT().
-		FindByObservationPointID(gomock.Any(), domain.ObservationPointID("99aabbccddeeff00")).
+		FindByObservationPointIDForUpdate(inTransaction, domain.ObservationPointID("99aabbccddeeff00")).
 		Return(domain.EdgeDevice{
 			ID:              "1122334455667788",
 			EventID:         testEventPublicID,
@@ -197,7 +213,7 @@ func TestUpdateObservationPointConfigDerivesEnabledFromHeartbeat(t *testing.T) {
 				{ID: "99aabbccddeeff00", Name: "north", Enabled: false},
 			},
 		}, nil)
-	devices.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+	devices.EXPECT().Save(inTransaction, gomock.Any()).Return(nil)
 
 	point, err := service.UpdateObservationPointConfig(
 		withEventToken(testEventPublicID),
@@ -289,6 +305,11 @@ func TestListEdgeDeviceObservationPointsRejectsDevicesItCannotServe(t *testing.T
 			name:   "unregistered device",
 			device: domain.EdgeDevice{EventID: testEventPublicID, Unregistered: true},
 			want:   domain.ErrEdgeDeviceUnregistered,
+		},
+		{
+			name:   "camera device",
+			device: domain.EdgeDevice{EventID: testEventPublicID, Kind: domain.EdgeDeviceKindCamera},
+			want:   domain.ErrEdgeDeviceCameraUnsupported,
 		},
 		{
 			name:   "another event's device",
@@ -392,4 +413,288 @@ func TestHeartbeatRejectsAnotherEventsDevice(t *testing.T) {
 
 func ptr(t time.Time) *time.Time {
 	return &t
+}
+
+const testCameraLinkedPointID = "99aabbccddeeff00"
+
+func TestRegisterCameraEdgeDeviceLinksAnObservationPoint(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t)
+	expectTransaction(devices)
+	devices.EXPECT().
+		FindByObservationPointIDForUpdate(inTransaction, domain.ObservationPointID(testCameraLinkedPointID)).
+		Return(domain.EdgeDevice{
+			ID:      "1122334455667788",
+			EventID: testEventPublicID,
+			Kind:    domain.EdgeDeviceKindObservationPage,
+			ObservationPoints: []domain.ObservationPoint{
+				{ID: testCameraLinkedPointID, Name: "north", Enabled: true},
+			},
+		}, nil)
+	devices.EXPECT().Create(inTransaction, gomock.Any()).Return(nil)
+
+	output, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), application.RegisterEdgeDeviceInput{
+		EventID:                  testEventPublicID,
+		Name:                     "camera-1",
+		Kind:                     domain.EdgeDeviceKindCamera,
+		LinkedObservationPointID: testCameraLinkedPointID,
+	})
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	if output.ObservationPagePath != "" {
+		t.Errorf("ObservationPagePath = %q, want empty for a camera", output.ObservationPagePath)
+	}
+
+	device := output.Device.Device
+	if device.Kind != domain.EdgeDeviceKindCamera {
+		t.Errorf("Kind = %v, want camera", device.Kind)
+	}
+
+	if len(device.ObservationPoints) != 0 {
+		t.Errorf("ObservationPoints = %v, want none", device.ObservationPoints)
+	}
+
+	if len(device.CameraLinks) != 1 || device.CameraLinks[0].ObservationPointID != testCameraLinkedPointID {
+		t.Errorf("CameraLinks = %v, want a link to %q", device.CameraLinks, testCameraLinkedPointID)
+	}
+
+	if output.Device.Online {
+		t.Error("Online = true, want false for a camera")
+	}
+}
+
+func TestRegisterCameraEdgeDeviceRejectsAnInvalidKindAndLinkCombination(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input application.RegisterEdgeDeviceInput
+		want  error
+	}{
+		{
+			name: "camera with observation point names",
+			input: application.RegisterEdgeDeviceInput{
+				EventID: testEventPublicID, Name: "camera-1", Kind: domain.EdgeDeviceKindCamera,
+				ObservationPointNames: []string{"north"}, LinkedObservationPointID: testCameraLinkedPointID,
+			},
+			want: domain.ErrCameraPointNamesNotAllowed,
+		},
+		{
+			name: "camera without a linked point",
+			input: application.RegisterEdgeDeviceInput{
+				EventID: testEventPublicID, Name: "camera-1", Kind: domain.EdgeDeviceKindCamera,
+			},
+			want: domain.ErrCameraLinkedPointRequired,
+		},
+		{
+			name: "observation page with a linked point",
+			input: application.RegisterEdgeDeviceInput{
+				EventID: testEventPublicID, Name: "gate-1", Kind: domain.EdgeDeviceKindObservationPage,
+				ObservationPointNames: []string{"north"}, LinkedObservationPointID: testCameraLinkedPointID,
+			},
+			want: domain.ErrPageLinkedPointNotAllowed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			service, _ := newService(t)
+
+			_, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), tt.input)
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("RegisterEdgeDevice() error = %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestRegisterCameraEdgeDeviceRejectsLinkedPointsItCannotUse(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		owner   domain.EdgeDevice
+		findErr error
+		want    error
+	}{
+		{
+			name:  "another event's observation point",
+			owner: domain.EdgeDevice{EventID: otherEventPublicID, Kind: domain.EdgeDeviceKindObservationPage},
+			want:  application.ErrForeignEvent,
+		},
+		{
+			name: "observation point already linked to a camera",
+			owner: domain.EdgeDevice{
+				EventID: testEventPublicID,
+				Kind:    domain.EdgeDeviceKindObservationPage,
+				CameraLinks: []domain.CameraLink{{
+					CameraEdgeDeviceID: "aabbccddeeff0011",
+					ObservationPointID: testCameraLinkedPointID,
+				}},
+			},
+			want: domain.ErrObservationPointAlreadyLinked,
+		},
+		{
+			name:  "observation point owned by an unregistered page",
+			owner: domain.EdgeDevice{EventID: testEventPublicID, Kind: domain.EdgeDeviceKindObservationPage, Unregistered: true},
+			want:  domain.ErrEdgeDeviceUnregistered,
+		},
+		{
+			name:  "observation point owned by a camera",
+			owner: domain.EdgeDevice{EventID: testEventPublicID, Kind: domain.EdgeDeviceKindCamera},
+			want:  domain.ErrCameraLinkToCamera,
+		},
+		{
+			name:    "unknown observation point",
+			findErr: repository.ErrEdgeDeviceNotFound,
+			want:    repository.ErrEdgeDeviceNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			service, devices := newService(t)
+			expectTransaction(devices)
+			devices.EXPECT().
+				FindByObservationPointIDForUpdate(inTransaction, domain.ObservationPointID(testCameraLinkedPointID)).
+				Return(tt.owner, tt.findErr)
+
+			_, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), application.RegisterEdgeDeviceInput{
+				EventID:                  testEventPublicID,
+				Name:                     "camera-1",
+				Kind:                     domain.EdgeDeviceKindCamera,
+				LinkedObservationPointID: testCameraLinkedPointID,
+			})
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("RegisterEdgeDevice() error = %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestUnregisterCameraEdgeDeviceRemovesLinksWithoutDisablingPoints(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t)
+	expectTransaction(devices)
+	devices.EXPECT().
+		FindByIDForUpdate(inTransaction, domain.EdgeDeviceID("1122334455667788")).
+		Return(domain.EdgeDevice{
+			ID:      "1122334455667788",
+			EventID: testEventPublicID,
+			Kind:    domain.EdgeDeviceKindCamera,
+			CameraLinks: []domain.CameraLink{{
+				CameraEdgeDeviceID: "1122334455667788",
+				ObservationPointID: testCameraLinkedPointID,
+			}},
+		}, nil)
+
+	var saved domain.EdgeDevice
+
+	devices.EXPECT().
+		Save(inTransaction, gomock.Any()).
+		DoAndReturn(func(_ context.Context, device domain.EdgeDevice) error {
+			saved = device
+
+			return nil
+		})
+
+	view, err := service.UnregisterEdgeDevice(withEventToken(testEventPublicID), application.UnregisterEdgeDeviceInput{
+		EventID:      testEventPublicID,
+		EdgeDeviceID: "1122334455667788",
+	})
+	if err != nil {
+		t.Fatalf("UnregisterEdgeDevice() error = %v", err)
+	}
+
+	if !saved.Unregistered {
+		t.Error("saved device is not marked unregistered")
+	}
+
+	if len(saved.CameraLinks) != 0 || len(view.Device.CameraLinks) != 0 {
+		t.Errorf("CameraLinks = %v / %v, want none", saved.CameraLinks, view.Device.CameraLinks)
+	}
+
+	if len(saved.ObservationPoints) != 0 {
+		t.Errorf("ObservationPoints = %v, want none", saved.ObservationPoints)
+	}
+}
+
+func TestHeartbeatRejectsACameraEdgeDevice(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t)
+	devices.EXPECT().
+		FindByID(gomock.Any(), domain.EdgeDeviceID("1122334455667788")).
+		Return(domain.EdgeDevice{
+			ID:      "1122334455667788",
+			EventID: testEventPublicID,
+			Kind:    domain.EdgeDeviceKindCamera,
+		}, nil)
+
+	err := service.Heartbeat(withEventToken(testEventPublicID), application.HeartbeatInput{
+		EventID:                   testEventPublicID,
+		EdgeDeviceID:              "1122334455667788",
+		ActiveObservationPointIDs: nil,
+	})
+	if !errors.Is(err, domain.ErrEdgeDeviceCameraUnsupported) {
+		t.Fatalf("Heartbeat() error = %v, want %v", err, domain.ErrEdgeDeviceCameraUnsupported)
+	}
+}
+
+func TestListEdgeDevicesReturnsKindAndCameraLinks(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t)
+	devices.EXPECT().
+		ListByEvent(gomock.Any(), testEventPublicID, false).
+		Return([]domain.EdgeDevice{
+			{
+				ID:      "1122334455667788",
+				EventID: testEventPublicID,
+				Kind:    domain.EdgeDeviceKindObservationPage,
+				ObservationPoints: []domain.ObservationPoint{
+					{ID: testCameraLinkedPointID, Name: "north", Enabled: true},
+				},
+				CameraLinks: []domain.CameraLink{{
+					CameraEdgeDeviceID: "aabbccddeeff0011",
+					ObservationPointID: testCameraLinkedPointID,
+				}},
+			},
+			{
+				ID:      "aabbccddeeff0011",
+				EventID: testEventPublicID,
+				Kind:    domain.EdgeDeviceKindCamera,
+				CameraLinks: []domain.CameraLink{{
+					CameraEdgeDeviceID: "aabbccddeeff0011",
+					ObservationPointID: testCameraLinkedPointID,
+				}},
+			},
+		}, nil)
+
+	views, err := service.ListEdgeDevices(withEventToken(testEventPublicID), application.ListEdgeDevicesInput{
+		EventID: testEventPublicID,
+	})
+	if err != nil {
+		t.Fatalf("ListEdgeDevices() error = %v", err)
+	}
+
+	if len(views) != 2 {
+		t.Fatalf("ListEdgeDevices() returned %d devices, want 2", len(views))
+	}
+
+	if views[0].Device.Kind != domain.EdgeDeviceKindObservationPage || len(views[0].Device.CameraLinks) != 1 {
+		t.Errorf("observation page = %+v, want kind and one camera link", views[0].Device)
+	}
+
+	if views[1].Device.Kind != domain.EdgeDeviceKindCamera || len(views[1].Device.ObservationPoints) != 0 {
+		t.Errorf("camera = %+v, want camera kind and no observation points", views[1].Device)
+	}
 }

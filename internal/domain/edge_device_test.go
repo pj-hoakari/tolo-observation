@@ -347,3 +347,205 @@ func TestEdgeDeviceHasObservationPoint(t *testing.T) {
 		t.Error("HasObservationPoint() = true for a foreign observation point")
 	}
 }
+
+func TestNewCameraEdgeDevice(t *testing.T) {
+	t.Parallel()
+
+	linkedPointID := domain.ObservationPointID("99aabbccddeeff00")
+
+	device, err := domain.NewEdgeDeviceWithKind(
+		"tenant-1",
+		"event-1",
+		" camera-1 ",
+		domain.EdgeDeviceKindCamera,
+		nil,
+		string(linkedPointID),
+	)
+	if err != nil {
+		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
+	}
+
+	if device.Name != "camera-1" {
+		t.Errorf("Name = %q, want trimmed %q", device.Name, "camera-1")
+	}
+
+	if device.Kind != domain.EdgeDeviceKindCamera {
+		t.Errorf("Kind = %v, want camera", device.Kind)
+	}
+
+	if len(device.ObservationPoints) != 0 {
+		t.Errorf("ObservationPoints = %v, want none", device.ObservationPoints)
+	}
+
+	if device.LastHeartbeatAt != nil {
+		t.Errorf("LastHeartbeatAt = %v, want nil", device.LastHeartbeatAt)
+	}
+
+	if len(device.CameraLinks) != 1 {
+		t.Fatalf("CameraLinks = %v, want one link", device.CameraLinks)
+	}
+
+	link := device.CameraLinks[0]
+	if link.CameraEdgeDeviceID != device.ID || link.ObservationPointID != linkedPointID {
+		t.Errorf("CameraLink = %+v, want camera %q linked to %q", link, device.ID, linkedPointID)
+	}
+}
+
+func TestNewEdgeDeviceKindValidation(t *testing.T) {
+	t.Parallel()
+
+	linkedPointID := "99aabbccddeeff00"
+
+	tests := []struct {
+		name     string
+		kind     domain.EdgeDeviceKind
+		points   []string
+		linkedID string
+		wantErr  error
+	}{
+		{
+			name: "camera with point names", kind: domain.EdgeDeviceKindCamera,
+			points: []string{"north"}, linkedID: linkedPointID, wantErr: domain.ErrCameraPointNamesNotAllowed,
+		},
+		{
+			name: "camera without a linked point", kind: domain.EdgeDeviceKindCamera,
+			wantErr: domain.ErrCameraLinkedPointRequired,
+		},
+		{
+			name: "camera with a malformed linked point", kind: domain.EdgeDeviceKindCamera,
+			linkedID: "not-a-public-id", wantErr: domain.ErrInvalidPublicID,
+		},
+		{
+			name: "observation page with a linked point", kind: domain.EdgeDeviceKindObservationPage,
+			points: []string{"north"}, linkedID: linkedPointID, wantErr: domain.ErrPageLinkedPointNotAllowed,
+		},
+		{
+			name: "unknown kind", kind: domain.EdgeDeviceKind(99),
+			wantErr: domain.ErrEdgeDeviceKindInvalid,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := domain.NewEdgeDeviceWithKind(
+				"tenant-1",
+				"event-1",
+				"device",
+				test.kind,
+				test.points,
+				test.linkedID,
+			)
+			if !errors.Is(err, test.wantErr) {
+				t.Errorf("error = %v, want %v", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestUnspecifiedKindIsAnObservationPage(t *testing.T) {
+	t.Parallel()
+
+	device, err := domain.NewEdgeDeviceWithKind("tenant-1", "event-1", "gate", domain.EdgeDeviceKind(0), []string{"north"}, "")
+	if err != nil {
+		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
+	}
+
+	if device.Kind != domain.EdgeDeviceKindObservationPage {
+		t.Errorf("Kind = %v, want observation page", device.Kind)
+	}
+}
+
+func TestCameraUnregisterRemovesLinksWithoutDisablingObservationPoints(t *testing.T) {
+	t.Parallel()
+
+	device, err := domain.NewEdgeDeviceWithKind(
+		"tenant-1",
+		"event-1",
+		"camera-1",
+		domain.EdgeDeviceKindCamera,
+		nil,
+		"99aabbccddeeff00",
+	)
+	if err != nil {
+		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
+	}
+
+	if err := device.Unregister(); err != nil {
+		t.Fatalf("Unregister: %v", err)
+	}
+
+	if !device.Unregistered {
+		t.Error("device is not marked unregistered")
+	}
+
+	if len(device.CameraLinks) != 0 {
+		t.Errorf("CameraLinks = %v, want none", device.CameraLinks)
+	}
+
+	if len(device.ObservationPoints) != 0 {
+		t.Errorf("ObservationPoints = %v, want none", device.ObservationPoints)
+	}
+}
+
+func TestCameraHeartbeatIsRejected(t *testing.T) {
+	t.Parallel()
+
+	device, err := domain.NewEdgeDeviceWithKind(
+		"tenant-1",
+		"event-1",
+		"camera-1",
+		domain.EdgeDeviceKindCamera,
+		nil,
+		"99aabbccddeeff00",
+	)
+	if err != nil {
+		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
+	}
+
+	if err := device.Heartbeat(time.Now(), nil); !errors.Is(err, domain.ErrEdgeDeviceCameraUnsupported) {
+		t.Errorf("Heartbeat() error = %v, want ErrEdgeDeviceCameraUnsupported", err)
+	}
+
+	if device.LastHeartbeatAt != nil {
+		t.Errorf("LastHeartbeatAt = %v, want nil", device.LastHeartbeatAt)
+	}
+
+	if device.Online(time.Now(), time.Minute) {
+		t.Error("Online() = true for a camera")
+	}
+}
+
+func TestParseEdgeDeviceKind(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		value   string
+		want    domain.EdgeDeviceKind
+		wantErr bool
+	}{
+		{value: "observation_page", want: domain.EdgeDeviceKindObservationPage},
+		{value: "camera", want: domain.EdgeDeviceKindCamera},
+		{value: "other", wantErr: true},
+	}
+
+	for _, test := range tests {
+		kind, err := domain.ParseEdgeDeviceKind(test.value)
+		if test.wantErr {
+			if !errors.Is(err, domain.ErrEdgeDeviceKindInvalid) {
+				t.Errorf("ParseEdgeDeviceKind(%q) error = %v, want ErrEdgeDeviceKindInvalid", test.value, err)
+			}
+
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("ParseEdgeDeviceKind(%q): %v", test.value, err)
+		}
+
+		if kind != test.want {
+			t.Errorf("ParseEdgeDeviceKind(%q) = %v, want %v", test.value, kind, test.want)
+		}
+	}
+}

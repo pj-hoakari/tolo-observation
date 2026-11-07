@@ -11,13 +11,20 @@ import (
 )
 
 var (
-	ErrInvalidPublicID              = errors.New("invalid public ID")
-	ErrTenantRequired               = errors.New("tenant public ID is required")
-	ErrEventRequired                = errors.New("event ID is required")
-	ErrEdgeDeviceNameRequired       = errors.New("edge device name is required")
-	ErrEdgeDeviceUnregistered       = errors.New("edge device is unregistered")
-	ErrObservationPointNameRequired = errors.New("observation point name is required")
-	ErrObservationPointNotFound     = errors.New("observation point not found")
+	ErrInvalidPublicID               = errors.New("invalid public ID")
+	ErrTenantRequired                = errors.New("tenant public ID is required")
+	ErrEventRequired                 = errors.New("event ID is required")
+	ErrEdgeDeviceNameRequired        = errors.New("edge device name is required")
+	ErrEdgeDeviceUnregistered        = errors.New("edge device is unregistered")
+	ErrEdgeDeviceKindInvalid         = errors.New("invalid edge device kind")
+	ErrEdgeDeviceCameraUnsupported   = errors.New("camera edge device does not support this operation")
+	ErrCameraPointNamesNotAllowed    = errors.New("camera edge device must not have observation points")
+	ErrCameraLinkedPointRequired     = errors.New("camera edge device requires one linked observation point")
+	ErrPageLinkedPointNotAllowed     = errors.New("observation page edge device must not have a linked observation point")
+	ErrCameraLinkToCamera            = errors.New("a camera cannot be linked to another camera")
+	ErrObservationPointNameRequired  = errors.New("observation point name is required")
+	ErrObservationPointNotFound      = errors.New("observation point not found")
+	ErrObservationPointAlreadyLinked = errors.New("observation point is already linked to a camera")
 )
 
 const (
@@ -94,6 +101,40 @@ type ObservationPoint struct {
 	LastActiveAt *time.Time
 }
 
+type EdgeDeviceKind int
+
+const (
+	EdgeDeviceKindObservationPage EdgeDeviceKind = iota
+	EdgeDeviceKindCamera
+)
+
+func ParseEdgeDeviceKind(value string) (EdgeDeviceKind, error) {
+	switch value {
+	case "observation_page":
+		return EdgeDeviceKindObservationPage, nil
+	case "camera":
+		return EdgeDeviceKindCamera, nil
+	default:
+		return EdgeDeviceKindObservationPage, ErrEdgeDeviceKindInvalid
+	}
+}
+
+func (k EdgeDeviceKind) String() string {
+	switch k {
+	case EdgeDeviceKindCamera:
+		return "camera"
+	case EdgeDeviceKindObservationPage:
+		return "observation_page"
+	default:
+		return ""
+	}
+}
+
+type CameraLink struct {
+	CameraEdgeDeviceID EdgeDeviceID
+	ObservationPointID ObservationPointID
+}
+
 type EdgeDevice struct {
 	ID                EdgeDeviceID
 	TenantPublicID    string
@@ -101,10 +142,28 @@ type EdgeDevice struct {
 	Name              string
 	Unregistered      bool
 	LastHeartbeatAt   *time.Time
+	Kind              EdgeDeviceKind
 	ObservationPoints []ObservationPoint
+	CameraLinks       []CameraLink
 }
 
 func NewEdgeDevice(tenantPublicID, eventID, name string, observationPointNames []string) (EdgeDevice, error) {
+	return NewEdgeDeviceWithKind(
+		tenantPublicID,
+		eventID,
+		name,
+		EdgeDeviceKindObservationPage,
+		observationPointNames,
+		"",
+	)
+}
+
+func NewEdgeDeviceWithKind(
+	tenantPublicID, eventID, name string,
+	kind EdgeDeviceKind,
+	observationPointNames []string,
+	linkedObservationPointID string,
+) (EdgeDevice, error) {
 	tenantPublicID = strings.TrimSpace(tenantPublicID)
 	if tenantPublicID == "" {
 		return EdgeDevice{}, ErrTenantRequired
@@ -120,25 +179,73 @@ func NewEdgeDevice(tenantPublicID, eventID, name string, observationPointNames [
 		return EdgeDevice{}, ErrEdgeDeviceNameRequired
 	}
 
-	observationPoints := make([]ObservationPoint, 0, len(observationPointNames))
+	linkedObservationPointID = strings.TrimSpace(linkedObservationPointID)
 
-	for _, pointName := range observationPointNames {
-		pointName = strings.TrimSpace(pointName)
-		if pointName == "" {
-			return EdgeDevice{}, ErrObservationPointNameRequired
+	var observationPoints []ObservationPoint
+
+	var cameraLinks []CameraLink
+
+	switch kind {
+	case EdgeDeviceKindObservationPage:
+		if linkedObservationPointID != "" {
+			return EdgeDevice{}, ErrPageLinkedPointNotAllowed
 		}
 
-		pointID, err := NewObservationPointID()
+		observationPoints = make([]ObservationPoint, 0, len(observationPointNames))
+
+		for _, pointName := range observationPointNames {
+			pointName = strings.TrimSpace(pointName)
+			if pointName == "" {
+				return EdgeDevice{}, ErrObservationPointNameRequired
+			}
+
+			pointID, err := NewObservationPointID()
+			if err != nil {
+				return EdgeDevice{}, err
+			}
+
+			observationPoints = append(observationPoints, ObservationPoint{
+				ID:           pointID,
+				Name:         pointName,
+				Enabled:      true,
+				LastActiveAt: nil,
+			})
+		}
+	case EdgeDeviceKindCamera:
+		if len(observationPointNames) != 0 {
+			return EdgeDevice{}, ErrCameraPointNamesNotAllowed
+		}
+
+		if linkedObservationPointID == "" {
+			return EdgeDevice{}, ErrCameraLinkedPointRequired
+		}
+
+		linkedPointID, err := ParseObservationPointID(linkedObservationPointID)
 		if err != nil {
 			return EdgeDevice{}, err
 		}
 
-		observationPoints = append(observationPoints, ObservationPoint{
-			ID:           pointID,
-			Name:         pointName,
-			Enabled:      true,
-			LastActiveAt: nil,
-		})
+		id, err := NewEdgeDeviceID()
+		if err != nil {
+			return EdgeDevice{}, err
+		}
+
+		return EdgeDevice{
+			ID:                id,
+			TenantPublicID:    tenantPublicID,
+			EventID:           eventID,
+			Name:              name,
+			Unregistered:      false,
+			LastHeartbeatAt:   nil,
+			Kind:              EdgeDeviceKindCamera,
+			ObservationPoints: []ObservationPoint{},
+			CameraLinks: []CameraLink{{
+				CameraEdgeDeviceID: id,
+				ObservationPointID: linkedPointID,
+			}},
+		}, nil
+	default:
+		return EdgeDevice{}, ErrEdgeDeviceKindInvalid
 	}
 
 	id, err := NewEdgeDeviceID()
@@ -153,7 +260,9 @@ func NewEdgeDevice(tenantPublicID, eventID, name string, observationPointNames [
 		Name:              name,
 		Unregistered:      false,
 		LastHeartbeatAt:   nil,
+		Kind:              kind,
 		ObservationPoints: observationPoints,
+		CameraLinks:       cameraLinks,
 	}, nil
 }
 
@@ -163,6 +272,12 @@ func (d *EdgeDevice) Unregister() error {
 	}
 
 	d.Unregistered = true
+
+	if d.Kind == EdgeDeviceKindCamera {
+		d.CameraLinks = nil
+
+		return nil
+	}
 
 	for i := range d.ObservationPoints {
 		d.ObservationPoints[i].Enabled = false
@@ -196,7 +311,7 @@ func (d *EdgeDevice) UpdateObservationPoint(id ObservationPointID, name string, 
 }
 
 func (d EdgeDevice) Online(now time.Time, heartbeatTimeout time.Duration) bool {
-	if d.Unregistered || d.LastHeartbeatAt == nil {
+	if d.Kind == EdgeDeviceKindCamera || d.Unregistered || d.LastHeartbeatAt == nil {
 		return false
 	}
 
@@ -214,6 +329,10 @@ func (d EdgeDevice) HasObservationPoint(id ObservationPointID) bool {
 }
 
 func (d *EdgeDevice) Heartbeat(now time.Time, activeIDs []ObservationPointID) error {
+	if d.Kind == EdgeDeviceKindCamera {
+		return ErrEdgeDeviceCameraUnsupported
+	}
+
 	if d.Unregistered {
 		return ErrEdgeDeviceUnregistered
 	}

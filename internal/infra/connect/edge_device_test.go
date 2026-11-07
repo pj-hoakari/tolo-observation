@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ const testEdgeDeviceID = "1122334455667788"
 // what the test put in it, so the handler's mapping is what gets exercised.
 type fakeEdgeDeviceUseCases struct {
 	registerOutput application.RegisterEdgeDeviceOutput
+	registerInput  application.RegisterEdgeDeviceInput
 	device         application.EdgeDeviceView
 	devices        []application.EdgeDeviceView
 	point          domain.ObservationPoint
@@ -44,8 +46,10 @@ func (f *fakeEdgeDeviceUseCases) Heartbeat(_ context.Context, _ application.Hear
 
 func (f *fakeEdgeDeviceUseCases) RegisterEdgeDevice(
 	_ context.Context,
-	_ application.RegisterEdgeDeviceInput,
+	input application.RegisterEdgeDeviceInput,
 ) (application.RegisterEdgeDeviceOutput, error) {
+	f.registerInput = input
+
 	return f.registerOutput, f.err
 }
 
@@ -287,6 +291,7 @@ func TestEdgeDeviceErrorMapping(t *testing.T) {
 		{name: "unknown device", err: repository.ErrEdgeDeviceNotFound, want: connectrpc.CodeNotFound},
 		{name: "malformed public ID", err: domain.ErrInvalidPublicID, want: connectrpc.CodeInvalidArgument},
 		{name: "already unregistered", err: domain.ErrEdgeDeviceUnregistered, want: connectrpc.CodeFailedPrecondition},
+		{name: "camera operation", err: domain.ErrEdgeDeviceCameraUnsupported, want: connectrpc.CodeFailedPrecondition},
 	}
 
 	for _, tt := range tests {
@@ -386,4 +391,177 @@ func (f *fakeMeasurementIngestUseCases) ReportMeasurements(
 	_ application.ReportMeasurementsInput,
 ) (int32, error) {
 	return f.accepted, f.err
+}
+
+func TestRegisterCameraEdgeDevice(t *testing.T) {
+	t.Parallel()
+
+	useCases := &fakeEdgeDeviceUseCases{
+		registerOutput: application.RegisterEdgeDeviceOutput{
+			Device: application.EdgeDeviceView{
+				Device: domain.EdgeDevice{
+					ID:      domain.EdgeDeviceID(testEdgeDeviceID),
+					EventID: testEventPublicID,
+					Name:    "camera-1",
+					Kind:    domain.EdgeDeviceKindCamera,
+					CameraLinks: []domain.CameraLink{{
+						CameraEdgeDeviceID: testEdgeDeviceID,
+						ObservationPointID: "99aabbccddeeff00",
+					}},
+				},
+				Online: false,
+			},
+		},
+	}
+
+	client := newEdgeDeviceClient(t, "events.manage", useCases)
+
+	res, err := client.RegisterEdgeDevice(context.Background(), &observationv1.RegisterEdgeDeviceRequest{
+		EventId:                  testEventPublicID,
+		Name:                     "camera-1",
+		Kind:                     observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA,
+		LinkedObservationPointId: "99aabbccddeeff00",
+	})
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	if got := useCases.registerInput.Kind; got != domain.EdgeDeviceKindCamera {
+		t.Errorf("kind passed to the use case = %v, want camera", got)
+	}
+
+	if got := useCases.registerInput.LinkedObservationPointID; got != "99aabbccddeeff00" {
+		t.Errorf("linked point passed to the use case = %q", got)
+	}
+
+	if got := res.GetObservationPagePath(); got != "" {
+		t.Errorf("observation_page_path = %q, want empty for a camera", got)
+	}
+
+	device := res.GetDevice()
+	if got := device.GetKind(); got != observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA {
+		t.Errorf("kind = %v, want camera", got)
+	}
+
+	if device.GetOnline() {
+		t.Error("online = true, want false for a camera")
+	}
+
+	if device.GetLastHeartbeatAt() != nil {
+		t.Errorf("last_heartbeat_at = %v, want unset for a camera", device.GetLastHeartbeatAt())
+	}
+
+	links := device.GetCameraLinks()
+	if len(links) != 1 || links[0].GetCameraEdgeDeviceId() != testEdgeDeviceID ||
+		links[0].GetObservationPointId() != "99aabbccddeeff00" {
+		t.Errorf("camera_links = %v, want the linked observation point", links)
+	}
+}
+
+func TestListEdgeDevicesReportsCamerasWithoutOnlineOrHeartbeat(t *testing.T) {
+	t.Parallel()
+
+	heartbeatAt := time.Date(2026, time.October, 11, 9, 30, 0, 0, time.UTC)
+	client := newEdgeDeviceClient(t, "events.read", &fakeEdgeDeviceUseCases{
+		devices: []application.EdgeDeviceView{{
+			Device: domain.EdgeDevice{
+				ID:              domain.EdgeDeviceID(testEdgeDeviceID),
+				Kind:            domain.EdgeDeviceKindCamera,
+				LastHeartbeatAt: &heartbeatAt,
+				CameraLinks: []domain.CameraLink{{
+					CameraEdgeDeviceID: testEdgeDeviceID,
+					ObservationPointID: "99aabbccddeeff00",
+				}},
+			},
+			Online: true,
+		}},
+	})
+
+	res, err := client.ListEdgeDevices(context.Background(), &observationv1.ListEdgeDevicesRequest{EventId: testEventPublicID})
+	if err != nil {
+		t.Fatalf("ListEdgeDevices() error = %v", err)
+	}
+
+	devices := res.GetDevices()
+	if len(devices) != 1 {
+		t.Fatalf("devices = %v, want one device", devices)
+	}
+
+	device := devices[0]
+	if got := device.GetKind(); got != observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA {
+		t.Errorf("kind = %v, want camera", got)
+	}
+
+	if device.GetOnline() {
+		t.Error("online = true, want false for a camera")
+	}
+
+	if device.GetLastHeartbeatAt() != nil {
+		t.Errorf("last_heartbeat_at = %v, want unset for a camera", device.GetLastHeartbeatAt())
+	}
+
+	if len(device.GetCameraLinks()) != 1 {
+		t.Errorf("camera_links = %v, want one link", device.GetCameraLinks())
+	}
+}
+
+func TestCameraOnlyRPCsFailPrecondition(t *testing.T) {
+	t.Parallel()
+
+	client := newEdgeDeviceClient(t, "events.report", &fakeEdgeDeviceUseCases{
+		err: fmt.Errorf("camera edge device: %w", domain.ErrEdgeDeviceCameraUnsupported),
+	})
+
+	if _, err := client.Heartbeat(context.Background(), &observationv1.HeartbeatRequest{
+		EventId: testEventPublicID, EdgeDeviceId: testEdgeDeviceID,
+	}); connectrpc.CodeOf(err) != connectrpc.CodeFailedPrecondition {
+		t.Errorf("Heartbeat() code = %v (%v), want failed_precondition", connectrpc.CodeOf(err), err)
+	}
+
+	if _, err := client.ListEdgeDeviceObservationPoints(
+		context.Background(),
+		&observationv1.ListEdgeDeviceObservationPointsRequest{EventId: testEventPublicID, EdgeDeviceId: testEdgeDeviceID},
+	); connectrpc.CodeOf(err) != connectrpc.CodeFailedPrecondition {
+		t.Errorf("ListEdgeDeviceObservationPoints() code = %v (%v), want failed_precondition", connectrpc.CodeOf(err), err)
+	}
+}
+
+func TestReportMeasurementsRejectsACameraEdgeDevice(t *testing.T) {
+	t.Parallel()
+
+	authorization, keys := mintEventToken(t, "events.report")
+
+	routes, err := RoutesWithVerifier(
+		newTestVerifier(t, keys),
+		&fakeEdgeDeviceUseCases{},
+		&fakeMeasurementIngestUseCases{err: fmt.Errorf("camera edge device: %w", domain.ErrEdgeDeviceCameraUnsupported)},
+		nil,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("RoutesWithVerifier() error = %v", err)
+	}
+
+	mux := http.NewServeMux()
+	routes(mux)
+
+	httpServer := httptest.NewServer(mux)
+	t.Cleanup(httpServer.Close)
+
+	client := observationv1connect.NewMeasurementIngestServiceClient(connectrpc.NewClient(
+		connecthttp.NewTransport(httpServer.Client(), httpServer.URL),
+		authorizationInterceptor(authorization),
+	))
+
+	_, err = client.ReportMeasurements(context.Background(), &observationv1.ReportMeasurementsRequest{
+		EventId:      testEventPublicID,
+		EdgeDeviceId: testEdgeDeviceID,
+		Measurements: []*observationv1.Measurement{{
+			ObservationPointId: "99aabbccddeeff00",
+			Source:             observationv1.MeasurementSource_MEASUREMENT_SOURCE_EDGE,
+		}},
+	})
+	if got := connectrpc.CodeOf(err); got != connectrpc.CodeFailedPrecondition {
+		t.Fatalf("ReportMeasurements() error code = %v (%v), want failed_precondition", got, err)
+	}
 }

@@ -97,3 +97,45 @@ func TestRunInTransactionJoinsSurroundingTransaction(t *testing.T) {
 		t.Error("Executor() outside a transaction != pool")
 	}
 }
+
+func TestReadSnapshotTransactionOptionsAndNesting(t *testing.T) {
+	ctx := context.Background()
+
+	_, err := readSnapshot(ctx, testDB, func(ctx context.Context) (struct{}, error) {
+		var isolation, readOnly string
+		if err := sqlx.GetContext(ctx, Executor(ctx, testDB), &isolation, "SHOW transaction_isolation"); err != nil {
+			return struct{}{}, err
+		}
+
+		if err := sqlx.GetContext(ctx, Executor(ctx, testDB), &readOnly, "SHOW transaction_read_only"); err != nil {
+			return struct{}{}, err
+		}
+
+		if isolation != "repeatable read" || readOnly != "on" {
+			t.Errorf("transaction isolation=%q read_only=%q", isolation, readOnly)
+		}
+
+		return struct{}{}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = RunInTransaction(ctx, testDB, func(outer context.Context) error {
+		_, err := readSnapshot(outer, testDB, func(inner context.Context) (struct{}, error) {
+			outerTx, _ := transactionFromContext(outer)
+
+			innerTx, _ := transactionFromContext(inner)
+			if outerTx != innerTx {
+				t.Error("readSnapshot did not join the existing transaction")
+			}
+
+			return struct{}{}, nil
+		})
+
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

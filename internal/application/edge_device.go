@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/pj-hoakari/tolo-observation/internal/domain"
@@ -16,9 +17,11 @@ import (
 var ErrForeignEvent = errors.New("resource belongs to another event")
 
 type RegisterEdgeDeviceInput struct {
-	EventID               string
-	Name                  string
-	ObservationPointNames []string
+	EventID                  string
+	Name                     string
+	ObservationPointNames    []string
+	Kind                     domain.EdgeDeviceKind
+	LinkedObservationPointID string
 }
 
 type EdgeDeviceView struct {
@@ -101,19 +104,75 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 		return RegisterEdgeDeviceOutput{}, tenantctx.ErrMissing
 	}
 
-	device, err := domain.NewEdgeDevice(tenantPublicID, input.EventID, input.Name, input.ObservationPointNames)
+	device, err := domain.NewEdgeDeviceWithKind(
+		tenantPublicID,
+		input.EventID,
+		input.Name,
+		input.Kind,
+		input.ObservationPointNames,
+		input.LinkedObservationPointID,
+	)
 	if err != nil {
 		return RegisterEdgeDeviceOutput{}, err
 	}
 
-	if err := s.devices.Create(ctx, device); err != nil {
-		return RegisterEdgeDeviceOutput{}, fmt.Errorf("create edge device: %w", err)
+	create := func(ctx context.Context) error {
+		if device.Kind == domain.EdgeDeviceKindCamera {
+			if err := s.validateCameraLink(ctx, input.EventID, device.CameraLinks[0]); err != nil {
+				return err
+			}
+		}
+
+		if err := s.devices.Create(ctx, device); err != nil {
+			return fmt.Errorf("create edge device: %w", err)
+		}
+
+		return nil
 	}
 
-	return RegisterEdgeDeviceOutput{
-		Device:              s.view(device),
-		ObservationPagePath: "/event/" + device.EventID + "/observation/" + string(device.ID),
-	}, nil
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		err = s.devices.WithinTransaction(ctx, create)
+	} else {
+		err = create(ctx)
+	}
+
+	if err != nil {
+		return RegisterEdgeDeviceOutput{}, err
+	}
+
+	output := RegisterEdgeDeviceOutput{Device: s.view(device), ObservationPagePath: ""}
+	if device.Kind == domain.EdgeDeviceKindObservationPage {
+		output.ObservationPagePath = "/event/" + device.EventID + "/observation/" + string(device.ID)
+	}
+
+	return output, nil
+}
+
+func (s *EdgeDeviceService) validateCameraLink(ctx context.Context, eventID string, link domain.CameraLink) error {
+	owner, err := s.devices.FindByObservationPointIDForUpdate(ctx, link.ObservationPointID)
+	if err != nil {
+		return fmt.Errorf("find linked observation point: %w", err)
+	}
+
+	if owner.EventID != eventID {
+		return ErrForeignEvent
+	}
+
+	if owner.Kind == domain.EdgeDeviceKindCamera {
+		return domain.ErrCameraLinkToCamera
+	}
+
+	if owner.Unregistered {
+		return domain.ErrEdgeDeviceUnregistered
+	}
+
+	for _, existing := range owner.CameraLinks {
+		if existing.ObservationPointID == link.ObservationPointID {
+			return domain.ErrObservationPointAlreadyLinked
+		}
+	}
+
+	return nil
 }
 
 func (s *EdgeDeviceService) UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (EdgeDeviceView, error) {
@@ -126,24 +185,67 @@ func (s *EdgeDeviceService) UnregisterEdgeDevice(ctx context.Context, input Unre
 		return EdgeDeviceView{}, err
 	}
 
-	device, err := s.devices.FindByID(ctx, id)
+	var view EdgeDeviceView
+
+	err = s.devices.WithinTransaction(ctx, func(ctx context.Context) error {
+		device, err := s.devices.FindByIDForUpdate(ctx, id)
+		if err != nil {
+			return fmt.Errorf("find edge device: %w", err)
+		}
+
+		if device.EventID != input.EventID {
+			return ErrForeignEvent
+		}
+
+		if err := device.Unregister(); err != nil {
+			return err
+		}
+
+		if device.Kind == domain.EdgeDeviceKindObservationPage {
+			cameraIDs := make([]domain.EdgeDeviceID, 0, len(device.CameraLinks))
+			for _, link := range device.CameraLinks {
+				cameraIDs = append(cameraIDs, link.CameraEdgeDeviceID)
+			}
+
+			slices.Sort(cameraIDs)
+			cameraIDs = slices.Compact(cameraIDs)
+
+			for _, cameraID := range cameraIDs {
+				camera, err := s.devices.FindByIDForUpdate(ctx, cameraID)
+				if err != nil {
+					return fmt.Errorf("find linked camera: %w", err)
+				}
+				// A concurrent camera unregister may have removed the link while
+				// this transaction was waiting for the camera row lock.
+				if camera.Unregistered {
+					continue
+				}
+
+				if err := camera.Unregister(); err != nil {
+					return err
+				}
+
+				if err := s.devices.Save(ctx, camera); err != nil {
+					return fmt.Errorf("save linked camera: %w", err)
+				}
+			}
+
+			device.CameraLinks = nil
+		}
+
+		if err := s.devices.Save(ctx, device); err != nil {
+			return fmt.Errorf("save edge device: %w", err)
+		}
+
+		view = s.view(device)
+
+		return nil
+	})
 	if err != nil {
-		return EdgeDeviceView{}, fmt.Errorf("find edge device: %w", err)
-	}
-
-	if device.EventID != input.EventID {
-		return EdgeDeviceView{}, ErrForeignEvent
-	}
-
-	if err := device.Unregister(); err != nil {
 		return EdgeDeviceView{}, err
 	}
 
-	if err := s.devices.Save(ctx, device); err != nil {
-		return EdgeDeviceView{}, fmt.Errorf("save edge device: %w", err)
-	}
-
-	return s.view(device), nil
+	return view, nil
 }
 
 func (s *EdgeDeviceService) ListEdgeDevices(ctx context.Context, input ListEdgeDevicesInput) ([]EdgeDeviceView, error) {
@@ -196,6 +298,10 @@ func (s *EdgeDeviceService) ListEdgeDeviceObservationPoints(
 		return nil, ErrForeignEvent
 	}
 
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		return nil, domain.ErrEdgeDeviceCameraUnsupported
+	}
+
 	if device.Unregistered {
 		return nil, domain.ErrEdgeDeviceUnregistered
 	}
@@ -231,6 +337,10 @@ func (s *EdgeDeviceService) Heartbeat(ctx context.Context, input HeartbeatInput)
 		return ErrForeignEvent
 	}
 
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		return domain.ErrEdgeDeviceCameraUnsupported
+	}
+
 	activeIDs := make([]domain.ObservationPointID, 0, len(input.ActiveObservationPointIDs))
 
 	for _, value := range input.ActiveObservationPointIDs {
@@ -263,39 +373,50 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(ctx context.Context, in
 		return domain.ObservationPoint{}, err
 	}
 
-	device, err := s.devices.FindByObservationPointID(ctx, id)
-	if err != nil {
-		return domain.ObservationPoint{}, fmt.Errorf("find edge device by observation point: %w", err)
-	}
+	var result domain.ObservationPoint
 
-	if device.EventID != input.EventID {
-		return domain.ObservationPoint{}, ErrForeignEvent
-	}
-
-	if _, err := device.UpdateObservationPoint(id, input.Name, input.Enabled); err != nil {
-		return domain.ObservationPoint{}, err
-	}
-
-	if err := s.devices.Save(ctx, device); err != nil {
-		return domain.ObservationPoint{}, fmt.Errorf("save edge device: %w", err)
-	}
-
-	now := s.config.Now()
-
-	hold, err := s.holds.Evaluate(ctx, now)
-	if err != nil {
-		return domain.ObservationPoint{}, err
-	}
-
-	applyEffectiveEnabled(&device, hold.Connected(device, now))
-
-	for _, point := range device.ObservationPoints {
-		if point.ID == id {
-			return point, nil
+	err = s.devices.WithinTransaction(ctx, func(txCtx context.Context) error {
+		device, err := s.devices.FindByObservationPointIDForUpdate(txCtx, id)
+		if err != nil {
+			return fmt.Errorf("find edge device by observation point: %w", err)
 		}
+
+		if device.EventID != input.EventID {
+			return ErrForeignEvent
+		}
+
+		if _, err := device.UpdateObservationPoint(id, input.Name, input.Enabled); err != nil {
+			return err
+		}
+
+		if err := s.devices.Save(txCtx, device); err != nil {
+			return fmt.Errorf("save edge device: %w", err)
+		}
+
+		now := s.config.Now()
+
+		hold, err := s.holds.Evaluate(txCtx, now)
+		if err != nil {
+			return err
+		}
+
+		applyEffectiveEnabled(&device, hold.Connected(device, now))
+
+		for _, point := range device.ObservationPoints {
+			if point.ID == id {
+				result = point
+
+				return nil
+			}
+		}
+
+		return domain.ErrObservationPointNotFound
+	})
+	if err != nil {
+		return domain.ObservationPoint{}, err
 	}
 
-	return domain.ObservationPoint{}, domain.ErrObservationPointNotFound
+	return result, nil
 }
 
 func (s *EdgeDeviceService) view(device domain.EdgeDevice) EdgeDeviceView {

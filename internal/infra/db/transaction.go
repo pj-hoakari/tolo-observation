@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -34,11 +35,36 @@ type transactionKey struct{}
 // fn returning an error rolls the transaction back; otherwise it is committed.
 // A call made from inside a transaction simply joins it.
 func RunInTransaction(ctx context.Context, pool *sqlx.DB, fn func(context.Context) error) error {
+	return runInTransaction(ctx, pool, nil, fn)
+}
+
+// readSnapshot runs a read against one database snapshot, or joins an existing
+// transaction whose isolation level is controlled by its caller.
+func readSnapshot[T any](ctx context.Context, pool *sqlx.DB, fn func(context.Context) (T, error)) (T, error) {
+	var result T
+
+	err := runInTransaction(ctx, pool, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true}, func(ctx context.Context) error {
+		var err error
+
+		result, err = fn(ctx)
+
+		return err
+	})
+	if err != nil {
+		var zero T
+
+		return zero, err
+	}
+
+	return result, nil
+}
+
+func runInTransaction(ctx context.Context, pool *sqlx.DB, options *sql.TxOptions, fn func(context.Context) error) error {
 	if _, ok := transactionFromContext(ctx); ok {
 		return fn(ctx)
 	}
 
-	tx, err := pool.BeginTxx(ctx, nil)
+	tx, err := pool.BeginTxx(ctx, options)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}

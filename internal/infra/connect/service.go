@@ -127,10 +127,17 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(
 	ctx context.Context,
 	req *observationv1.RegisterEdgeDeviceRequest,
 ) (*observationv1.RegisterEdgeDeviceResponse, error) {
+	kind, err := domainEdgeDeviceKind(req.GetKind())
+	if err != nil {
+		return nil, clientError(ctx, err)
+	}
+
 	output, err := s.useCases.RegisterEdgeDevice(ctx, application.RegisterEdgeDeviceInput{
-		EventID:               req.GetEventId(),
-		Name:                  req.GetName(),
-		ObservationPointNames: req.GetObservationPointNames(),
+		EventID:                  req.GetEventId(),
+		Name:                     req.GetName(),
+		ObservationPointNames:    req.GetObservationPointNames(),
+		Kind:                     kind,
+		LinkedObservationPointID: req.GetLinkedObservationPointId(),
 	})
 	if err != nil {
 		return nil, clientError(ctx, err)
@@ -238,13 +245,27 @@ func newProtoEdgeDevice(view application.EdgeDeviceView) *observationv1.EdgeDevi
 	device := view.Device
 
 	var lastHeartbeatAt *timestamppb.Timestamp
-	if device.LastHeartbeatAt != nil {
+
+	if device.Kind != domain.EdgeDeviceKindCamera && device.LastHeartbeatAt != nil {
 		lastHeartbeatAt = timestamppb.New(*device.LastHeartbeatAt)
+	}
+
+	online := view.Online
+	if device.Kind == domain.EdgeDeviceKindCamera {
+		online = false
 	}
 
 	points := make([]*observationv1.ObservationPoint, 0, len(device.ObservationPoints))
 	for _, point := range device.ObservationPoints {
 		points = append(points, newProtoObservationPoint(point))
+	}
+
+	links := make([]*observationv1.CameraLink, 0, len(device.CameraLinks))
+	for _, link := range device.CameraLinks {
+		links = append(links, &observationv1.CameraLink{
+			CameraEdgeDeviceId: string(link.CameraEdgeDeviceID),
+			ObservationPointId: string(link.ObservationPointID),
+		})
 	}
 
 	return &observationv1.EdgeDevice{
@@ -254,7 +275,32 @@ func newProtoEdgeDevice(view application.EdgeDeviceView) *observationv1.EdgeDevi
 		ObservationPoints: points,
 		Unregistered:      device.Unregistered,
 		LastHeartbeatAt:   lastHeartbeatAt,
-		Online:            view.Online,
+		Online:            online,
+		Kind:              protoEdgeDeviceKind(device.Kind),
+		CameraLinks:       links,
+	}
+}
+
+func domainEdgeDeviceKind(kind observationv1.EdgeDeviceKind) (domain.EdgeDeviceKind, error) {
+	switch kind {
+	case observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA:
+		return domain.EdgeDeviceKindCamera, nil
+	case observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_OBSERVATION_PAGE,
+		observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_UNSPECIFIED:
+		return domain.EdgeDeviceKindObservationPage, nil
+	default:
+		return domain.EdgeDeviceKindObservationPage, domain.ErrEdgeDeviceKindInvalid
+	}
+}
+
+func protoEdgeDeviceKind(kind domain.EdgeDeviceKind) observationv1.EdgeDeviceKind {
+	switch kind {
+	case domain.EdgeDeviceKindCamera:
+		return observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA
+	case domain.EdgeDeviceKindObservationPage:
+		return observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_OBSERVATION_PAGE
+	default:
+		return observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_UNSPECIFIED
 	}
 }
 
