@@ -1,6 +1,6 @@
 module github.com/pj-hoakari/tolo-observation
 
-go 1.27.3
+go 1.27.4
 
 tool (
 	connectrpc.com/connect/v2/cmd/protoc-gen-connect-go
