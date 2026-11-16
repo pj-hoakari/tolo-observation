@@ -188,10 +188,10 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/pj-hoakari/internal-jwt-handling v0.5.0 h1:687EmL17JbwSYK7wasJPVYM/NTVc4R9EhWh6TqYvLdg=
-github.com/pj-hoakari/internal-jwt-handling v0.5.0/go.mod h1:GGgmlim/lyFJg9t1s+rITuFnJFw1d0aBMftup8W/psI=
-github.com/pj-hoakari/protoc-gen-authz-go v0.4.1 h1:qhcYmZHtyhgkShNCuSB36XZOkH3T6jqcr6Af8OrCXmI=
-github.com/pj-hoakari/protoc-gen-authz-go v0.4.1/go.mod h1:qmfbUJQHMYtEu7QHjEkEvUmA+3GutuLYGB1SCmxo8ss=
+github.com/pj-hoakari/internal-jwt-handling v0.5.1 h1:6KBl0MiuJQ1vEOeh6/4Pexox/+fMmCsxzRxmP9ou4v8=
+github.com/pj-hoakari/internal-jwt-handling v0.5.1/go.mod h1:qYtrryg/4zdkL03FJ+fcEl2NPVFAgugFFJD9iS81Ukk=
+github.com/pj-hoakari/protoc-gen-authz-go v0.4.2 h1:zDiclnevCXbAHQQyIZVuzsJCZef1RAP5ixa96mHKtRg=
+github.com/pj-hoakari/protoc-gen-authz-go v0.4.2/go.mod h1:Ab1l1VFS27Qx4eiXz1Nn868By7iv6IPtnwuXcmZ3DZU=
 github.com/pj-hoakari/tolo-graph-authoring v0.5.0 h1:FafUENp/EL/UOyVK/d+SBahZuzTEaDUFb732nyZ1yss=
 github.com/pj-hoakari/tolo-graph-authoring v0.5.0/go.mod h1:yyO/GPdbtAazsM+T2IYbyKXYdgAVdSbcNbnwjLVBcPQ=
 github.com/pj-hoakari/tolo-kernel-proto v0.4.0 h1:yEO6kFq3HubbZRXv9Ed2sIG7VGRm8WZ7O4tlwFROMDU=
