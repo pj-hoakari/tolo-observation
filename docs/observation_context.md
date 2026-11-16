@@ -13,6 +13,7 @@ Edge Bridge Service は WebRTC のシグナリングのみを担い、Service Ga
 |---|---|
 | EdgeDeviceRegistered／ObservationPointRegistered／CameraLinked | EdgeDeviceService.RegisterEdgeDevice（ObservationPointRegistered は観測ページ端末のみ。カメラ端末は CameraLinked） |
 | EdgeDeviceUnregistered／CameraUnlinked | EdgeDeviceService.UnregisterEdgeDevice |
+| CameraTransportReported | EdgeDeviceService.ReportCameraTransport（カメラ端末のみ。管理 UI が Web Serial で読み取った映像方式を記録する） |
 | EdgeDeviceStarted／EdgeDeviceDisconnected | EdgeDeviceService.Heartbeat（観測ページ端末のみ。開始・途絶判定。同時途絶の間は保留） |
 | ObservationPointDisabled／ObservationPointReEnabled | 内部（Heartbeat 途絶・回復から波及。同時途絶の間は保留） |
 | ObservationPointReconfigured | EdgeDeviceService.UpdateObservationPointConfig（スタッフアプリから直接） |

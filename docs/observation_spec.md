@@ -22,7 +22,8 @@ package: `tolo.observation.v1`
 |---|---|---|---|---|
 | RegisterEdgeDevice | エッジ端末を登録する。観測ページ端末の登録は実質的に観測点登録を兼ねる。カメラ端末の登録は観測点を登録しない | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered（観測ページ端末のみ）／CameraLinked |
 | UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。観測ページ端末の配下観測点は観測不能化する。カメラ端末の登録解除では、BFF が先に IdP のデバイス認可失効を記録してから登録解除を確定する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled（観測ページ端末のみ）／CameraUnlinked |
-| ListEdgeDevices | イベント配下のエッジ端末と観測点、種別、カメラの紐づけを返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
+| ReportCameraTransport | カメラ端末の映像方式を記録する。管理 UI が初期設定のときに Web Serial で読み取ったファームウェアの申告を送る（ADR-0136） | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | CameraTransportReported |
+| ListEdgeDevices | イベント配下のエッジ端末と観測点、種別、映像方式、カメラの紐づけを返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
 | ListEdgeDeviceObservationPoints | 指定した観測ページ端末の観測点をすべて返す。観測ページが、検知ラインと観測点を対応させるために使う（ADR-0105） | エッジ端末（観測ページ端末） | `event_access` + events.report | （参照のみ） |
 | Heartbeat | 観測ページ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する。カメラ端末は呼べない | エッジ端末（観測ページ端末） | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
@@ -79,6 +80,7 @@ service MeasurementIngestService {
 service EdgeDeviceService {
   rpc RegisterEdgeDevice(RegisterEdgeDeviceRequest) returns (RegisterEdgeDeviceResponse);
   rpc UnregisterEdgeDevice(UnregisterEdgeDeviceRequest) returns (EdgeDevice);
+  rpc ReportCameraTransport(ReportCameraTransportRequest) returns (EdgeDevice);
   rpc ListEdgeDevices(ListEdgeDevicesRequest) returns (ListEdgeDevicesResponse);
   rpc ListEdgeDeviceObservationPoints(ListEdgeDeviceObservationPointsRequest) returns (ListEdgeDeviceObservationPointsResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
@@ -147,12 +149,20 @@ message EdgeDevice {
   optional bool online = 7;  // 稼働中（WebRTC で待ち受け中）。観測ページ端末だけに設定し、カメラ端末は値を持たない
   EdgeDeviceKind kind = 8;  // 観測ページ端末またはカメラ端末
   repeated CameraLink camera_links = 10;  // 観測ページ端末が接続できるカメラ端末の紐づけ
+  CameraTransport camera_transport = 11;  // カメラ端末の映像方式。観測ページ端末と未申告のカメラ端末は UNSPECIFIED
 }
 
 enum EdgeDeviceKind {
   EDGE_DEVICE_KIND_UNSPECIFIED = 0;
   EDGE_DEVICE_KIND_OBSERVATION_PAGE = 1;  // 観測ページを開く推論デバイス
   EDGE_DEVICE_KIND_CAMERA = 2;             // ESP32 などの映像ソース端末
+}
+
+// カメラ端末の映像方式。ファームウェアで固定され、初期設定のときに Web Serial で申告される
+enum CameraTransport {
+  CAMERA_TRANSPORT_UNSPECIFIED = 0;       // 未申告。JPEG と同じに扱う
+  CAMERA_TRANSPORT_JPEG_DATACHANNEL = 1;  // jpeg DataChannel で JPEG を送る
+  CAMERA_TRANSPORT_H264_TRACK = 2;        // H.264 の映像トラックで送る
 }
 
 message CameraLink {
@@ -191,6 +201,11 @@ message RegisterEdgeDeviceResponse {
 message UnregisterEdgeDeviceRequest {
   string event_id = 1;
   string edge_device_id = 2;
+}
+message ReportCameraTransportRequest {
+  string event_id = 1;
+  string edge_device_id = 2;             // カメラ端末の公開 ID
+  CameraTransport camera_transport = 3;  // UNSPECIFIED は invalid_argument
 }
 message ListEdgeDevicesRequest {
   string event_id = 1;
@@ -387,7 +402,7 @@ message UpdateObservationSettingsResponse {
   publish の失敗は再試行不要（sequence による冪等性があるため、次回の publish で回復する。配信の再試行はブローカーに任せる）
   publish にはイベント単位の順序キーを付与する（トピック規約。spec-base/README.md）
   ペイロードの型（`GuestStatus`）は本サービスの package が定義し、Guest Service は本サービスの Go モジュールを import して復号する（ADR-0106）
-- 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、ListEdgeDeviceObservationPoints、UnregisterEdgeDevice、UpdateObservationPointConfig）も例外としない
+- 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、ListEdgeDeviceObservationPoints、UnregisterEdgeDevice、ReportCameraTransport、UpdateObservationPointConfig）も例外としない
   内部 JWT に `event_id` クレームがあればリクエストの `event_id` と突合し、不一致は `permission_denied` を返す
   リクエストが指す子資源（`edge_device_id`、`observation_point_id`、`Measurement.qr_location_id`）がリクエストの `event_id` に属さない場合も `permission_denied` を返す
   Guest Service からの QR 由来計上はマシン起点の `token_use=service` でクレームを持たないため、リクエストの `tenant_id` と `event_id` で対象テナント・イベントを受け取る（ADR-0093）
@@ -435,8 +450,16 @@ message UpdateObservationSettingsResponse {
   カメラ端末の登録は観測点登録を兼ねない。`ObservationPointRegistered` を発行しない
   カメラ端末は同一イベントの観測ページ端末が所有するカメラ方式の観測点1つに紐づける。同じ観測点に複数のカメラ端末を紐づけない。カメラ同士の紐づけと、QR 方式の観測点への紐づけは拒否する
   1つの観測ページ端末に複数のカメラ端末を紐づけられる。推論デバイスは1つの `edge_device_id` で複数のカメラを処理する（ADR-0130）
+  ただし、1つの観測ページ端末に紐づくカメラ端末は、H.264 のカメラ端末1台か、JPEG または未申告のカメラ端末0台以上のどちらかに限る（ADR-0136）。数えるのは登録解除済みでないカメラ端末だけとする
+  H.264 のカメラ端末が紐づく観測ページ端末へカメラ端末を RegisterEdgeDevice で登録する要求と、ほかのカメラ端末も紐づく観測ページ端末のカメラ端末に H.264 を申告する ReportCameraTransport は、`failed_precondition` を返す
   カメラ端末の登録解除では、BFF が先に IdP へ端末の失効を記録し、成功してから Observation の登録解除を確定する。Observation の登録解除後、BFF は接続委任も失効させる。IdP に失効を記録できなければ登録解除を完了させない
   RegisterEdgeDevice でカメラ端末を登録するときは、`observation_point_names` を空にし、紐づけ先のカメラ方式観測点1つを指定する。観測ページ端末の登録では、カメラの紐づけ先を指定しない。種別と紐づけ先の組み合わせが不正な場合は `invalid_argument` を返す。`kind` を省略した要求は観測ページ端末として扱う
+- カメラ端末の映像方式は、ファームウェアの申告を ReportCameraTransport で記録する（ADR-0136）
+  管理 UI は、Web Serial で初期設定を書き込む前にファームウェアの状態を問い合わせ、応答に映像方式があれば ReportCameraTransport を呼ぶ。拒否されたら初期設定とデバイス認可の承認に進まない。応答に映像方式がなければ未申告のまま続ける
+  RegisterEdgeDevice で登録した直後のカメラ端末は未申告とする。登録の要求では映像方式を受け取らない
+  同じ値の再申告は成功とし、異なる値は上書きする。登録解除を伴わない機材交換で別の映像方式の機材に替えた場合も、新しい申告で上書きする
+  対象が観測ページ端末、登録解除済みの端末の場合は `failed_precondition` を返す。`camera_transport` が UNSPECIFIED の要求は `invalid_argument` を返す
+  観測ページは、紐づくカメラ端末の映像方式から観測方式を決める。カメラ端末がないとき、または H.264 のカメラ端末1台のときは連続観測、それ以外は ADR-0130 の直列処理でバースト観測とする。未申告は JPEG と同じに扱う
 - 観測ページ端末の稼働状態は本サービスが Heartbeat から判定し、`ListEdgeDevices` の `EdgeDevice.online` と `last_heartbeat_at` で返す
   稼働中は、観測ページが WebRTC で待ち受けていることを表す（Edge Bridge Service）。観測ページは待ち受けている間だけ Heartbeat を送り、待ち受けをやめたら送らない
   カメラ端末は Heartbeat を送らないため、`online` と `last_heartbeat_at` は値を持たない
