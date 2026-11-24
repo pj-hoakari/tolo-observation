@@ -86,13 +86,13 @@ func TestObservationCyclePublishesGuestStatus(t *testing.T) {
 
 	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
-		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-guest", ObservationPointNames: []string{"hall"}},
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-guest"},
 	))
 	if err != nil {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	hall := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	hall := addObservationPoints(t, ctx, flow, eventID, registered.GetDevice().GetEdgeDeviceId(), "hall")[0]
 	flow.graph.mapTo(hall, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_PointId{PointId: "p1"}})
 
 	report := func(t *testing.T) {

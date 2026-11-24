@@ -39,7 +39,6 @@ var clientErrors = []struct {
 	{domain.ErrEventRequired, connectrpc.CodeInvalidArgument, "event_id is required"},
 	{domain.ErrEdgeDeviceNameRequired, connectrpc.CodeInvalidArgument, "edge device name is required"},
 	{domain.ErrEdgeDeviceKindInvalid, connectrpc.CodeInvalidArgument, "invalid edge device kind"},
-	{domain.ErrCameraPointNamesNotAllowed, connectrpc.CodeInvalidArgument, "camera edge device must not have observation points"},
 	{domain.ErrCameraLinkedPointRequired, connectrpc.CodeInvalidArgument, "camera edge device requires one linked observation point"},
 	{domain.ErrPageLinkedPointNotAllowed, connectrpc.CodeInvalidArgument, "observation page edge device must not have a linked observation point"},
 	{domain.ErrCameraLinkToCamera, connectrpc.CodeInvalidArgument, "a camera cannot be linked to another camera"},

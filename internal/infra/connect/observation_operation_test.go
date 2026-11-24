@@ -152,13 +152,13 @@ func reportForOperation(t *testing.T, flow observationFlow, eventID string) (str
 
 	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
-		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-operation", ObservationPointNames: []string{"corridor"}},
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "gate-operation"},
 	))
 	if err != nil {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
 	}
 
-	corridor := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	corridor := addObservationPoints(t, ctx, flow, eventID, registered.GetDevice().GetEdgeDeviceId(), "corridor")[0]
 	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
 
 	reportToken := flow.token(t, eventID, "events.report")

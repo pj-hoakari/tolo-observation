@@ -1015,7 +1015,6 @@ type RegisterEdgeDeviceRequest struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	EventId                  string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
 	Name                     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ObservationPointNames    []string               `protobuf:"bytes,3,rep,name=observation_point_names,json=observationPointNames,proto3" json:"observation_point_names,omitempty"`
 	Kind                     EdgeDeviceKind         `protobuf:"varint,4,opt,name=kind,proto3,enum=tolo.observation.v1.EdgeDeviceKind" json:"kind,omitempty"`
 	LinkedObservationPointId string                 `protobuf:"bytes,5,opt,name=linked_observation_point_id,json=linkedObservationPointId,proto3" json:"linked_observation_point_id,omitempty"`
 	unknownFields            protoimpl.UnknownFields
@@ -1064,13 +1063,6 @@ func (x *RegisterEdgeDeviceRequest) GetName() string {
 		return x.Name
 	}
 	return ""
-}
-
-func (x *RegisterEdgeDeviceRequest) GetObservationPointNames() []string {
-	if x != nil {
-		return x.ObservationPointNames
-	}
-	return nil
 }
 
 func (x *RegisterEdgeDeviceRequest) GetKind() EdgeDeviceKind {
@@ -3182,13 +3174,12 @@ const file_tolo_observation_v1_observation_proto_rawDesc = "" +
 	"\x14observation_point_id\x18\x01 \x01(\tR\x12observationPointId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\aenabled\x18\x03 \x01(\bR\aenabled\x12>\n" +
-	"\x06method\x18\x04 \x01(\x0e2&.tolo.observation.v1.MeasurementMethodR\x06method\"\xfa\x01\n" +
+	"\x06method\x18\x04 \x01(\x0e2&.tolo.observation.v1.MeasurementMethodR\x06method\"\xe1\x01\n" +
 	"\x19RegisterEdgeDeviceRequest\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x126\n" +
-	"\x17observation_point_names\x18\x03 \x03(\tR\x15observationPointNames\x127\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x127\n" +
 	"\x04kind\x18\x04 \x01(\x0e2#.tolo.observation.v1.EdgeDeviceKindR\x04kind\x12=\n" +
-	"\x1blinked_observation_point_id\x18\x05 \x01(\tR\x18linkedObservationPointId\"\xa5\x01\n" +
+	"\x1blinked_observation_point_id\x18\x05 \x01(\tR\x18linkedObservationPointIdJ\x04\b\x03\x10\x04R\x17observation_point_names\"\xa5\x01\n" +
 	"\x1aRegisterEdgeDeviceResponse\x127\n" +
 	"\x06device\x18\x01 \x01(\v2\x1f.tolo.observation.v1.EdgeDeviceR\x06device\x122\n" +
 	"\x15observation_page_path\x18\x03 \x01(\tR\x13observationPagePathJ\x04\b\x02\x10\x03R\x14observation_page_url\"^\n" +

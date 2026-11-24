@@ -18,7 +18,6 @@ var (
 	ErrEdgeDeviceUnregistered        = errors.New("edge device is unregistered")
 	ErrEdgeDeviceKindInvalid         = errors.New("invalid edge device kind")
 	ErrEdgeDeviceCameraUnsupported   = errors.New("camera edge device does not support this operation")
-	ErrCameraPointNamesNotAllowed    = errors.New("camera edge device must not have observation points")
 	ErrCameraLinkedPointRequired     = errors.New("camera edge device requires one linked observation point")
 	ErrPageLinkedPointNotAllowed     = errors.New("observation page edge device must not have a linked observation point")
 	ErrCameraLinkToCamera            = errors.New("a camera cannot be linked to another camera")
@@ -148,21 +147,13 @@ type EdgeDevice struct {
 	CameraLinks       []CameraLink
 }
 
-func NewEdgeDevice(tenantPublicID, eventID, name string, observationPointNames []string) (EdgeDevice, error) {
-	return NewEdgeDeviceWithKind(
-		tenantPublicID,
-		eventID,
-		name,
-		EdgeDeviceKindObservationPage,
-		observationPointNames,
-		"",
-	)
+func NewEdgeDevice(tenantPublicID, eventID, name string) (EdgeDevice, error) {
+	return NewEdgeDeviceWithKind(tenantPublicID, eventID, name, EdgeDeviceKindObservationPage, "")
 }
 
 func NewEdgeDeviceWithKind(
 	tenantPublicID, eventID, name string,
 	kind EdgeDeviceKind,
-	observationPointNames []string,
 	linkedObservationPointID string,
 ) (EdgeDevice, error) {
 	tenantPublicID = strings.TrimSpace(tenantPublicID)
@@ -182,41 +173,12 @@ func NewEdgeDeviceWithKind(
 
 	linkedObservationPointID = strings.TrimSpace(linkedObservationPointID)
 
-	var observationPoints []ObservationPoint
-
-	var cameraLinks []CameraLink
-
 	switch kind {
 	case EdgeDeviceKindObservationPage:
 		if linkedObservationPointID != "" {
 			return EdgeDevice{}, ErrPageLinkedPointNotAllowed
 		}
-
-		observationPoints = make([]ObservationPoint, 0, len(observationPointNames))
-
-		for _, pointName := range observationPointNames {
-			pointName = strings.TrimSpace(pointName)
-			if pointName == "" {
-				return EdgeDevice{}, ErrObservationPointNameRequired
-			}
-
-			pointID, err := NewObservationPointID()
-			if err != nil {
-				return EdgeDevice{}, err
-			}
-
-			observationPoints = append(observationPoints, ObservationPoint{
-				ID:           pointID,
-				Name:         pointName,
-				Enabled:      true,
-				LastActiveAt: nil,
-			})
-		}
 	case EdgeDeviceKindCamera:
-		if len(observationPointNames) != 0 {
-			return EdgeDevice{}, ErrCameraPointNamesNotAllowed
-		}
-
 		if linkedObservationPointID == "" {
 			return EdgeDevice{}, ErrCameraLinkedPointRequired
 		}
@@ -262,8 +224,8 @@ func NewEdgeDeviceWithKind(
 		Unregistered:      false,
 		LastHeartbeatAt:   nil,
 		Kind:              kind,
-		ObservationPoints: observationPoints,
-		CameraLinks:       cameraLinks,
+		ObservationPoints: []ObservationPoint{},
+		CameraLinks:       nil,
 	}, nil
 }
 

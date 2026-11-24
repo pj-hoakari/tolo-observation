@@ -204,9 +204,10 @@ enum MeasurementMethod {
 message RegisterEdgeDeviceRequest {
   string event_id = 1;
   string name = 2;
-  repeated string observation_point_names = 3;
   EdgeDeviceKind kind = 4;
   string linked_observation_point_id = 5;
+  reserved 3;
+  reserved "observation_point_names";
 }
 
 message RegisterEdgeDeviceResponse {

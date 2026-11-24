@@ -38,15 +38,15 @@ func TestUnregisterPageAlsoUnregistersLinkedCameras(t *testing.T) {
 	eventID := "c0ffee00c0ffee02"
 
 	page, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx, flow.token(t, eventID, "events.manage"),
-		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "page", ObservationPointNames: []string{"north", "south"}},
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "page"},
 	))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for _, point := range page.GetDevice().GetObservationPoints() {
+	for _, pointID := range addObservationPoints(t, ctx, flow, eventID, page.GetDevice().GetEdgeDeviceId(), "north", "south") {
 		_, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx, flow.token(t, eventID, "events.manage"),
-			&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "camera", Kind: observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA, LinkedObservationPointId: point.GetObservationPointId()},
+			&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "camera", Kind: observationv1.EdgeDeviceKind_EDGE_DEVICE_KIND_CAMERA, LinkedObservationPointId: pointID},
 		))
 		if err != nil {
 			t.Fatal(err)
@@ -95,8 +95,12 @@ func TestUnregisterPageRollsBackCameraUnregisterOnFailure(t *testing.T) {
 	})
 	devices := dbinfra.NewPostgresEdgeDeviceRepository(testDB)
 
-	page, err := domain.NewEdgeDevice(testTenantPublicID, eventID, "page", []string{"north"})
+	page, err := domain.NewEdgeDevice(testTenantPublicID, eventID, "page")
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := page.AddObservationPoint("north"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +108,7 @@ func TestUnregisterPageRollsBackCameraUnregisterOnFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	camera, err := domain.NewEdgeDeviceWithKind(testTenantPublicID, eventID, "camera", domain.EdgeDeviceKindCamera, nil, string(page.ObservationPoints[0].ID))
+	camera, err := domain.NewEdgeDeviceWithKind(testTenantPublicID, eventID, "camera", domain.EdgeDeviceKindCamera, string(page.ObservationPoints[0].ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,8 +143,12 @@ func TestConcurrentCameraAndPageUnregister(t *testing.T) {
 	})
 	devices := dbinfra.NewPostgresEdgeDeviceRepository(testDB)
 
-	page, err := domain.NewEdgeDevice(testTenantPublicID, eventID, "page", []string{"north"})
+	page, err := domain.NewEdgeDevice(testTenantPublicID, eventID, "page")
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := page.AddObservationPoint("north"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -148,7 +156,7 @@ func TestConcurrentCameraAndPageUnregister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	camera, err := domain.NewEdgeDeviceWithKind(testTenantPublicID, eventID, "camera", domain.EdgeDeviceKindCamera, nil, string(page.ObservationPoints[0].ID))
+	camera, err := domain.NewEdgeDeviceWithKind(testTenantPublicID, eventID, "camera", domain.EdgeDeviceKindCamera, string(page.ObservationPoints[0].ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,8 +239,12 @@ func TestPageUnregisterWaitsForCameraRegistration(t *testing.T) {
 	})
 	devices := dbinfra.NewPostgresEdgeDeviceRepository(testDB)
 
-	page, err := domain.NewEdgeDevice(testTenantPublicID, eventID, "page", []string{"north"})
+	page, err := domain.NewEdgeDevice(testTenantPublicID, eventID, "page")
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := page.AddObservationPoint("north"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -240,7 +252,7 @@ func TestPageUnregisterWaitsForCameraRegistration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	camera, err := domain.NewEdgeDeviceWithKind(testTenantPublicID, eventID, "camera", domain.EdgeDeviceKindCamera, nil, string(page.ObservationPoints[0].ID))
+	camera, err := domain.NewEdgeDeviceWithKind(testTenantPublicID, eventID, "camera", domain.EdgeDeviceKindCamera, string(page.ObservationPoints[0].ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,22 +325,23 @@ func registerObservationPage(
 	t *testing.T,
 	flow observationFlow,
 	eventID, name string,
-) *observationv1.RegisterEdgeDeviceResponse {
+) (string, string) {
 	t.Helper()
 
 	page, err := flow.edgeDevices.RegisterEdgeDevice(authorized(context.Background(),
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
-			EventId:               eventID,
-			Name:                  name,
-			ObservationPointNames: []string{"north"},
+			EventId: eventID,
+			Name:    name,
 		},
 	))
 	if err != nil {
 		t.Fatalf("RegisterEdgeDevice(page) error = %v", err)
 	}
 
-	return page
+	deviceID := page.GetDevice().GetEdgeDeviceId()
+
+	return deviceID, addObservationPoints(t, context.Background(), flow, eventID, deviceID, "north")[0]
 }
 
 func TestRegisterEdgeDeviceRejectsAnUnknownKind(t *testing.T) {
@@ -339,10 +352,9 @@ func TestRegisterEdgeDeviceRejectsAnUnknownKind(t *testing.T) {
 	_, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
-			EventId:               eventID,
-			Name:                  "unknown-kind",
-			ObservationPointNames: []string{"north"},
-			Kind:                  observationv1.EdgeDeviceKind(99),
+			EventId: eventID,
+			Name:    "unknown-kind",
+			Kind:    observationv1.EdgeDeviceKind(99),
 		},
 	))
 	if got := connectrpc.CodeOf(err); got != connectrpc.CodeInvalidArgument {
@@ -355,9 +367,7 @@ func TestCameraRegistrationRejectsAnUnregisteredObservationPage(t *testing.T) {
 	ctx := context.Background()
 	eventID := "c0ffee00c0ffee00"
 
-	page := registerObservationPage(t, flow, eventID, "gate-unregistered-camera")
-	deviceID := page.GetDevice().GetEdgeDeviceId()
-	pointID := page.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	deviceID, pointID := registerObservationPage(t, flow, eventID, "gate-unregistered-camera")
 
 	if _, err := flow.edgeDevices.UnregisterEdgeDevice(authorized(ctx,
 		flow.token(t, eventID, "events.manage"),
@@ -399,9 +409,9 @@ func TestConcurrentUnregisterAndCameraRegistrationRejectsAnUnregisteredPage(t *t
 	ctx := context.Background()
 	eventID := "c0ffee00c0ffee01"
 
-	page := registerObservationPage(t, flow, eventID, "gate-concurrent-camera")
-	pageID := domain.EdgeDeviceID(page.GetDevice().GetEdgeDeviceId())
-	pointID := domain.ObservationPointID(page.GetDevice().GetObservationPoints()[0].GetObservationPointId())
+	pageDeviceID, pagePointID := registerObservationPage(t, flow, eventID, "gate-concurrent-camera")
+	pageID := domain.EdgeDeviceID(pageDeviceID)
+	pointID := domain.ObservationPointID(pagePointID)
 
 	devices := dbinfra.NewPostgresEdgeDeviceRepository(testDB)
 	tenantCtx := internaljwt.ContextWithClaims(context.Background(), internaljwt.Claims{
