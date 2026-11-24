@@ -20,11 +20,12 @@ package: `tolo.observation.v1`
 
 | RPC | 説明（ユビキタス言語） | 呼び出し元 | 認可 | 関連ドメインイベント |
 |---|---|---|---|---|
-| RegisterEdgeDevice | エッジ端末を登録する。観測ページ端末の登録は実質的に観測点登録を兼ねる。カメラ端末の登録は観測点を登録しない | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered（観測ページ端末のみ）／CameraLinked |
+| RegisterEdgeDevice | エッジ端末を登録する。観測ページ端末は観測点0個で登録でき、観測点の名前を渡したときだけ観測点も登録する。カメラ端末の登録は観測点を登録しない | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered（観測ページ端末で観測点の名前を渡したときのみ）／CameraLinked |
 | UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。観測ページ端末の配下観測点は観測不能化する。カメラ端末の登録解除では、BFF が先に IdP のデバイス認可失効を記録してから登録解除を確定する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled（観測ページ端末のみ）／CameraUnlinked |
 | ReportCameraTransport | カメラ端末の映像方式を記録する。管理 UI が初期設定のときに Web Serial で読み取ったファームウェアの申告を送る（ADR-0136） | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | CameraTransportReported |
 | ListEdgeDevices | イベント配下のエッジ端末と観測点、種別、映像方式、カメラの紐づけを返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
-| ListEdgeDeviceObservationPoints | 指定した観測ページ端末の観測点をすべて返す。観測ページが、検知ラインと観測点を対応させるために使う（ADR-0105） | エッジ端末（観測ページ端末） | `event_access` + events.report | （参照のみ） |
+| ListEdgeDeviceObservationPoints | 指定した観測ページ端末の観測点をすべて返す。観測ページが、検知ラインの計上先として選ぶ観測点と、表示する観測点を得るために使う（ADR-0105、ADR-0137） | エッジ端末（観測ページ端末） | `event_access` + events.report | （参照のみ） |
+| AddObservationPoint | 指定した観測ページ端末に、カメラ方式の観測点を1つ追加する。設置する人が観測ページから観測点を作る操作（ADR-0137） | エッジ端末（観測ページ端末） | `event_access` + events.report | ObservationPointRegistered |
 | Heartbeat | 観測ページ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する。カメラ端末は呼べない | エッジ端末（観測ページ端末） | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
 
@@ -83,6 +84,7 @@ service EdgeDeviceService {
   rpc ReportCameraTransport(ReportCameraTransportRequest) returns (EdgeDevice);
   rpc ListEdgeDevices(ListEdgeDevicesRequest) returns (ListEdgeDevicesResponse);
   rpc ListEdgeDeviceObservationPoints(ListEdgeDeviceObservationPointsRequest) returns (ListEdgeDeviceObservationPointsResponse);
+  rpc AddObservationPoint(AddObservationPointRequest) returns (AddObservationPointResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
   rpc UpdateObservationPointConfig(UpdateObservationPointConfigRequest) returns (ObservationPoint);
 }
@@ -188,7 +190,7 @@ enum MeasurementMethod {
 message RegisterEdgeDeviceRequest {
   string event_id = 1;
   string name = 2;
-  repeated string observation_point_names = 3;  // 観測ページ端末の登録は観測点登録を兼ねる。カメラ端末では空
+  repeated string observation_point_names = 3;  // 観測ページ端末で渡した名前ごとに観測点を登録する。空でもよい。カメラ端末では空
   EdgeDeviceKind kind = 4;                       // 観測ページ端末またはカメラ端末。未指定は観測ページ端末として扱う
   string linked_observation_point_id = 5;        // カメラ端末を紐づけるカメラ方式の観測点1つ
 }
@@ -220,6 +222,14 @@ message ListEdgeDeviceObservationPointsRequest {
 }
 message ListEdgeDeviceObservationPointsResponse {
   repeated ObservationPoint observation_points = 1;
+}
+message AddObservationPointRequest {
+  string event_id = 1;
+  string edge_device_id = 2;  // 観測ページ端末の公開 ID
+  string name = 3;            // 空は invalid_argument。前後の空白を除いて同じ端末の観測点と重なれば already_exists
+}
+message AddObservationPointResponse {
+  ObservationPoint point = 1;  // カメラ方式の観測点
 }
 message HeartbeatRequest {
   string event_id = 1;
@@ -402,7 +412,7 @@ message UpdateObservationSettingsResponse {
   publish の失敗は再試行不要（sequence による冪等性があるため、次回の publish で回復する。配信の再試行はブローカーに任せる）
   publish にはイベント単位の順序キーを付与する（トピック規約。spec-base/README.md）
   ペイロードの型（`GuestStatus`）は本サービスの package が定義し、Guest Service は本サービスの Go モジュールを import して復号する（ADR-0106）
-- 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、ListEdgeDeviceObservationPoints、UnregisterEdgeDevice、ReportCameraTransport、UpdateObservationPointConfig）も例外としない
+- 対象イベントは全 RPC がリクエストの `event_id` で受け取る（spec-base/README.md の通信規約）。エッジ端末・観測点・QR 設置箇所を指定する RPC（ReportMeasurements、Heartbeat、ListEdgeDeviceObservationPoints、AddObservationPoint、UnregisterEdgeDevice、ReportCameraTransport、UpdateObservationPointConfig）も例外としない
   内部 JWT に `event_id` クレームがあればリクエストの `event_id` と突合し、不一致は `permission_denied` を返す
   リクエストが指す子資源（`edge_device_id`、`observation_point_id`、`Measurement.qr_location_id`）がリクエストの `event_id` に属さない場合も `permission_denied` を返す
   Guest Service からの QR 由来計上はマシン起点の `token_use=service` でクレームを持たないため、リクエストの `tenant_id` と `event_id` で対象テナント・イベントを受け取る（ADR-0093）
@@ -418,6 +428,9 @@ message UpdateObservationSettingsResponse {
   エリアの外の人は、どの観測点にも数えない。観測点が 1 つしかないカメラでも同じとする
   エリアは、ラインと同じく観測ページ端末の端末設定に置く。本サービスはエリアを持たない
   エリアが重ならなければ、1 人の検知は 1 つの観測点にしか入らない
+- 観測ページは、検知ラインごとに計上先の観測点の ID を端末設定に持つ（ADR-0137）。端末設定はラインとエリアと同じく観測ページ端末に置き、本サービスは持たない
+  計測値の `observation_point_id`、エリアの観測点、Heartbeat の `active_observation_point_ids` は、この ID で決める。観測点の名前は表示にだけ使い、ラインとの対応には使わない
+  カメラ端末の映像から計測する観測点は、カメラ紐づけの観測点の ID で決める
 - 同じグラフ要素に付いた複数の観測点は、方向別流量、停滞量スコア、人数スコア、占有量変化を観測点の間で平均して合成する。ルートとポイントで同じ規則とする（ADR-0134）
   ポイントの観測点は停滞しうる場所を俯瞰して見るものとする。ポイントの入口で流れを数える観測点は、そのポイントにつながるルートに付ける
   1 つの観測点の中の複数のラインは 1 つの断面を分けて数えるものとして、通過数を足す。QR 方式の観測点の計上も足す
@@ -447,7 +460,9 @@ message UpdateObservationSettingsResponse {
   HOLD と INVALID のグラフ要素は、観測スナップショットとスタッフ向けの詳細状況（`GetEventOverview`）で欠測とする。直近有効値は出さない
   `GetEventOverview` では、欠測のグラフ要素を省かず、値の欄（ルートの流量を含む）をすべて未設定にしたスコアとして返す。スナップショットの履歴には保存せず、Flow へ渡す履歴と統計から除く
 - エッジ端末は種別を持つ。観測ページ端末は観測点を所有し、Heartbeat と `online` で稼働を判定する。カメラ端末は映像ソースで、観測点を所有せず、Heartbeat も `online` も持たない
-  カメラ端末の登録は観測点登録を兼ねない。`ObservationPointRegistered` を発行しない
+  カメラ端末の登録は観測点を登録しない。`ObservationPointRegistered` を発行しない
+  観測ページ端末の観測点は、観測ページから AddObservationPoint で追加する（ADR-0137）。観測点0個の観測ページ端末を登録でき、管理 UI は登録で `observation_point_names` を送らない。`observation_point_names` を渡した登録では、名前ごとに観測点を登録する
+  AddObservationPoint は、名前が空なら `invalid_argument`、エッジ端末が存在しなければ `not_found`、カメラ端末または登録解除済みの端末なら `failed_precondition`、前後の空白を除いた名前が同じ観測点が同じ観測ページ端末にあれば `already_exists` を返す。`already_exists` により、追加の要求を再送しても観測点は重複しない
   カメラ端末は同一イベントの観測ページ端末が所有するカメラ方式の観測点1つに紐づける。同じ観測点に複数のカメラ端末を紐づけない。カメラ同士の紐づけと、QR 方式の観測点への紐づけは拒否する
   1つの観測ページ端末に複数のカメラ端末を紐づけられる。推論デバイスは1つの `edge_device_id` で複数のカメラを処理する（ADR-0130）
   ただし、1つの観測ページ端末に紐づくカメラ端末は、H.264 のカメラ端末1台か、JPEG または未申告のカメラ端末0台以上のどちらかに限る（ADR-0136）。数えるのは登録解除済みでないカメラ端末だけとする
@@ -463,7 +478,7 @@ message UpdateObservationSettingsResponse {
 - 観測ページ端末の稼働状態は本サービスが Heartbeat から判定し、`ListEdgeDevices` の `EdgeDevice.online` と `last_heartbeat_at` で返す
   稼働中は、観測ページが WebRTC で待ち受けていることを表す（Edge Bridge Service）。観測ページは待ち受けている間だけ Heartbeat を送り、待ち受けをやめたら送らない
   カメラ端末は Heartbeat を送らないため、`online` と `last_heartbeat_at` は値を持たない
-  カメラ端末に Heartbeat、ReportMeasurements、ListEdgeDeviceObservationPoints を送ると `failed_precondition` を返す。カメラ端末は観測点を持たない
+  カメラ端末に Heartbeat、ReportMeasurements、ListEdgeDeviceObservationPoints、AddObservationPoint を送ると `failed_precondition` を返す。カメラ端末は観測点を持たない
   `online` の判定は切断の判定と同じ基準を使う。基準は Heartbeat の途絶30秒とし、観測ページは基準より短い10秒間隔で送る。基準の時間は本サービスの設定であり、呼び出し側に判定を複製させない
   経路の障害の疑いで切断を保留している間も、`online` と `last_heartbeat_at` は Heartbeat の受信の事実どおりに返す。このため保留中は、`online` が false でも切断していない観測ページ端末がありうる
 - 登録解除は論理削除であり、エッジ端末と配下観測点の識別子を保持する
@@ -475,7 +490,7 @@ message UpdateObservationSettingsResponse {
   カメラ端末を登録解除した後に同じ機材を再び使う場合も、新規登録として新しい `edge_device_id` を発行する。登録解除を伴わない機材交換では、新しい機材に同じ `edge_device_id` を書き込み、Device Authorization をやり直す
   ただし、計測の水準が変わる機材の入れ替え、ラインの増減、エリアの変更では、観測点を登録し直す運用とする。本サービスはライン設定もエリアも持たず、同じ観測点のままではこれらの変化を検知できないため
   あるエリアを変えても、同じ端末のほかの観測点の検知人数の水準は変わらない。登録し直すのは、エリアを変えた観測点だけとする
-- 登録解除済みのエッジ端末の扱い: `ReportMeasurements`／`Heartbeat`／`ListEdgeDeviceObservationPoints` は `failed_precondition` を返す
+- 登録解除済みのエッジ端末の扱い: `ReportMeasurements`／`Heartbeat`／`ListEdgeDeviceObservationPoints`／`AddObservationPoint` は `failed_precondition` を返す
   発行済みの観測ページ URL は無効となり、開いても計測値を送れない
   `ListEdgeDevices` は既定で解除済みを返さず、`include_unregistered` の指定時のみ含める
   既に受信済みの計測値と観測スナップショットは削除しない
