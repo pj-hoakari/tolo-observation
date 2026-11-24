@@ -243,6 +243,26 @@ func authorized[T any](ctx context.Context, authorization string, message *T) (c
 	return ctx, message
 }
 
+func addObservationPoints(t *testing.T, ctx context.Context, flow observationFlow, eventID, deviceID string, names ...string) []string {
+	t.Helper()
+
+	pointIDs := make([]string, 0, len(names))
+
+	for _, name := range names {
+		added, err := flow.edgeDevices.AddObservationPoint(authorized(ctx,
+			flow.token(t, eventID, "events.report"),
+			&observationv1.AddObservationPointRequest{EventId: eventID, EdgeDeviceId: deviceID, Name: name},
+		))
+		if err != nil {
+			t.Fatalf("AddObservationPoint(%q) error = %v", name, err)
+		}
+
+		pointIDs = append(pointIDs, added.GetPoint().GetObservationPointId())
+	}
+
+	return pointIDs
+}
+
 func TestObservationFlow(t *testing.T) {
 	flow := newObservationFlow(t)
 	ctx := context.Background()
@@ -250,9 +270,8 @@ func TestObservationFlow(t *testing.T) {
 	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, testEventPublicID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
-			EventId:               testEventPublicID,
-			Name:                  "gate-1",
-			ObservationPointNames: []string{"north", "south"},
+			EventId: testEventPublicID,
+			Name:    "gate-1",
 		},
 	))
 	if err != nil {
@@ -269,14 +288,7 @@ func TestObservationFlow(t *testing.T) {
 		t.Errorf("registered device = %v, want offline without last_heartbeat_at", registered.GetDevice())
 	}
 
-	pointIDs := make([]string, 0, 2)
-	for _, point := range registered.GetDevice().GetObservationPoints() {
-		pointIDs = append(pointIDs, point.GetObservationPointId())
-	}
-
-	if len(pointIDs) != 2 {
-		t.Fatalf("observation_points = %v, want two points", pointIDs)
-	}
+	pointIDs := addObservationPoints(t, ctx, flow, testEventPublicID, deviceID, "north", "south")
 
 	reportToken := flow.token(t, testEventPublicID, "events.report")
 
@@ -326,6 +338,10 @@ func TestObservationFlow(t *testing.T) {
 
 	if devices[0].GetLastHeartbeatAt() == nil {
 		t.Errorf("last_heartbeat_at is unset, want the heartbeat time")
+	}
+
+	if points := devices[0].GetObservationPoints(); len(points) != 2 {
+		t.Fatalf("observation_points = %v, want two points", points)
 	}
 
 	for _, point := range devices[0].GetObservationPoints() {

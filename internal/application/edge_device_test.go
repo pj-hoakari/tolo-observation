@@ -92,9 +92,8 @@ func TestRegisterEdgeDeviceBuildsObservationPagePath(t *testing.T) {
 	devices.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
 	output, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), application.RegisterEdgeDeviceInput{
-		EventID:               testEventPublicID,
-		Name:                  "gate-1",
-		ObservationPointNames: []string{"north"},
+		EventID: testEventPublicID,
+		Name:    "gate-1",
 	})
 	if err != nil {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)
@@ -115,9 +114,8 @@ func TestRegisterEdgeDeviceRejectsAnotherEventsToken(t *testing.T) {
 	service, _ := newService(t)
 
 	_, err := service.RegisterEdgeDevice(withEventToken(otherEventPublicID), application.RegisterEdgeDeviceInput{
-		EventID:               testEventPublicID,
-		Name:                  "gate-1",
-		ObservationPointNames: nil,
+		EventID: testEventPublicID,
+		Name:    "gate-1",
 	})
 	if !errors.Is(err, tenantctx.ErrEventMismatch) {
 		t.Fatalf("RegisterEdgeDevice() error = %v, want %v", err, tenantctx.ErrEventMismatch)
@@ -475,14 +473,6 @@ func TestRegisterCameraEdgeDeviceRejectsAnInvalidKindAndLinkCombination(t *testi
 		want  error
 	}{
 		{
-			name: "camera with observation point names",
-			input: application.RegisterEdgeDeviceInput{
-				EventID: testEventPublicID, Name: "camera-1", Kind: domain.EdgeDeviceKindCamera,
-				ObservationPointNames: []string{"north"}, LinkedObservationPointID: testCameraLinkedPointID,
-			},
-			want: domain.ErrCameraPointNamesNotAllowed,
-		},
-		{
 			name: "camera without a linked point",
 			input: application.RegisterEdgeDeviceInput{
 				EventID: testEventPublicID, Name: "camera-1", Kind: domain.EdgeDeviceKindCamera,
@@ -493,7 +483,7 @@ func TestRegisterCameraEdgeDeviceRejectsAnInvalidKindAndLinkCombination(t *testi
 			name: "observation page with a linked point",
 			input: application.RegisterEdgeDeviceInput{
 				EventID: testEventPublicID, Name: "gate-1", Kind: domain.EdgeDeviceKindObservationPage,
-				ObservationPointNames: []string{"north"}, LinkedObservationPointID: testCameraLinkedPointID,
+				LinkedObservationPointID: testCameraLinkedPointID,
 			},
 			want: domain.ErrPageLinkedPointNotAllowed,
 		},

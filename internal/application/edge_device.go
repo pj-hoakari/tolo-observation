@@ -19,7 +19,6 @@ var ErrForeignEvent = errors.New("resource belongs to another event")
 type RegisterEdgeDeviceInput struct {
 	EventID                  string
 	Name                     string
-	ObservationPointNames    []string
 	Kind                     domain.EdgeDeviceKind
 	LinkedObservationPointID string
 }
@@ -116,7 +115,6 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(ctx context.Context, input Regist
 		input.EventID,
 		input.Name,
 		input.Kind,
-		input.ObservationPointNames,
 		input.LinkedObservationPointID,
 	)
 	if err != nil {

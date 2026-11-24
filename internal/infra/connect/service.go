@@ -135,7 +135,6 @@ func (s *EdgeDeviceService) RegisterEdgeDevice(
 	output, err := s.useCases.RegisterEdgeDevice(ctx, application.RegisterEdgeDeviceInput{
 		EventID:                  req.GetEventId(),
 		Name:                     req.GetName(),
-		ObservationPointNames:    req.GetObservationPointNames(),
 		Kind:                     kind,
 		LinkedObservationPointID: req.GetLinkedObservationPointId(),
 	})

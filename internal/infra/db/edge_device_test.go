@@ -20,9 +20,15 @@ func withTenant(ctx context.Context, tenantPublicID string) context.Context {
 func newDevice(t *testing.T, tenantPublicID, eventID string, pointNames ...string) domain.EdgeDevice {
 	t.Helper()
 
-	device, err := domain.NewEdgeDevice(tenantPublicID, eventID, "front gate", pointNames)
+	device, err := domain.NewEdgeDevice(tenantPublicID, eventID, "front gate")
 	if err != nil {
 		t.Fatalf("NewEdgeDevice: %v", err)
+	}
+
+	for _, pointName := range pointNames {
+		if _, err := device.AddObservationPoint(pointName); err != nil {
+			t.Fatalf("AddObservationPoint(%q): %v", pointName, err)
+		}
 	}
 
 	return device
@@ -36,7 +42,6 @@ func newCamera(t *testing.T, tenantPublicID, eventID string, pointID domain.Obse
 		eventID,
 		"camera-1",
 		domain.EdgeDeviceKindCamera,
-		nil,
 		string(pointID),
 	)
 	if err != nil {

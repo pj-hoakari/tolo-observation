@@ -133,9 +133,8 @@ func TestRegisterEdgeDevice(t *testing.T) {
 	client := newEdgeDeviceClient(t, "events.manage", useCases)
 
 	res, err := client.RegisterEdgeDevice(context.Background(), &observationv1.RegisterEdgeDeviceRequest{
-		EventId:               testEventPublicID,
-		Name:                  "gate-1",
-		ObservationPointNames: []string{"north"},
+		EventId: testEventPublicID,
+		Name:    "gate-1",
 	})
 	if err != nil {
 		t.Fatalf("RegisterEdgeDevice() error = %v", err)

@@ -67,9 +67,8 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 	registered, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx,
 		flow.token(t, arcHistoryEventPublicID, "events.manage"),
 		&observationv1.RegisterEdgeDeviceRequest{
-			EventId:               arcHistoryEventPublicID,
-			Name:                  "gate-1",
-			ObservationPointNames: []string{"corridor"},
+			EventId: arcHistoryEventPublicID,
+			Name:    "gate-1",
 		},
 	))
 	if err != nil {
@@ -77,7 +76,7 @@ func TestObservationCycleSendsArcHistory(t *testing.T) {
 	}
 
 	deviceID := registered.GetDevice().GetEdgeDeviceId()
-	corridor := registered.GetDevice().GetObservationPoints()[0].GetObservationPointId()
+	corridor := addObservationPoints(t, ctx, flow, arcHistoryEventPublicID, deviceID, "corridor")[0]
 	flow.graph.mapTo(corridor, &kernelv1.GraphAnchor{Target: &kernelv1.GraphAnchor_RouteId{RouteId: "r1"}})
 
 	reportToken := flow.token(t, arcHistoryEventPublicID, "events.report")

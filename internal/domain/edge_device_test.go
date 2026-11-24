@@ -98,9 +98,15 @@ func TestParsePublicIDs(t *testing.T) {
 func TestNewEdgeDevice(t *testing.T) {
 	t.Parallel()
 
-	device, err := domain.NewEdgeDevice("tenant-1", "event-1", " front gate ", []string{"in", "out"})
+	device, err := domain.NewEdgeDevice("tenant-1", "event-1", " front gate ")
 	if err != nil {
 		t.Fatalf("NewEdgeDevice: %v", err)
+	}
+
+	for _, pointName := range []string{"in", "out"} {
+		if _, err := device.AddObservationPoint(pointName); err != nil {
+			t.Fatalf("AddObservationPoint(%q): %v", pointName, err)
+		}
 	}
 
 	if device.Name != "front gate" {
@@ -142,23 +148,18 @@ func TestNewEdgeDeviceValidation(t *testing.T) {
 		tenant     string
 		event      string
 		deviceName string
-		points     []string
 		wantErr    error
 	}{
-		{name: "no tenant", tenant: " ", event: "event-1", deviceName: "gate", points: nil, wantErr: domain.ErrTenantRequired},
-		{name: "no event", tenant: "tenant-1", event: "", deviceName: "gate", points: nil, wantErr: domain.ErrEventRequired},
-		{name: "no name", tenant: "tenant-1", event: "event-1", deviceName: "  ", points: nil, wantErr: domain.ErrEdgeDeviceNameRequired},
-		{
-			name: "no point name", tenant: "tenant-1", event: "event-1", deviceName: "gate",
-			points: []string{"in", " "}, wantErr: domain.ErrObservationPointNameRequired,
-		},
+		{name: "no tenant", tenant: " ", event: "event-1", deviceName: "gate", wantErr: domain.ErrTenantRequired},
+		{name: "no event", tenant: "tenant-1", event: "", deviceName: "gate", wantErr: domain.ErrEventRequired},
+		{name: "no name", tenant: "tenant-1", event: "event-1", deviceName: "  ", wantErr: domain.ErrEdgeDeviceNameRequired},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := domain.NewEdgeDevice(test.tenant, test.event, test.deviceName, test.points)
+			_, err := domain.NewEdgeDevice(test.tenant, test.event, test.deviceName)
 			if !errors.Is(err, test.wantErr) {
 				t.Errorf("error = %v, want %v", err, test.wantErr)
 			}
@@ -229,7 +230,7 @@ func TestEdgeDeviceUpdateObservationPoint(t *testing.T) {
 func TestNewObservationPageEdgeDeviceWithoutObservationPoints(t *testing.T) {
 	t.Parallel()
 
-	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "gate", nil)
+	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "gate")
 	if err != nil {
 		t.Fatalf("NewEdgeDevice: %v", err)
 	}
@@ -242,7 +243,7 @@ func TestNewObservationPageEdgeDeviceWithoutObservationPoints(t *testing.T) {
 func TestEdgeDeviceAddObservationPoint(t *testing.T) {
 	t.Parallel()
 
-	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "gate", nil)
+	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "gate")
 	if err != nil {
 		t.Fatalf("NewEdgeDevice: %v", err)
 	}
@@ -264,7 +265,7 @@ func TestEdgeDeviceAddObservationPoint(t *testing.T) {
 func TestEdgeDeviceAddObservationPointRejects(t *testing.T) {
 	t.Parallel()
 
-	camera, err := domain.NewEdgeDeviceWithKind("tenant-1", "event-1", "camera", domain.EdgeDeviceKindCamera, nil, "99aabbccddeeff00")
+	camera, err := domain.NewEdgeDeviceWithKind("tenant-1", "event-1", "camera", domain.EdgeDeviceKindCamera, "99aabbccddeeff00")
 	if err != nil {
 		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
 	}
@@ -347,9 +348,15 @@ func durationPtr(d time.Duration) *time.Duration { return &d }
 func newTestDevice(t *testing.T) domain.EdgeDevice {
 	t.Helper()
 
-	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "front gate", []string{"in", "out"})
+	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "front gate")
 	if err != nil {
 		t.Fatalf("NewEdgeDevice: %v", err)
+	}
+
+	for _, pointName := range []string{"in", "out"} {
+		if _, err := device.AddObservationPoint(pointName); err != nil {
+			t.Fatalf("AddObservationPoint(%q): %v", pointName, err)
+		}
 	}
 
 	return device
@@ -436,7 +443,6 @@ func TestNewCameraEdgeDevice(t *testing.T) {
 		"event-1",
 		" camera-1 ",
 		domain.EdgeDeviceKindCamera,
-		nil,
 		string(linkedPointID),
 	)
 	if err != nil {
@@ -477,14 +483,9 @@ func TestNewEdgeDeviceKindValidation(t *testing.T) {
 	tests := []struct {
 		name     string
 		kind     domain.EdgeDeviceKind
-		points   []string
 		linkedID string
 		wantErr  error
 	}{
-		{
-			name: "camera with point names", kind: domain.EdgeDeviceKindCamera,
-			points: []string{"north"}, linkedID: linkedPointID, wantErr: domain.ErrCameraPointNamesNotAllowed,
-		},
 		{
 			name: "camera without a linked point", kind: domain.EdgeDeviceKindCamera,
 			wantErr: domain.ErrCameraLinkedPointRequired,
@@ -495,7 +496,7 @@ func TestNewEdgeDeviceKindValidation(t *testing.T) {
 		},
 		{
 			name: "observation page with a linked point", kind: domain.EdgeDeviceKindObservationPage,
-			points: []string{"north"}, linkedID: linkedPointID, wantErr: domain.ErrPageLinkedPointNotAllowed,
+			linkedID: linkedPointID, wantErr: domain.ErrPageLinkedPointNotAllowed,
 		},
 		{
 			name: "unknown kind", kind: domain.EdgeDeviceKind(99),
@@ -512,7 +513,6 @@ func TestNewEdgeDeviceKindValidation(t *testing.T) {
 				"event-1",
 				"device",
 				test.kind,
-				test.points,
 				test.linkedID,
 			)
 			if !errors.Is(err, test.wantErr) {
@@ -525,7 +525,7 @@ func TestNewEdgeDeviceKindValidation(t *testing.T) {
 func TestUnspecifiedKindIsAnObservationPage(t *testing.T) {
 	t.Parallel()
 
-	device, err := domain.NewEdgeDeviceWithKind("tenant-1", "event-1", "gate", domain.EdgeDeviceKind(0), []string{"north"}, "")
+	device, err := domain.NewEdgeDeviceWithKind("tenant-1", "event-1", "gate", domain.EdgeDeviceKind(0), "")
 	if err != nil {
 		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
 	}
@@ -543,7 +543,6 @@ func TestCameraUnregisterRemovesLinksWithoutDisablingObservationPoints(t *testin
 		"event-1",
 		"camera-1",
 		domain.EdgeDeviceKindCamera,
-		nil,
 		"99aabbccddeeff00",
 	)
 	if err != nil {
@@ -575,7 +574,6 @@ func TestCameraHeartbeatIsRejected(t *testing.T) {
 		"event-1",
 		"camera-1",
 		domain.EdgeDeviceKindCamera,
-		nil,
 		"99aabbccddeeff00",
 	)
 	if err != nil {
