@@ -11,7 +11,7 @@ Edge Bridge Service は WebRTC のシグナリングのみを担い、Service Ga
 
 | ドメインイベント | 対応 |
 |---|---|
-| EdgeDeviceRegistered／ObservationPointRegistered／CameraLinked | EdgeDeviceService.RegisterEdgeDevice（ObservationPointRegistered は観測点の名前を渡した観測ページ端末のみ。カメラ端末は CameraLinked） |
+| EdgeDeviceRegistered／CameraLinked | EdgeDeviceService.RegisterEdgeDevice（観測点は登録しない。カメラ端末は CameraLinked） |
 | ObservationPointRegistered | EdgeDeviceService.AddObservationPoint（観測ページから観測ページ端末に観測点を追加する） |
 | EdgeDeviceUnregistered／CameraUnlinked | EdgeDeviceService.UnregisterEdgeDevice |
 | CameraTransportReported | EdgeDeviceService.ReportCameraTransport（カメラ端末のみ。管理 UI が Web Serial で読み取った映像方式を記録する） |

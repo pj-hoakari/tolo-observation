@@ -20,7 +20,7 @@ package: `tolo.observation.v1`
 
 | RPC | 説明（ユビキタス言語） | 呼び出し元 | 認可 | 関連ドメインイベント |
 |---|---|---|---|---|
-| RegisterEdgeDevice | エッジ端末を登録する。観測ページ端末は観測点0個で登録でき、観測点の名前を渡したときだけ観測点も登録する。カメラ端末の登録は観測点を登録しない | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／ObservationPointRegistered（観測ページ端末で観測点の名前を渡したときのみ）／CameraLinked |
+| RegisterEdgeDevice | エッジ端末を登録する。観測点は登録しない。観測ページ端末は観測点0個で登録し、観測点は AddObservationPoint で追加する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceRegistered／CameraLinked |
 | UnregisterEdgeDevice | エッジ端末を登録解除する。撤去した端末を運用から外す操作。観測ページ端末の配下観測点は観測不能化する。カメラ端末の登録解除では、BFF が先に IdP のデバイス認可失効を記録してから登録解除を確定する | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | EdgeDeviceUnregistered／ObservationPointDisabled（観測ページ端末のみ）／CameraUnlinked |
 | ReportCameraTransport | カメラ端末の映像方式を記録する。管理 UI が初期設定のときに Web Serial で読み取ったファームウェアの申告を送る（ADR-0136） | 管理 UI（オーナー／スタッフ） | `event_access` + events.manage | CameraTransportReported |
 | ListEdgeDevices | イベント配下のエッジ端末と観測点、種別、映像方式、カメラの紐づけを返す（管理 UI の表示用。グラフ紐づけは Graph Authoring の GetGraph 側） | 管理 UI（オーナー／スタッフ） | `event_access` + events.read | （参照のみ） |
@@ -28,7 +28,6 @@ package: `tolo.observation.v1`
 | AddObservationPoint | 指定した観測ページ端末に、カメラ方式の観測点を1つ追加する。設置する人が観測ページから観測点を作る操作（ADR-0137） | エッジ端末（観測ページ端末） | `event_access` + events.report | ObservationPointRegistered |
 | Heartbeat | 観測ページ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する。カメラ端末は呼べない | エッジ端末（観測ページ端末） | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
-| AddObservationPoint | 観測ページ端末にカメラ方式の観測点を1つ追加する。観測ページがラインを観測点に対応させるときに作る。同じ端末に同名の観測点があれば `already_exists` を返し、再送で重複させない。カメラ端末は `failed_precondition` | エッジ端末（観測ページ端末） | `event_access` + events.report | ObservationPointRegistered |
 
 ### 手動介入・運用状態の変更（現場誘導のシステム接点。誘導ドメイン所属）
 
@@ -88,7 +87,6 @@ service EdgeDeviceService {
   rpc AddObservationPoint(AddObservationPointRequest) returns (AddObservationPointResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
   rpc UpdateObservationPointConfig(UpdateObservationPointConfigRequest) returns (ObservationPoint);
-  rpc AddObservationPoint(AddObservationPointRequest) returns (AddObservationPointResponse);
 }
 
 service ManualInterventionService {
@@ -192,9 +190,10 @@ enum MeasurementMethod {
 message RegisterEdgeDeviceRequest {
   string event_id = 1;
   string name = 2;
-  repeated string observation_point_names = 3;  // 観測ページ端末で渡した名前ごとに観測点を登録する。空でもよい。カメラ端末では空
-  EdgeDeviceKind kind = 4;                       // 観測ページ端末またはカメラ端末。未指定は観測ページ端末として扱う
-  string linked_observation_point_id = 5;        // カメラ端末を紐づけるカメラ方式の観測点1つ
+  EdgeDeviceKind kind = 4;                 // 観測ページ端末またはカメラ端末。未指定は観測ページ端末として扱う
+  string linked_observation_point_id = 5;  // カメラ端末を紐づけるカメラ方式の観測点1つ
+  reserved 3;
+  reserved "observation_point_names";
 }
 message RegisterEdgeDeviceResponse {
   EdgeDevice device = 1;
@@ -245,14 +244,6 @@ message UpdateObservationPointConfigRequest {
   string observation_point_id = 2;
   string name = 3;
   bool enabled = 4;
-}
-message AddObservationPointRequest {
-  string event_id = 1;
-  string edge_device_id = 2;
-  string name = 3;  // 前後の空白を除いて保存する。同じ端末に同名の観測点があれば already_exists
-}
-message AddObservationPointResponse {
-  ObservationPoint point = 1;
 }
 
 // ---- 手動介入・運用状態の変更 ----
@@ -470,15 +461,15 @@ message UpdateObservationSettingsResponse {
   HOLD と INVALID のグラフ要素は、観測スナップショットとスタッフ向けの詳細状況（`GetEventOverview`）で欠測とする。直近有効値は出さない
   `GetEventOverview` では、欠測のグラフ要素を省かず、値の欄（ルートの流量を含む）をすべて未設定にしたスコアとして返す。スナップショットの履歴には保存せず、Flow へ渡す履歴と統計から除く
 - エッジ端末は種別を持つ。観測ページ端末は観測点を所有し、Heartbeat と `online` で稼働を判定する。カメラ端末は映像ソースで、観測点を所有せず、Heartbeat も `online` も持たない
-  カメラ端末の登録は観測点を登録しない。`ObservationPointRegistered` を発行しない
-  観測ページ端末の観測点は、観測ページから AddObservationPoint で追加する（ADR-0137）。観測点0個の観測ページ端末を登録でき、管理 UI は登録で `observation_point_names` を送らない。`observation_point_names` を渡した登録では、名前ごとに観測点を登録する
+  RegisterEdgeDevice は観測ページ端末でもカメラ端末でも観測点を登録せず、`ObservationPointRegistered` を発行しない（ADR-0138）
+  観測ページ端末は観測点0個で登録する。観測点は、観測ページから AddObservationPoint で追加する（ADR-0137）
   AddObservationPoint は、名前が空なら `invalid_argument`、エッジ端末が存在しなければ `not_found`、カメラ端末または登録解除済みの端末なら `failed_precondition`、前後の空白を除いた名前が同じ観測点が同じ観測ページ端末にあれば `already_exists` を返す。`already_exists` により、追加の要求を再送しても観測点は重複しない
   カメラ端末は同一イベントの観測ページ端末が所有するカメラ方式の観測点1つに紐づける。同じ観測点に複数のカメラ端末を紐づけない。カメラ同士の紐づけと、QR 方式の観測点への紐づけは拒否する
   1つの観測ページ端末に複数のカメラ端末を紐づけられる。推論デバイスは1つの `edge_device_id` で複数のカメラを処理する（ADR-0130）
   ただし、1つの観測ページ端末に紐づくカメラ端末は、H.264 のカメラ端末1台か、JPEG または未申告のカメラ端末0台以上のどちらかに限る（ADR-0136）。数えるのは登録解除済みでないカメラ端末だけとする
   H.264 のカメラ端末が紐づく観測ページ端末へカメラ端末を RegisterEdgeDevice で登録する要求と、ほかのカメラ端末も紐づく観測ページ端末のカメラ端末に H.264 を申告する ReportCameraTransport は、`failed_precondition` を返す
   カメラ端末の登録解除では、BFF が先に IdP へ端末の失効を記録し、成功してから Observation の登録解除を確定する。Observation の登録解除後、BFF は接続委任も失効させる。IdP に失効を記録できなければ登録解除を完了させない
-  RegisterEdgeDevice でカメラ端末を登録するときは、`observation_point_names` を空にし、紐づけ先のカメラ方式観測点1つを指定する。観測ページ端末の登録では、カメラの紐づけ先を指定しない。種別と紐づけ先の組み合わせが不正な場合は `invalid_argument` を返す。`kind` を省略した要求は観測ページ端末として扱う
+  RegisterEdgeDevice でカメラ端末を登録するときは、紐づけ先のカメラ方式観測点1つを指定する。観測ページ端末の登録では、カメラの紐づけ先を指定しない。種別と紐づけ先の組み合わせが不正な場合は `invalid_argument` を返す。`kind` を省略した要求は観測ページ端末として扱う
 - カメラ端末の映像方式は、ファームウェアの申告を ReportCameraTransport で記録する（ADR-0136）
   管理 UI は、Web Serial で初期設定を書き込む前にファームウェアの状態を問い合わせ、応答に映像方式があれば ReportCameraTransport を呼ぶ。拒否されたら初期設定とデバイス認可の承認に進まない。応答に映像方式がなければ未申告のまま続ける
   RegisterEdgeDevice で登録した直後のカメラ端末は未申告とする。登録の要求では映像方式を受け取らない
