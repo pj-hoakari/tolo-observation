@@ -50,6 +50,11 @@ func TestGeneratedPoliciesMatchTheSpecification(t *testing.T) {
 			TokenUses:      []string{"event_access"},
 			RequiredScopes: []string{"events.operate"},
 		},
+		observationv1connect.EdgeDeviceServiceAddObservationPointProcedure: {
+			Level:          authz.LevelAuthenticated,
+			TokenUses:      []string{"event_access"},
+			RequiredScopes: []string{"events.report"},
+		},
 		observationv1connect.ManualInterventionServiceOperateGateProcedure: {
 			Level:          authz.LevelAuthenticated,
 			TokenUses:      []string{"event_access"},

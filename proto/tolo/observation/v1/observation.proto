@@ -60,6 +60,13 @@ service EdgeDeviceService {
       token_uses: "event_access"
     };
   }
+  rpc AddObservationPoint(AddObservationPointRequest) returns (AddObservationPointResponse) {
+    option (authz.v1.auth_policy) = {
+      level: AUTH_LEVEL_AUTHENTICATED
+      required_scopes: "events.report"
+      token_uses: "event_access"
+    };
+  }
 }
 
 service ManualInterventionService {
@@ -252,6 +259,16 @@ message UpdateObservationPointConfigRequest {
 }
 
 message UpdateObservationPointConfigResponse {
+  ObservationPoint point = 1;
+}
+
+message AddObservationPointRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+  string name = 3;
+}
+
+message AddObservationPointResponse {
   ObservationPoint point = 1;
 }
 

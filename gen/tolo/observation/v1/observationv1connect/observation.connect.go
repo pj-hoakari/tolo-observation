@@ -55,6 +55,9 @@ const (
 	// EdgeDeviceServiceUpdateObservationPointConfigProcedure is the procedure name of the
 	// EdgeDeviceService's UpdateObservationPointConfig RPC.
 	EdgeDeviceServiceUpdateObservationPointConfigProcedure = "/tolo.observation.v1.EdgeDeviceService/UpdateObservationPointConfig"
+	// EdgeDeviceServiceAddObservationPointProcedure is the procedure name of the EdgeDeviceService's
+	// AddObservationPoint RPC.
+	EdgeDeviceServiceAddObservationPointProcedure = "/tolo.observation.v1.EdgeDeviceService/AddObservationPoint"
 	// ManualInterventionServiceOperateGateProcedure is the procedure name of the
 	// ManualInterventionService's OperateGate RPC.
 	ManualInterventionServiceOperateGateProcedure = "/tolo.observation.v1.ManualInterventionService/OperateGate"
@@ -200,6 +203,13 @@ var (
 			Procedure:  EdgeDeviceServiceUpdateObservationPointConfigProcedure,
 		}
 	})
+	edgeDeviceServiceAddObservationPointSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_tolo_observation_v1_observation_proto.Services().ByName("EdgeDeviceService").Methods().ByName("AddObservationPoint"),
+			Procedure:  EdgeDeviceServiceAddObservationPointProcedure,
+		}
+	})
 )
 
 // EdgeDeviceServiceClient is a client for the tolo.observation.v1.EdgeDeviceService service.
@@ -210,6 +220,7 @@ type EdgeDeviceServiceClient interface {
 	ListEdgeDeviceObservationPoints(context.Context, *v1.ListEdgeDeviceObservationPointsRequest) (*v1.ListEdgeDeviceObservationPointsResponse, error)
 	Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error)
 	UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error)
+	AddObservationPoint(context.Context, *v1.AddObservationPointRequest) (*v1.AddObservationPointResponse, error)
 }
 
 // NewEdgeDeviceServiceClient constructs a client for the tolo.observation.v1.EdgeDeviceService
@@ -227,6 +238,7 @@ type EdgeDeviceServiceHandler interface {
 	ListEdgeDeviceObservationPoints(context.Context, *v1.ListEdgeDeviceObservationPointsRequest) (*v1.ListEdgeDeviceObservationPointsResponse, error)
 	Heartbeat(context.Context, *v1.HeartbeatRequest) (*v1.HeartbeatResponse, error)
 	UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error)
+	AddObservationPoint(context.Context, *v1.AddObservationPointRequest) (*v1.AddObservationPointResponse, error)
 }
 
 // RegisterEdgeDeviceServiceHandler registers svc as the tolo.observation.v1.EdgeDeviceService
@@ -240,6 +252,7 @@ func RegisterEdgeDeviceServiceHandler(server *connect.Server, svc EdgeDeviceServ
 		connect.Method{Spec: edgeDeviceServiceListEdgeDeviceObservationPointsSpec(), Handler: adapter.listEdgeDeviceObservationPoints},
 		connect.Method{Spec: edgeDeviceServiceHeartbeatSpec(), Handler: adapter.heartbeat},
 		connect.Method{Spec: edgeDeviceServiceUpdateObservationPointConfigSpec(), Handler: adapter.updateObservationPointConfig},
+		connect.Method{Spec: edgeDeviceServiceAddObservationPointSpec(), Handler: adapter.addObservationPoint},
 	)
 }
 
@@ -268,6 +281,10 @@ func (UnimplementedEdgeDeviceServiceHandler) Heartbeat(context.Context, *v1.Hear
 
 func (UnimplementedEdgeDeviceServiceHandler) UpdateObservationPointConfig(context.Context, *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.UpdateObservationPointConfig is not implemented")
+}
+
+func (UnimplementedEdgeDeviceServiceHandler) AddObservationPoint(context.Context, *v1.AddObservationPointRequest) (*v1.AddObservationPointResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "tolo.observation.v1.EdgeDeviceService.AddObservationPoint is not implemented")
 }
 
 type edgeDeviceServiceClient struct {
@@ -317,6 +334,14 @@ func (c *edgeDeviceServiceClient) Heartbeat(ctx context.Context, req *v1.Heartbe
 func (c *edgeDeviceServiceClient) UpdateObservationPointConfig(ctx context.Context, req *v1.UpdateObservationPointConfigRequest) (*v1.UpdateObservationPointConfigResponse, error) {
 	var res v1.UpdateObservationPointConfigResponse
 	if err := c.client.CallUnary(ctx, edgeDeviceServiceUpdateObservationPointConfigSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *edgeDeviceServiceClient) AddObservationPoint(ctx context.Context, req *v1.AddObservationPointRequest) (*v1.AddObservationPointResponse, error) {
+	var res v1.AddObservationPointResponse
+	if err := c.client.CallUnary(ctx, edgeDeviceServiceAddObservationPointSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -390,6 +415,18 @@ func (h edgeDeviceServiceHandler) updateObservationPointConfig(ctx context.Conte
 		return err
 	}
 	res, err := h.svc.UpdateObservationPointConfig(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h edgeDeviceServiceHandler) addObservationPoint(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AddObservationPointRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.AddObservationPoint(ctx, &req)
 	if err != nil {
 		return err
 	}
