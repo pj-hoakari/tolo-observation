@@ -226,6 +226,84 @@ func TestEdgeDeviceUpdateObservationPoint(t *testing.T) {
 	}
 }
 
+func TestNewObservationPageEdgeDeviceWithoutObservationPoints(t *testing.T) {
+	t.Parallel()
+
+	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "gate", nil)
+	if err != nil {
+		t.Fatalf("NewEdgeDevice: %v", err)
+	}
+
+	if len(device.ObservationPoints) != 0 {
+		t.Errorf("ObservationPoints = %+v, want none", device.ObservationPoints)
+	}
+}
+
+func TestEdgeDeviceAddObservationPoint(t *testing.T) {
+	t.Parallel()
+
+	device, err := domain.NewEdgeDevice("tenant-1", "event-1", "gate", nil)
+	if err != nil {
+		t.Fatalf("NewEdgeDevice: %v", err)
+	}
+
+	added, err := device.AddObservationPoint(" north lane ")
+	if err != nil {
+		t.Fatalf("AddObservationPoint: %v", err)
+	}
+
+	if added.Name != "north lane" || !added.Enabled || !publicIDPattern.MatchString(string(added.ID)) {
+		t.Errorf("added point = %+v, want enabled %q with a public ID", added, "north lane")
+	}
+
+	if len(device.ObservationPoints) != 1 || device.ObservationPoints[0] != added {
+		t.Errorf("ObservationPoints = %+v, want only %+v", device.ObservationPoints, added)
+	}
+}
+
+func TestEdgeDeviceAddObservationPointRejects(t *testing.T) {
+	t.Parallel()
+
+	camera, err := domain.NewEdgeDeviceWithKind("tenant-1", "event-1", "camera", domain.EdgeDeviceKindCamera, nil, "99aabbccddeeff00")
+	if err != nil {
+		t.Fatalf("NewEdgeDeviceWithKind: %v", err)
+	}
+
+	unregistered := newTestDevice(t)
+	if err := unregistered.Unregister(); err != nil {
+		t.Fatalf("Unregister: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		device    domain.EdgeDevice
+		pointName string
+		wantErr   error
+	}{
+		{name: "blank name", device: newTestDevice(t), pointName: " ", wantErr: domain.ErrObservationPointNameRequired},
+		{name: "name already used", device: newTestDevice(t), pointName: " in ", wantErr: domain.ErrObservationPointNameTaken},
+		{name: "camera", device: camera, pointName: "north", wantErr: domain.ErrEdgeDeviceCameraUnsupported},
+		{name: "unregistered", device: unregistered, pointName: "north", wantErr: domain.ErrEdgeDeviceUnregistered},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			device := test.device
+			before := len(device.ObservationPoints)
+
+			if _, err := device.AddObservationPoint(test.pointName); !errors.Is(err, test.wantErr) {
+				t.Errorf("error = %v, want %v", err, test.wantErr)
+			}
+
+			if len(device.ObservationPoints) != before {
+				t.Errorf("rejected add changed the points: %+v", device.ObservationPoints)
+			}
+		})
+	}
+}
+
 func TestEdgeDeviceOnline(t *testing.T) {
 	t.Parallel()
 

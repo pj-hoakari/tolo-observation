@@ -3,6 +3,7 @@ package connect
 import (
 	"context"
 	"errors"
+	"regexp"
 	"testing"
 	"time"
 
@@ -488,5 +489,57 @@ func TestConcurrentUnregisterAndCameraRegistrationRejectsAnUnregisteredPage(t *t
 
 	if len(owner.CameraLinks) != 0 {
 		t.Errorf("camera links = %v, want none for the unregistered page", owner.CameraLinks)
+	}
+}
+
+func TestAddObservationPointFromTheObservationPage(t *testing.T) {
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+	eventID := "c0ffee00c0ffee05"
+
+	page, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx, flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "page"},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deviceID := page.GetDevice().GetEdgeDeviceId()
+	if points := page.GetDevice().GetObservationPoints(); len(points) != 0 {
+		t.Fatalf("registered points = %v, want none", points)
+	}
+
+	added, err := flow.edgeDevices.AddObservationPoint(authorized(ctx, flow.token(t, eventID, "events.report"),
+		&observationv1.AddObservationPointRequest{EventId: eventID, EdgeDeviceId: deviceID, Name: " north "},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = flow.edgeDevices.AddObservationPoint(authorized(ctx, flow.token(t, eventID, "events.report"),
+		&observationv1.AddObservationPointRequest{EventId: eventID, EdgeDeviceId: deviceID, Name: "north"},
+	))
+	if got := connectrpc.CodeOf(err); got != connectrpc.CodeAlreadyExists {
+		t.Fatalf("second AddObservationPoint() code = %v (%v), want %v", got, err, connectrpc.CodeAlreadyExists)
+	}
+
+	listed, err := flow.edgeDevices.ListEdgeDeviceObservationPoints(authorized(ctx, flow.token(t, eventID, "events.report"),
+		&observationv1.ListEdgeDeviceObservationPointsRequest{EventId: eventID, EdgeDeviceId: deviceID},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	points := listed.GetObservationPoints()
+	if len(points) != 1 {
+		t.Fatalf("listed points = %v, want one", points)
+	}
+
+	if !regexp.MustCompile(`^[0-9a-f]{16}$`).MatchString(points[0].GetObservationPointId()) {
+		t.Errorf("observation_point_id = %q, want 16 hex digits", points[0].GetObservationPointId())
+	}
+
+	if points[0].GetObservationPointId() != added.GetPoint().GetObservationPointId() || points[0].GetName() != "north" {
+		t.Errorf("listed point = %v, want the added point %v named north", points[0], added.GetPoint())
 	}
 }

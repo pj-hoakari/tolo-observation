@@ -74,6 +74,13 @@ func (f *fakeEdgeDeviceUseCases) UpdateObservationPointConfig(
 	return f.point, f.err
 }
 
+func (f *fakeEdgeDeviceUseCases) AddObservationPoint(
+	_ context.Context,
+	_ application.AddObservationPointInput,
+) (domain.ObservationPoint, error) {
+	return f.point, f.err
+}
+
 func newEdgeDeviceClient(
 	t *testing.T,
 	scope string,
@@ -292,6 +299,7 @@ func TestEdgeDeviceErrorMapping(t *testing.T) {
 		{name: "malformed public ID", err: domain.ErrInvalidPublicID, want: connectrpc.CodeInvalidArgument},
 		{name: "already unregistered", err: domain.ErrEdgeDeviceUnregistered, want: connectrpc.CodeFailedPrecondition},
 		{name: "camera operation", err: domain.ErrEdgeDeviceCameraUnsupported, want: connectrpc.CodeFailedPrecondition},
+		{name: "observation point name taken", err: domain.ErrObservationPointNameTaken, want: connectrpc.CodeAlreadyExists},
 	}
 
 	for _, tt := range tests {

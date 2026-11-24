@@ -698,3 +698,111 @@ func TestListEdgeDevicesReturnsKindAndCameraLinks(t *testing.T) {
 		t.Errorf("camera = %+v, want camera kind and no observation points", views[1].Device)
 	}
 }
+
+func TestRegisterEdgeDeviceAcceptsAnObservationPageWithoutPoints(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t)
+	devices.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+
+	output, err := service.RegisterEdgeDevice(withEventToken(testEventPublicID), application.RegisterEdgeDeviceInput{
+		EventID: testEventPublicID,
+		Name:    "gate-1",
+	})
+	if err != nil {
+		t.Fatalf("RegisterEdgeDevice() error = %v", err)
+	}
+
+	if got := output.Device.Device.ObservationPoints; len(got) != 0 {
+		t.Errorf("ObservationPoints = %+v, want none", got)
+	}
+}
+
+func TestAddObservationPointSavesTheNewPoint(t *testing.T) {
+	t.Parallel()
+
+	service, devices := newService(t)
+	expectTransaction(devices)
+	devices.EXPECT().
+		FindByIDForUpdate(inTransaction, domain.EdgeDeviceID("1122334455667788")).
+		Return(domain.EdgeDevice{
+			ID:              "1122334455667788",
+			EventID:         testEventPublicID,
+			LastHeartbeatAt: ptr(testNow),
+		}, nil)
+
+	var saved domain.EdgeDevice
+
+	devices.EXPECT().Save(inTransaction, gomock.Any()).DoAndReturn(func(_ context.Context, device domain.EdgeDevice) error {
+		saved = device
+
+		return nil
+	})
+
+	point, err := service.AddObservationPoint(withEventToken(testEventPublicID), application.AddObservationPointInput{
+		EventID:      testEventPublicID,
+		EdgeDeviceID: "1122334455667788",
+		Name:         " north ",
+	})
+	if err != nil {
+		t.Fatalf("AddObservationPoint() error = %v", err)
+	}
+
+	if point.Name != "north" || !point.Enabled {
+		t.Errorf("point = %+v, want enabled north", point)
+	}
+
+	if len(saved.ObservationPoints) != 1 || saved.ObservationPoints[0].ID != point.ID {
+		t.Errorf("saved points = %+v, want only %+v", saved.ObservationPoints, point)
+	}
+}
+
+func TestAddObservationPointRejectsWithoutSaving(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		device  domain.EdgeDevice
+		err     error
+		wantErr error
+	}{
+		{name: "unknown device", err: repository.ErrEdgeDeviceNotFound, wantErr: repository.ErrEdgeDeviceNotFound},
+		{name: "another event's device", device: domain.EdgeDevice{EventID: otherEventPublicID}, wantErr: application.ErrForeignEvent},
+		{
+			name: "name already used",
+			device: domain.EdgeDevice{EventID: testEventPublicID, ObservationPoints: []domain.ObservationPoint{
+				{ID: "99aabbccddeeff00", Name: "north", Enabled: true},
+			}},
+			wantErr: domain.ErrObservationPointNameTaken,
+		},
+		{
+			name:    "camera",
+			device:  domain.EdgeDevice{EventID: testEventPublicID, Kind: domain.EdgeDeviceKindCamera},
+			wantErr: domain.ErrEdgeDeviceCameraUnsupported,
+		},
+		{
+			name:    "unregistered",
+			device:  domain.EdgeDevice{EventID: testEventPublicID, Unregistered: true},
+			wantErr: domain.ErrEdgeDeviceUnregistered,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			service, devices := newService(t)
+			expectTransaction(devices)
+			devices.EXPECT().FindByIDForUpdate(inTransaction, domain.EdgeDeviceID("1122334455667788")).Return(tt.device, tt.err)
+
+			_, err := service.AddObservationPoint(withEventToken(testEventPublicID), application.AddObservationPointInput{
+				EventID:      testEventPublicID,
+				EdgeDeviceID: "1122334455667788",
+				Name:         "north",
+			})
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("AddObservationPoint() error = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
