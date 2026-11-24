@@ -27,6 +27,7 @@ package: `tolo.observation.v1`
 | ListEdgeDeviceObservationPoints | 指定した観測ページ端末の観測点をすべて返す。観測ページが、検知ラインと観測点を対応させるために使う（ADR-0105） | エッジ端末（観測ページ端末） | `event_access` + events.report | （参照のみ） |
 | Heartbeat | 観測ページ端末の稼働（WebRTC で待ち受けていること）を通知する。途絶が30秒を超えると、切断と観測不能化に波及する。カメラ端末は呼べない | エッジ端末（観測ページ端末） | `event_access` + events.report | EdgeDeviceStarted／EdgeDeviceDisconnected／ObservationPointDisabled／ObservationPointReEnabled |
 | UpdateObservationPointConfig | スタッフ操作による観測点設定変更を反映する（誘導への介入と同じく本サービスが直接受ける） | スタッフアプリ | `event_access` + events.operate | ObservationPointReconfigured |
+| AddObservationPoint | 観測ページ端末にカメラ方式の観測点を1つ追加する。観測ページがラインを観測点に対応させるときに作る。同じ端末に同名の観測点があれば `already_exists` を返し、再送で重複させない。カメラ端末は `failed_precondition` | エッジ端末（観測ページ端末） | `event_access` + events.report | ObservationPointRegistered |
 
 ### 手動介入・運用状態の変更（現場誘導のシステム接点。誘導ドメイン所属）
 
@@ -85,6 +86,7 @@ service EdgeDeviceService {
   rpc ListEdgeDeviceObservationPoints(ListEdgeDeviceObservationPointsRequest) returns (ListEdgeDeviceObservationPointsResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
   rpc UpdateObservationPointConfig(UpdateObservationPointConfigRequest) returns (ObservationPoint);
+  rpc AddObservationPoint(AddObservationPointRequest) returns (AddObservationPointResponse);
 }
 
 service ManualInterventionService {
@@ -233,6 +235,14 @@ message UpdateObservationPointConfigRequest {
   string observation_point_id = 2;
   string name = 3;
   bool enabled = 4;
+}
+message AddObservationPointRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+  string name = 3;  // 前後の空白を除いて保存する。同じ端末に同名の観測点があれば already_exists
+}
+message AddObservationPointResponse {
+  ObservationPoint point = 1;
 }
 
 // ---- 手動介入・運用状態の変更 ----

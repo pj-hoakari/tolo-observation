@@ -272,12 +272,14 @@ func (r *PostgresEdgeDeviceRepository) Save(ctx context.Context, device domain.E
 
 		for _, point := range device.ObservationPoints {
 			_, err := executor.ExecContext(ctx, `
-				UPDATE observation_points
-				SET name = $3, enabled = $4, last_active_at = $5
-				WHERE observation_point_id = $1 AND edge_device_id = $2`,
+				INSERT INTO observation_points (observation_point_id, edge_device_id, name, enabled, last_active_at)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (observation_point_id) DO UPDATE
+				SET name = EXCLUDED.name, enabled = EXCLUDED.enabled, last_active_at = EXCLUDED.last_active_at
+				WHERE observation_points.edge_device_id = EXCLUDED.edge_device_id`,
 				string(point.ID), internalID, point.Name, point.Enabled, point.LastActiveAt)
 			if err != nil {
-				return fmt.Errorf("update observation point: %w", err)
+				return fmt.Errorf("save observation point: %w", err)
 			}
 		}
 

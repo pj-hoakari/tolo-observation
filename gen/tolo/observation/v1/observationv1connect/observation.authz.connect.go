@@ -19,6 +19,7 @@ var EdgeDeviceServicePolicies = authz.Policies{
 	EdgeDeviceServiceListEdgeDeviceObservationPointsProcedure: {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.report"}, TokenUses: []string{"event_access"}},
 	EdgeDeviceServiceHeartbeatProcedure:                       {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.report"}, TokenUses: []string{"event_access"}},
 	EdgeDeviceServiceUpdateObservationPointConfigProcedure:    {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.operate"}, TokenUses: []string{"event_access"}},
+	EdgeDeviceServiceAddObservationPointProcedure:             {Level: authz.LevelAuthenticated, RequiredScopes: []string{"events.report"}, TokenUses: []string{"event_access"}},
 }
 
 // ManualInterventionServicePolicies is the effective policy of every procedure of tolo.observation.v1.ManualInterventionService.

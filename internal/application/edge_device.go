@@ -62,6 +62,12 @@ type UpdateObservationPointConfigInput struct {
 	Enabled            bool
 }
 
+type AddObservationPointInput struct {
+	EventID      string
+	EdgeDeviceID string
+	Name         string
+}
+
 type EdgeDeviceUseCases interface {
 	RegisterEdgeDevice(ctx context.Context, input RegisterEdgeDeviceInput) (RegisterEdgeDeviceOutput, error)
 	UnregisterEdgeDevice(ctx context.Context, input UnregisterEdgeDeviceInput) (EdgeDeviceView, error)
@@ -69,6 +75,7 @@ type EdgeDeviceUseCases interface {
 	ListEdgeDeviceObservationPoints(ctx context.Context, input ListEdgeDeviceObservationPointsInput) ([]domain.ObservationPoint, error)
 	Heartbeat(ctx context.Context, input HeartbeatInput) error
 	UpdateObservationPointConfig(ctx context.Context, input UpdateObservationPointConfigInput) (domain.ObservationPoint, error)
+	AddObservationPoint(ctx context.Context, input AddObservationPointInput) (domain.ObservationPoint, error)
 }
 
 type EdgeDeviceConfig struct {
@@ -411,6 +418,56 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(ctx context.Context, in
 		}
 
 		return domain.ErrObservationPointNotFound
+	})
+	if err != nil {
+		return domain.ObservationPoint{}, err
+	}
+
+	return result, nil
+}
+
+func (s *EdgeDeviceService) AddObservationPoint(ctx context.Context, input AddObservationPointInput) (domain.ObservationPoint, error) {
+	if err := tenantctx.EnsureEvent(ctx, input.EventID); err != nil {
+		return domain.ObservationPoint{}, err
+	}
+
+	id, err := domain.ParseEdgeDeviceID(input.EdgeDeviceID)
+	if err != nil {
+		return domain.ObservationPoint{}, err
+	}
+
+	var result domain.ObservationPoint
+
+	err = s.devices.WithinTransaction(ctx, func(txCtx context.Context) error {
+		device, err := s.devices.FindByIDForUpdate(txCtx, id)
+		if err != nil {
+			return fmt.Errorf("find edge device: %w", err)
+		}
+
+		if device.EventID != input.EventID {
+			return ErrForeignEvent
+		}
+
+		point, err := device.AddObservationPoint(input.Name)
+		if err != nil {
+			return err
+		}
+
+		if err := s.devices.Save(txCtx, device); err != nil {
+			return fmt.Errorf("save edge device: %w", err)
+		}
+
+		now := s.config.Now()
+
+		hold, err := s.holds.Evaluate(txCtx, now)
+		if err != nil {
+			return err
+		}
+
+		point.Enabled = point.Enabled && hold.Connected(device, now)
+		result = point
+
+		return nil
 	})
 	if err != nil {
 		return domain.ObservationPoint{}, err

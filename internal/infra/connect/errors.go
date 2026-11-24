@@ -56,6 +56,7 @@ var clientErrors = []struct {
 	{domain.ErrObservationPointNotFound, connectrpc.CodeNotFound, "observation point not found"},
 	{domain.ErrEdgeDeviceUnregistered, connectrpc.CodeFailedPrecondition, "edge device is unregistered"},
 	{domain.ErrEdgeDeviceCameraUnsupported, connectrpc.CodeFailedPrecondition, "camera edge device does not support this operation"},
+	{domain.ErrObservationPointNameTaken, connectrpc.CodeAlreadyExists, "observation point name is already used on the edge device"},
 	{tenantctx.ErrMissing, connectrpc.CodePermissionDenied, "tenant ID is missing from the token"},
 	{tenantctx.ErrMismatch, connectrpc.CodePermissionDenied, "tenant ID does not match the token"},
 	{tenantctx.ErrEventMissing, connectrpc.CodePermissionDenied, "event ID is missing from the token"},

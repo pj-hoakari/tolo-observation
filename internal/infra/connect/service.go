@@ -241,6 +241,24 @@ func (s *EdgeDeviceService) UpdateObservationPointConfig(
 	}, nil
 }
 
+func (s *EdgeDeviceService) AddObservationPoint(
+	ctx context.Context,
+	req *observationv1.AddObservationPointRequest,
+) (*observationv1.AddObservationPointResponse, error) {
+	point, err := s.useCases.AddObservationPoint(ctx, application.AddObservationPointInput{
+		EventID:      req.GetEventId(),
+		EdgeDeviceID: req.GetEdgeDeviceId(),
+		Name:         req.GetName(),
+	})
+	if err != nil {
+		return nil, clientError(ctx, err)
+	}
+
+	return &observationv1.AddObservationPointResponse{
+		Point: newProtoObservationPoint(point),
+	}, nil
+}
+
 func newProtoEdgeDevice(view application.EdgeDeviceView) *observationv1.EdgeDevice {
 	device := view.Device
 

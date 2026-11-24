@@ -25,6 +25,7 @@ var (
 	ErrObservationPointNameRequired  = errors.New("observation point name is required")
 	ErrObservationPointNotFound      = errors.New("observation point not found")
 	ErrObservationPointAlreadyLinked = errors.New("observation point is already linked to a camera")
+	ErrObservationPointNameTaken     = errors.New("observation point name is already used on the edge device")
 )
 
 const (
@@ -284,6 +285,37 @@ func (d *EdgeDevice) Unregister() error {
 	}
 
 	return nil
+}
+
+func (d *EdgeDevice) AddObservationPoint(name string) (ObservationPoint, error) {
+	if d.Kind == EdgeDeviceKindCamera {
+		return ObservationPoint{}, ErrEdgeDeviceCameraUnsupported
+	}
+
+	if d.Unregistered {
+		return ObservationPoint{}, ErrEdgeDeviceUnregistered
+	}
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ObservationPoint{}, ErrObservationPointNameRequired
+	}
+
+	for _, point := range d.ObservationPoints {
+		if point.Name == name {
+			return ObservationPoint{}, ErrObservationPointNameTaken
+		}
+	}
+
+	id, err := NewObservationPointID()
+	if err != nil {
+		return ObservationPoint{}, err
+	}
+
+	point := ObservationPoint{ID: id, Name: name, Enabled: true, LastActiveAt: nil}
+	d.ObservationPoints = append(d.ObservationPoints, point)
+
+	return point, nil
 }
 
 func (d *EdgeDevice) UpdateObservationPoint(id ObservationPointID, name string, enabled bool) (ObservationPoint, error) {
