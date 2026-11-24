@@ -543,3 +543,60 @@ func TestAddObservationPointFromTheObservationPage(t *testing.T) {
 		t.Errorf("listed point = %v, want the added point %v named north", points[0], added.GetPoint())
 	}
 }
+
+func TestConcurrentAddObservationPointKeepsOnePointPerName(t *testing.T) {
+	flow := newObservationFlow(t)
+	ctx := context.Background()
+	eventID := "c0ffee00c0ffee06"
+
+	page, err := flow.edgeDevices.RegisterEdgeDevice(authorized(ctx, flow.token(t, eventID, "events.manage"),
+		&observationv1.RegisterEdgeDeviceRequest{EventId: eventID, Name: "page"},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deviceID := page.GetDevice().GetEdgeDeviceId()
+	authorization := flow.token(t, eventID, "events.report")
+
+	const attempts = 8
+
+	errs := make(chan error, attempts)
+
+	for range attempts {
+		go func() {
+			_, err := flow.edgeDevices.AddObservationPoint(authorized(ctx, authorization,
+				&observationv1.AddObservationPointRequest{EventId: eventID, EdgeDeviceId: deviceID, Name: "north"},
+			))
+			errs <- err
+		}()
+	}
+
+	succeeded := 0
+
+	for range attempts {
+		err := <-errs
+
+		switch {
+		case err == nil:
+			succeeded++
+		case connectrpc.CodeOf(err) != connectrpc.CodeAlreadyExists:
+			t.Errorf("AddObservationPoint() error = %v, want success or already_exists", err)
+		}
+	}
+
+	if succeeded != 1 {
+		t.Errorf("%d adds succeeded, want 1", succeeded)
+	}
+
+	listed, err := flow.edgeDevices.ListEdgeDeviceObservationPoints(authorized(ctx, authorization,
+		&observationv1.ListEdgeDeviceObservationPointsRequest{EventId: eventID, EdgeDeviceId: deviceID},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if points := listed.GetObservationPoints(); len(points) != 1 {
+		t.Errorf("listed points = %v, want one", points)
+	}
+}

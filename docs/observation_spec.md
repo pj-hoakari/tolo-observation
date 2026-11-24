@@ -236,6 +236,14 @@ message UpdateObservationPointConfigRequest {
   string name = 3;
   bool enabled = 4;
 }
+message AddObservationPointRequest {
+  string event_id = 1;
+  string edge_device_id = 2;
+  string name = 3;  // 前後の空白を除いて保存する。同じ端末に同名の観測点があれば already_exists
+}
+message AddObservationPointResponse {
+  ObservationPoint point = 1;
+}
 
 // ---- 手動介入・運用状態の変更 ----
 
